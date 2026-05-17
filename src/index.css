@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-body: 'Oswald', sans-serif;
+    --font-heading: 'Orbitron', sans-serif;
+  }
+
+  /* Body: Barlow cho toàn bộ nội dung */
+  html, body {
+    font-family: var(--font-body);
+    font-weight: 400;
+  }
+
+  /* Rajdhani cho tất cả heading */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+}
