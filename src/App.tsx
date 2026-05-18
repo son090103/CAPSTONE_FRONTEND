@@ -30,7 +30,9 @@ function App() {
 
       </Routes>
       {/* <LazySection minHeight="300px"> */}
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
       {/* </LazySection> */}
     </>
   )
