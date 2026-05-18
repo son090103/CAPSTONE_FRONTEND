@@ -20,18 +20,16 @@ function App() {
           <Route path="" element={<Home />} />
           <Route path="services" element={<Services />} />
           <Route path="parts" element={<Parts />} />
-          <Route path="/phone-service" element={<BookingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/userprofile" element={<UserProfile />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/team" element={<Team />} />
+          <Route path="phone-service" element={<BookingPage />} />
+          <Route path="login" element={<Login />} />
+          <Route path="signup" element={<Signup />} />
+          <Route path="userprofile" element={<UserProfile />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="team" element={<Team />} />
         </Route>
 
       </Routes>
-      {/* <LazySection minHeight="300px"> */}
       <Footer />
-      {/* </LazySection> */}
     </>
   )
 }
