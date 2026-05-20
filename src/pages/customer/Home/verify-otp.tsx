@@ -11,6 +11,13 @@ import {
 import Logo from "../../../components/share/Logo";
 import { Button } from "../../../components/share/Button";
 import { COLORS } from "../../../components/share/Color";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  verifyOtp,
+  getConfirmation,
+  sendOtp,
+  setConfirmation,
+} from "../../../services/firebaseOtp";
 
 // OTP input phải cố định width/height (dùng inline style để không bị CSS global override)
 const otpInputClass =
@@ -41,7 +48,7 @@ function OtpInput({ length = 6, value, onChange }: OtpInputProps) {
 
   const handleChange = (
     index: number,
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const raw = e.target.value || "";
     const digitsOnly = raw.replace(/\D/g, "");
@@ -69,7 +76,7 @@ function OtpInput({ length = 6, value, onChange }: OtpInputProps) {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
     if (e.key === "Backspace") {
       e.preventDefault();
@@ -155,27 +162,65 @@ function OtpInput({ length = 6, value, onChange }: OtpInputProps) {
 export default function OtpVerification() {
   const [otpValue, setOtpValue] = useState("");
   const [timeLeft, setTimeLeft] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const phoneNumber =
+    (location.state as { phoneNumber?: string })?.phoneNumber || "";
 
   useEffect(() => {
     if (timeLeft <= 0) return;
     const intervalId = window.setInterval(
       () => setTimeLeft((t) => t - 1),
-      1000
+      1000,
     );
     return () => window.clearInterval(intervalId);
   }, [timeLeft]);
 
   const isOtpComplete = otpValue.replace(/\D/g, "").length === 6;
 
-  const handleResendOtp = () => {
-    // UI only
-    setTimeLeft(60);
+  const handleResendOtp = async () => {
+    if (!phoneNumber) return;
+    setErrorMsg("");
+    setIsLoading(true);
+    try {
+      const confirmation = await sendOtp(phoneNumber);
+      setConfirmation(confirmation);
+      setTimeLeft(60);
+      setOtpValue("");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gửi lại OTP thất bại");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOtpComplete) return;
-    // UI only
+    const confirmation = getConfirmation();
+    if (!confirmation) {
+      setErrorMsg("Phiên xác thực hết hạn, vui lòng nhập lại số điện thoại");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg("");
+    try {
+      const idToken = await verifyOtp(confirmation, otpValue);
+      setConfirmation(null);
+      navigate("/signup", {
+        state: { idToken, phoneNumber },
+      });
+    } catch (err: any) {
+      setErrorMsg(
+        err?.code === "auth/invalid-verification-code"
+          ? "Mã OTP không đúng, vui lòng thử lại"
+          : err?.message || "Xác thực thất bại",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -401,14 +446,6 @@ export default function OtpVerification() {
               </div>
 
               <div className="pt-1 text-center space-y-3">
-                <Link
-                  to="/signup"
-                  className="inline-block text-sm font-bold hover:opacity-70 transition-opacity"
-                  style={{ color: COLORS.navy }}
-                >
-                  Quay lại đăng ký
-                </Link>
-
                 <div className="text-sm" style={{ color: COLORS.textMuted }}>
                   Bạn đã có tài khoản?{" "}
                   <Link

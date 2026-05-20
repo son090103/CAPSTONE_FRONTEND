@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, ChevronRight, Phone, ShieldCheck } from "lucide-react";
@@ -6,6 +6,13 @@ import { CheckCircle2, ChevronRight, Phone, ShieldCheck } from "lucide-react";
 import Logo from "../../../components/share/Logo";
 import { Button } from "../../../components/share/Button";
 import { COLORS } from "../../../components/share/Color";
+import { useFetchClient } from "../../../hook/useFetchClient";
+import {
+  sendOtp,
+  setConfirmation,
+  initRecaptcha,
+  clearRecaptcha,
+} from "../../../services/firebaseOtp";
 
 const PHONE_REGEX_VN = /^(0|\+84)(3|5|7|8|9)\d{8}$/;
 
@@ -23,13 +30,15 @@ function validatePhoneNumber(phoneNumber: string) {
 
 export default function VerifyPhone() {
   const navigate = useNavigate();
-
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isTouched, setIsTouched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const { fetchPublic } = useFetchClient();
 
   const validationMessage = useMemo(
     () => validatePhoneNumber(phoneNumber),
-    [phoneNumber]
+    [phoneNumber],
   );
 
   const isPhoneValid = !validationMessage;
@@ -38,17 +47,38 @@ export default function VerifyPhone() {
     setPhoneNumber(e.target.value);
   };
 
-  const handleVerifyPhone = (e: React.FormEvent) => {
+  useEffect(() => {
+    initRecaptcha("recaptcha-container").catch((err) => {
+      console.error("Recaptcha init failed:", err);
+    });
+    return () => {
+      clearRecaptcha();
+    };
+  }, []);
+
+  const handleVerifyPhone = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsTouched(true);
-
     if (!isPhoneValid) return;
-
-    // UI only: hợp lệ -> chuyển sang trang OTP
-    // (nếu muốn truyền sđt qua state để trang OTP dùng lại)
-    navigate("/otp-verification", {
-      state: { phoneNumber: normalizePhoneNumber(phoneNumber) },
-    });
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    setIsLoading(true);
+    setErrorMsg("");
+    try {
+      await fetchPublic(
+        `${import.meta.env.VITE_API_BASE_URL}/api/auth/phone`,
+        "POST",
+        { phone: normalizedPhone },
+      );
+      const confirmation = await sendOtp(normalizedPhone);
+      setConfirmation(confirmation);
+      navigate("/otp-verification", {
+        state: { phoneNumber: normalizedPhone },
+      });
+    } catch (err: any) {
+      setErrorMsg(err.message || "Có lỗi xảy ra, vui lòng thử lại");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,7 +132,7 @@ export default function VerifyPhone() {
             transition={{ delay: 0.16 }}
             className="text-white/60 text-sm leading-relaxed mb-10"
           >
-            Kiểm tra số điện thoại hợp lệ trước khi gửi mã OTP.
+            Kiểm tra số điện thoại hợp lệ trước khi tiếp tục các bước Đăng ký.
           </motion.p>
 
           <div className="space-y-5">
@@ -125,7 +155,7 @@ export default function VerifyPhone() {
                     {text}
                   </span>
                 </motion.div>
-              )
+              ),
             )}
           </div>
         </div>
@@ -218,6 +248,7 @@ export default function VerifyPhone() {
 
               <div className="space-y-3">
                 <Button
+                  type="submit"
                   size="md"
                   bg={isPhoneValid ? COLORS.orange : "rgba(249,161,27,0.35)"}
                   color={COLORS.navyMid}
@@ -228,7 +259,14 @@ export default function VerifyPhone() {
                 >
                   Tiếp tục
                 </Button>
-
+                {errorMsg && (
+                  <p
+                    className="text-xs text-center"
+                    style={{ color: "#DC2626" }}
+                  >
+                    {errorMsg}
+                  </p>
+                )}
                 <p
                   className="text-xs text-center"
                   style={{ color: COLORS.textMuted }}
@@ -238,14 +276,6 @@ export default function VerifyPhone() {
               </div>
 
               <div className="pt-1 text-center space-y-3">
-                <Link
-                  to="/signup"
-                  className="inline-block text-sm font-bold hover:opacity-70 transition-opacity"
-                  style={{ color: COLORS.navy }}
-                >
-                  Quay lại đăng ký
-                </Link>
-
                 <div className="text-sm" style={{ color: COLORS.textMuted }}>
                   Bạn đã có tài khoản?{" "}
                   <Link
@@ -269,6 +299,8 @@ export default function VerifyPhone() {
           </p>
         </div>
       </div>
+              <div id="recaptcha-container" className="flex justify-center"></div>
+
     </div>
   );
 }

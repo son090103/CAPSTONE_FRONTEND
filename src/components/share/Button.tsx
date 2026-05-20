@@ -15,6 +15,7 @@ interface ButtonProps {
     size?: ButtonSize;
     icon?: ReactNode | null;  // icon bên phải, null = ẩn
     to?: string;            // nếu có → bọc Link
+    type?: "button" | "submit" | "reset"; 
     onClick?: MouseEventHandler<HTMLButtonElement>;
     className?: string;
     style?: CSSProperties;
