@@ -310,7 +310,7 @@ export default function Login() {
 
                     <p className="mt-12 text-center text-sm" style={{ color: `${COLORS.navy}80` }}>
                         Bạn chưa có tài khoản?{' '}
-                        <Link to="/signup" className="font-bold transition-colors hover:opacity-70"
+                        <Link to="/verify-phone" className="font-bold transition-colors hover:opacity-70"
                             style={{ color: COLORS.navy }}>
                             Tạo tài khoản
                         </Link>
