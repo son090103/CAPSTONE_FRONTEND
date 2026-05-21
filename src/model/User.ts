@@ -1,16 +1,9 @@
-export interface Role {
-    id: number;
-    name: string;
-}
-
-export interface User {
+export interface UserModel {
     id: number;
     fullName: string;
-    email: string;
-    phone: string;
-    address?: string;
-    avatarUrl?: string;
-    role?: Role;
+    phoneNumber: string;
+    avatar?: string;
+    role?: string;
     createdAt?: string;
     updatedAt?: string;
 }
