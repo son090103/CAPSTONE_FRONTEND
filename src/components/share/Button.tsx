@@ -46,18 +46,21 @@ export function Button({
     onClick,
     className = '',
     style = {},
+    disabled = false,
 }: ButtonProps) {
     const btn = (
         <motion.button
-            whileHover={{ scale: 1.05, filter: 'brightness(1.08)' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
+            whileHover={disabled ? undefined : { scale: 1.05, filter: 'brightness(1.08)' }}
+            whileTap={disabled ? undefined : { scale: 0.95 }}
+            onClick={disabled ? undefined : onClick}
+            disabled={disabled}
             style={{ backgroundColor: bg, color, ...style }}
             className={`
                 rounded-full font-bold shadow-md
                 flex items-center transition-all
                 ${SIZE[size]}
                 ${className}
+                ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
             `}
         >
             {children}

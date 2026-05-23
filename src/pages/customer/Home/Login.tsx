@@ -9,6 +9,8 @@ import { Button } from '../../../components/share/Button';
 import { useFetchClient } from '../../../hook/useFetchClient';
 import { validateLoginField, validateLoginForm, type LoginFormData } from '../../../validate/LoginSchema';
 import { AUTH_API_ENDPOINTS } from '../../../constants/customer/authApiEndpoints';
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from '../../../store/slices/userSlice';
 
 // ── resolve PhoneInput default export ─────────────────────────
 type Mod = { default?: unknown };
@@ -119,28 +121,25 @@ const phoneStyles = `
 export default function Login() {
     const navigate = useNavigate();
     const { fetchPublic } = useFetchClient();
+    const dispatch = useDispatch()
 
-    // Form state
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // UI state
+
     const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
     const [apiError, setApiError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // ── Helpers ──────────────────────────────────────────────
+
     const normalizePhone = (raw: string): string => {
         const digits = raw.replace(/\D/g, '');
-        if (digits.startsWith('840') && digits.length === 12) return digits.slice(2);
-        if (digits.startsWith('84') && digits.length === 11) return '0' + digits.slice(2);
-        if (digits.startsWith('0') && digits.length === 10) return digits;
         return digits;
     };
 
-    // ── Validate khi blur từng field ─────────────────────────
+
     const handlePhoneBlur = () => {
         const msg = validateLoginField('phone', normalizePhone(phone));
         setErrors((prev) => ({ ...prev, phone: msg }));
@@ -202,9 +201,17 @@ export default function Login() {
             if (userData) {
                 storage.setItem('user', JSON.stringify(userData));
             }
-
+            if (userData) {
+                dispatch(loginSuccess({
+                    id: userData.id,
+                    fullName: userData.fullName,
+                    phoneNumber: userData.phoneNumber,
+                    avatar: userData.avatar,
+                    role: userData.role
+                }));
+            }
             // --- 5. Điều hướng sang trang Profile ---
-            navigate('/userprofile');
+            navigate('/');
 
         } catch (err: any) {
             setApiError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
@@ -387,7 +394,6 @@ export default function Login() {
                             )}
                         </div>
 
-                        {/* ── Remember me ── */}
                         <div className="flex items-center gap-3 px-1">
                             <input
                                 type="checkbox"
@@ -401,7 +407,6 @@ export default function Login() {
                             </label>
                         </div>
 
-                        {/* ── Submit Button ── */}
                         <Button
                             size="md"
                             bg={COLORS.orange}

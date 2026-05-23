@@ -7,11 +7,21 @@ import Logo from '../../components/share/Logo';
 import { Button } from '../../components/share/Button';
 import { COLORS } from '../../components/share/Color';
 
-type NavItem = { name: string; path: string };
-type NavLinkProps = { item: NavItem; active: boolean; mobile?: boolean; onClick?: () => void };
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from '../../store/store';
+import type { UserModel } from '../../model/User';
 
-const DEFAULT_AVATAR =
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+import { useFetchClient } from '../../hook/useFetchClient';
+import { loginSuccess } from '../../store/slices/userSlice';
+import { PROFILE_API_ENDPOINTS } from '../../constants/customer/profileApiEndpoint';
+
+type NavItem = { name: string; path: string };
+type NavLinkProps = {
+    item: NavItem;
+    active: boolean;
+    mobile?: boolean;
+    onClick?: () => void;
+};
 
 const NAV_ITEMS: NavItem[] = [
     { name: 'Trang Chủ', path: '/' },
@@ -29,21 +39,16 @@ const MOBILE_TAB_ITEMS = [
     { name: 'Cá Nhân', path: '/userprofile', icon: User },
 ];
 
-// ────────────────────────────────────────────────────────────
-// NAV LINK — text-base (to hơn) + hover nổi lên (y: -2)
-// ────────────────────────────────────────────────────────────
-
 function NavLink({ item, active, mobile = false, onClick }: NavLinkProps) {
     if (mobile) {
         return (
             <Link
                 to={item.path}
                 onClick={onClick}
-                className={`
-                    px-4 py-3 rounded-2xl text-base font-semibold
-                    transition-all duration-300 block
-                    ${active ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}
-                `}
+                className={`px-4 py-3 rounded-2xl text-base font-semibold transition-all duration-300 block ${active
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
             >
                 {item.name}
             </Link>
@@ -51,17 +56,12 @@ function NavLink({ item, active, mobile = false, onClick }: NavLinkProps) {
     }
 
     return (
-        <motion.div
-            whileHover={{ y: -2 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-        >
+        <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
             <Link
                 to={item.path}
                 onClick={onClick}
-                className={`
-                    text-base font-semibold transition-colors duration-200
-                    ${active ? 'text-white' : 'text-white/60 hover:text-white'}
-                `}
+                className={`text-base font-semibold transition-colors duration-200 ${active ? 'text-white' : 'text-white/60 hover:text-white'
+                    }`}
             >
                 {item.name}
             </Link>
@@ -69,31 +69,87 @@ function NavLink({ item, active, mobile = false, onClick }: NavLinkProps) {
     );
 }
 
-// ────────────────────────────────────────────────────────────
-// NAVBAR
-// ────────────────────────────────────────────────────────────
+// ─── Avatar với skeleton loading ───────────────────────────────────────────────
+function AvatarWithSkeleton({ src }: { src: string | null }) {
+    const [loaded, setLoaded] = useState(false);
+    const [error, setError] = useState(false);
+
+    const showSkeleton = !src || (!loaded && !error);
+    const showFallback = !src || error;
+
+    return (
+        <div
+            className="w-10 h-10 rounded-full overflow-hidden border-2 shadow-lg relative"
+            style={{ borderColor: COLORS.orange }}
+        >
+            {/* Skeleton pulse */}
+            {showSkeleton && (
+                <div className="absolute inset-0 bg-white/10 animate-pulse rounded-full" />
+            )}
+
+            {/* Fallback icon khi không có avatar */}
+            {showFallback && !showSkeleton && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full">
+                    <User className="w-5 h-5 text-white/60" />
+                </div>
+            )}
+
+            {/* Ảnh thật */}
+            {src && !error && (
+                <img
+                    src={src}
+                    alt="Avatar"
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'
+                        }`}
+                    onLoad={() => setLoaded(true)}
+                    onError={() => setError(true)}
+                />
+            )}
+        </div>
+    );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
     const location = useLocation();
+    const dispatch = useDispatch();
+    const { fetchPrivate } = useFetchClient();
+
     const [isOpen, setIsOpen] = useState(false);
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    const [avatarUrl, setAvatarUrl] = useState(
-        localStorage.getItem('userAvatar') || DEFAULT_AVATAR
-    );
+
+    const user = useSelector((state: RootState) => state.user.user as UserModel | null);
+    const isAuthenticated = !!localStorage.getItem('token');
+
+    // Không còn DEFAULT_AVATAR — null nếu chưa có
+    const avatarUrl = user?.avatar?.trim() || null;
 
     useEffect(() => {
-        const sync = () =>
-            setAvatarUrl(localStorage.getItem('userAvatar') || DEFAULT_AVATAR);
-        window.addEventListener('storage', sync);
-        window.addEventListener('avatarChanged', sync);
-        return () => {
-            window.removeEventListener('storage', sync);
-            window.removeEventListener('avatarChanged', sync);
+        const fetchUserProfile = async () => {
+            try {
+                const response = await fetchPrivate(PROFILE_API_ENDPOINTS.GET_PROFILE);
+                const userData = response?.data;
+                if (!userData) return;
+                dispatch(
+                    loginSuccess({
+                        id: userData.id,
+                        fullName: userData.fullName,
+                        phoneNumber: userData.phoneNumber,
+                        avatar: userData.avatar,
+                        role: userData.role,
+                    })
+                );
+            } catch (error) {
+                console.error('Không lấy được thông tin user:', error);
+            }
         };
-    }, []);
+
+        const token = localStorage.getItem('token');
+        if (token && !user) fetchUserProfile();
+    }, [dispatch, fetchPrivate, user]);
 
     const closeMenu = () => setIsOpen(false);
-    const toggleMenu = () => setIsOpen((p) => !p);
+    const toggleMenu = () => setIsOpen((prev) => !prev);
 
     return (
         <>
@@ -103,18 +159,11 @@ export default function Navbar() {
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="h-20 flex items-center justify-between">
-
-                        {/* LOGO */}
                         <Logo size="md" />
 
-                        {/* DESKTOP NAV — ml-12 mr-auto → dịch sang trái */}
                         <nav className="hidden md:flex items-center gap-10 ml-12 mr-auto">
                             {NAV_ITEMS.map((item) => (
-                                <NavLink
-                                    key={item.name}
-                                    item={item}
-                                    active={location.pathname === item.path}
-                                />
+                                <NavLink key={item.name} item={item} active={location.pathname === item.path} />
                             ))}
                         </nav>
 
@@ -134,13 +183,9 @@ export default function Navbar() {
                                         />
                                     </button>
 
-                                    <Link to="/userprofile" className="group">
-                                        <div
-                                            className="w-10 h-10 rounded-full overflow-hidden border-2 shadow-lg transition-transform duration-300 group-hover:scale-105"
-                                            style={{ borderColor: COLORS.orange }}
-                                        >
-                                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                                        </div>
+                                    {/* ✅ Avatar với skeleton */}
+                                    <Link to="/userprofile" className="group transition-transform duration-300 hover:scale-105">
+                                        <AvatarWithSkeleton src={avatarUrl} />
                                     </Link>
 
                                     <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy}>
@@ -149,19 +194,11 @@ export default function Navbar() {
                                 </>
                             ) : (
                                 <>
-                                    {/* Đăng Nhập — text link, hover nổi lên */}
-                                    <motion.div
-                                        whileHover={{ y: -2 }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                                    >
-                                        <Link
-                                            to="/login"
-                                            className="text-base font-bold text-white hover:text-white/70 transition-colors"
-                                        >
+                                    <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+                                        <Link to="/login" className="text-base font-bold text-white hover:text-white/70 transition-colors">
                                             Đăng Nhập
                                         </Link>
                                     </motion.div>
-
                                     <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy}>
                                         Tư Vấn Ngay
                                     </Button>
@@ -172,25 +209,12 @@ export default function Navbar() {
                         {/* MOBILE ACTIONS */}
                         <div className="flex md:hidden items-center gap-3">
                             {isAuthenticated && (
-                                <button
-                                    type="button"
-                                    aria-label="Notifications"
-                                    className="relative p-2 text-white/70 hover:text-white transition-colors"
-                                >
+                                <button type="button" aria-label="Notifications" className="relative p-2 text-white/70 hover:text-white transition-colors">
                                     <Bell className="w-5 h-5" />
-                                    <span
-                                        className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-                                        style={{ backgroundColor: COLORS.orange }}
-                                    />
+                                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.orange }} />
                                 </button>
                             )}
-
-                            <button
-                                type="button"
-                                onClick={toggleMenu}
-                                aria-label="Toggle menu"
-                                className="p-2 text-white/70 hover:text-white transition-colors"
-                            >
+                            <button type="button" onClick={toggleMenu} aria-label="Toggle menu" className="p-2 text-white/70 hover:text-white transition-colors">
                                 {isOpen ? <X size={24} /> : <Menu size={24} />}
                             </button>
                         </div>
@@ -211,41 +235,26 @@ export default function Navbar() {
                             <div className="px-4 py-6 space-y-6">
                                 <nav className="flex flex-col gap-3">
                                     {NAV_ITEMS.map((item) => (
-                                        <NavLink
-                                            key={item.name}
-                                            item={item}
-                                            mobile
-                                            onClick={closeMenu}
-                                            active={location.pathname === item.path}
-                                        />
+                                        <NavLink key={item.name} item={item} mobile onClick={closeMenu} active={location.pathname === item.path} />
                                     ))}
                                 </nav>
-
                                 <div className="pt-4 border-t border-white/5 flex flex-col gap-3">
                                     {isAuthenticated ? (
                                         <Link to="/userprofile" onClick={closeMenu}>
                                             <button
                                                 type="button"
                                                 className="w-full px-4 py-3 rounded-2xl text-white font-semibold border transition-all hover:bg-white/10"
-                                                style={{
-                                                    borderColor: 'rgba(255,255,255,0.1)',
-                                                    backgroundColor: 'rgba(255,255,255,0.05)',
-                                                }}
+                                                style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)' }}
                                             >
                                                 Thông tin cá nhân
                                             </button>
                                         </Link>
                                     ) : (
-                                        <Link
-                                            to="/login"
-                                            onClick={closeMenu}
-                                            className="w-full text-center py-3 text-white font-bold text-base hover:text-white/70 transition-colors"
-                                        >
+                                        <Link to="/login" onClick={closeMenu} className="w-full text-center py-3 text-white font-bold text-base hover:text-white/70 transition-colors">
                                             Đăng Nhập
                                         </Link>
                                     )}
-
-                                    <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy}>
+                                    <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy} onClick={closeMenu}>
                                         Tư Vấn Ngay
                                     </Button>
                                 </div>
@@ -254,39 +263,32 @@ export default function Navbar() {
                     )}
                 </AnimatePresence>
             </header>
-            
+
             <main className="pb-20 md:pb-0">
                 <Outlet />
             </main>
 
-            {/* MOBILE BOTTOM NAVIGATION BAR (Shopee Style) */}
+            {/* MOBILE BOTTOM NAV */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#00285E]/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgb(0,0,0,0.5)]">
                 <div className="h-16 flex items-center justify-around px-2 relative">
                     {MOBILE_TAB_ITEMS.map((item) => {
-                        // Check if current route matches this tab
-                        const active = item.path === '/' 
-                            ? location.pathname === '/' 
-                            : item.path === '/userprofile'
-                                ? ['/userprofile', '/login', '/signup', '/forgot-password'].includes(location.pathname)
-                                : location.pathname === item.path;
-                        
+                        const active =
+                            item.path === '/'
+                                ? location.pathname === '/'
+                                : item.path === '/userprofile'
+                                    ? ['/userprofile', '/login', '/signup', '/forgot-password'].includes(location.pathname)
+                                    : location.pathname === item.path;
+
                         const Icon = item.icon;
-                        
-                        // If "Cá Nhân" and not logged in, navigate to /login
                         const targetPath = item.path === '/userprofile' && !isAuthenticated ? '/login' : item.path;
 
                         return (
-                            <Link
-                                key={item.name}
-                                to={targetPath}
-                                className="flex flex-col items-center justify-center flex-1 h-full relative group"
-                            >
+                            <Link key={item.name} to={targetPath} className="flex flex-col items-center justify-center flex-1 h-full relative group">
                                 <motion.div
                                     animate={active ? { scale: 1.12, y: -4 } : { scale: 1, y: 0 }}
                                     transition={{ type: 'spring', stiffness: 350, damping: 15 }}
                                     className="relative flex items-center justify-center p-1"
                                 >
-                                    {/* Active background glow */}
                                     {active && (
                                         <motion.div
                                             layoutId="activeTabGlow"
@@ -294,23 +296,11 @@ export default function Navbar() {
                                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                         />
                                     )}
-                                    
-                                    <Icon
-                                        className={`w-6 h-6 transition-colors duration-300 ${
-                                            active ? 'text-[#F9A11B]' : 'text-white/50 group-hover:text-white'
-                                        }`}
-                                    />
+                                    <Icon className={`w-6 h-6 transition-colors duration-300 ${active ? 'text-[#F9A11B]' : 'text-white/50 group-hover:text-white'}`} />
                                 </motion.div>
-                                
-                                <span
-                                    className={`text-[10px] mt-0.5 font-medium tracking-wide transition-all duration-300 ${
-                                        active ? 'text-[#F9A11B] font-semibold scale-105' : 'text-white/40'
-                                    }`}
-                                >
+                                <span className={`text-[10px] mt-0.5 font-medium tracking-wide transition-all duration-300 ${active ? 'text-[#F9A11B]' : 'text-white/40'}`}>
                                     {item.name}
                                 </span>
-
-                                {/* Safe small active indicator dot under the text */}
                                 {active && (
                                     <motion.div
                                         layoutId="activeTabDot"
@@ -324,6 +314,5 @@ export default function Navbar() {
                 </div>
             </div>
         </>
-
     );
 }

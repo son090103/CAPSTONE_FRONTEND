@@ -5,9 +5,7 @@ export const useFetchClient = () => {
 
   // ==========================================
   // LOẠI 1: PUBLIC (Không Token - Dùng cho Login, Register)
-  // Cứ gọi bình thường, lỗi thì báo lỗi, không đá đi đâu cả.
   // ==========================================
-  // Thêm kiểu dữ liệu cho tham số: url (string), method (string), bodyData (any)
   const fetchPublic = async (
     url: string,
     method: string = "GET",
@@ -38,8 +36,8 @@ export const useFetchClient = () => {
   };
 
   // ==========================================
-  // LOẠI 2: PRIVATE (Có Token + CÓ BẢO VỆ)
-  // Dùng cho: Xem xe, Đặt lịch... (Nơi cần quyền)
+  // LOẠI 2: PRIVATE JSON (Có Token + Bảo vệ)
+  // Dùng cho: Xem xe, Đặt lịch... (Nơi cần quyền, body là JSON)
   // ==========================================
   const fetchPrivate = async (
     url: string,
@@ -64,10 +62,8 @@ export const useFetchClient = () => {
 
       if (response.status === 401) {
         console.warn("Lỗi 401: Token hết hạn hoặc bay màu. Đá về Login!");
-
         localStorage.removeItem("token");
         navigate("/login");
-
         throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
       }
 
@@ -82,5 +78,53 @@ export const useFetchClient = () => {
     }
   };
 
-  return { fetchPublic, fetchPrivate };
+  // ==========================================
+  // LOẠI 3: PRIVATE FORM (Có Token + Body là FormData)
+  // Dùng cho: Upload avatar, cập nhật profile có file
+  //
+  // ⚠️ QUAN TRỌNG: KHÔNG set Content-Type thủ công.
+  // Khi body là FormData, trình duyệt tự set
+  // "multipart/form-data; boundary=----..." với đúng boundary.
+  // Nếu tự set Content-Type thì multer trên BE không parse được.
+  // ==========================================
+  const fetchPrivateForm = async (
+    url: string,
+    method: string = "POST",
+    formData: FormData,
+  ) => {
+    const token = localStorage.getItem("token");
+
+    const options: RequestInit = {
+      method: method,
+      headers: {
+        // KHÔNG có Content-Type ở đây — để browser tự xử lý
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+      body: formData,
+    };
+
+    try {
+      const response = await fetch(url, options);
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : {};
+
+      if (response.status === 401) {
+        console.warn("Lỗi 401: Token hết hạn hoặc bay màu. Đá về Login!");
+        localStorage.removeItem("token");
+        navigate("/login");
+        throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Có lỗi xảy ra từ máy chủ");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Lỗi Private Form API:", error);
+      throw error;
+    }
+  };
+
+  return { fetchPublic, fetchPrivate, fetchPrivateForm };
 };
