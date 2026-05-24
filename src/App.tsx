@@ -12,6 +12,7 @@ import ForgotPassword from "./pages/customer/Home/ForgotPassword";
 import Team from "./pages/customer/Team/Team";
 import OtpVerification from "./pages/customer/Home/verify-otp";
 import VerifyPhone from "./pages/customer/Home/verify-phone";
+import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
@@ -34,7 +35,9 @@ function App() {
           <Route path="otp-verification" element={<OtpVerification />} />
           <Route path="verify-phone" element={<VerifyPhone />} />
         </Route>
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="" element={<AdminDashboard />} />
+        </Route>
       </Routes>
       {!isAdminPath && (
         <div className="hidden md:block">
