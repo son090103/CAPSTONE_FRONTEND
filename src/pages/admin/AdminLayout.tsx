@@ -49,12 +49,12 @@ export default function AdminLayout() {
   const activeMenu = useMemo(() => {
     const path = location.pathname;
     if (path === '/admin' || path === '/admin/') return 'Tổng quan';
-    if (path.startsWith('/parts')) return 'Kho phụ tùng';
-    if (path.startsWith('/customers')) return 'Khách Hàng';
-    if (path.startsWith('/employees')) return 'Nhân sự';
-    if (path.startsWith('/services')) return 'Dịch vụ';
-    if (path.startsWith('/finance')) return 'Báo cáo tài chính';
-    if (path.startsWith('/settings')) return 'Cài đặt';
+    if (path.includes('/parts')) return 'Kho phụ tùng';
+    if (path.includes('/customers')) return 'Khách Hàng';
+    if (path.includes('/employees')) return 'Nhân sự';
+    if (path.includes('/services')) return 'Dịch vụ';
+    if (path.includes('/finance')) return 'Báo cáo tài chính';
+    if (path.includes('/settings')) return 'Cài đặt';
     return 'Tổng quan';
   }, [location.pathname]);
 
@@ -88,7 +88,7 @@ export default function AdminLayout() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">SmartGarage</span>
+            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">AGM Intelligent</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default function AdminLayout() {
               <Wrench size={20} className="text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-[#00285E] uppercase tracking-wider text-base">SmartGarage</span>
+              <span className="font-bold text-[#00285E] uppercase tracking-wider text-base">AGM Intelligent</span>
               <span className="text-[10px] text-slate-500 font-semibold tracking-widest uppercase">Hệ thống quản lý</span>
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function AdminLayout() {
                   <Wrench size={20} className="text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-[#00285E] uppercase tracking-wider text-sm">SmartGarage</span>
+                  <span className="font-bold text-[#00285E] uppercase tracking-wider text-sm">AGM Intelligent</span>
                   <span className="text-[9px] text-slate-500 font-semibold tracking-widest uppercase">Hệ thống quản lý</span>
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function AdminLayout() {
         {/* PAGE FOOTER */}
         <footer className="mt-auto px-8 py-6 border-t border-slate-200/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-400">
           <div>
-            © 2024 <span className="text-slate-500 font-bold">SmartGarage</span> - Hệ thống quản lý gara chuyên nghiệp
+            © 2024 <span className="text-slate-500 font-bold">AGM Intelligent</span> - Hệ thống quản lý gara chuyên nghiệp
           </div>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-slate-600 transition-colors">Điều khoản</a>
