@@ -11,9 +11,10 @@ import {
   BellRing,
   Plus,
   Trash2,
-  Percent,
   Edit,
-  Calculator
+  Calculator,
+  AlertCircle,
+  Tag
 } from 'lucide-react';
 
 // Define the tabs
@@ -48,16 +49,42 @@ export default function AdminSettings() {
     sunday: 'Đóng cửa'
   });
 
-  // Pricing Settings States
-  const [hourlyRate, setHourlyRate] = useState('300000');
-  const [partsMarkup, setPartsMarkup] = useState('15');
-  const [vatRate, setVatRate] = useState('8');
-  const [paymentMethods, setPaymentMethods] = useState({
-    cash: true,
-    transfer: true,
-    card: false
+  // Sub-tab state for Pricing tab
+  const [pricingSubTab, setPricingSubTab] = useState<'rules' | 'policies'>('rules');
+
+  // Pricing Rules States
+  const [laborRate, setLaborRate] = useState('300000');
+  const [servicePrices, setServicePrices] = useState([
+    { id: '1', name: 'Thay dầu động cơ & lọc nhớt', price: '250000', promoPrice: '200000' },
+    { id: '2', name: 'Bảo dưỡng hệ thống phanh 4 bánh', price: '450000', promoPrice: '380000' },
+    { id: '3', name: 'Cân chỉnh thước lái 3D', price: '600000', promoPrice: '500000' },
+    { id: '4', name: 'Gói combo bảo dưỡng định kỳ AGM Standard', price: '1200000', promoPrice: '990000' },
+    { id: '5', name: 'Gói combo vệ sinh khoang máy & nội thất AGM Pro', price: '2500000', promoPrice: '1990000' }
+  ]);
+  const [membershipDiscounts, setMembershipDiscounts] = useState({
+    silver: '5',
+    gold: '10',
+    platinum: '15'
   });
-  const [isSavingPricing, setIsSavingPricing] = useState(false);
+  const [pricingEffectiveDate, setPricingEffectiveDate] = useState('');
+  const [errorsPricingRules, setErrorsPricingRules] = useState<Record<string, string>>({});
+  const [isSavingPricingRules, setIsSavingPricingRules] = useState(false);
+
+  // Pricing Policies States
+  const [pricingPolicies, setPricingPolicies] = useState([
+    { id: 1, category: 'Dầu nhớt & Phụ gia', markupRate: 15, discountRate: 0.05, startDate: '2026-06-01', endDate: '2026-12-31' },
+    { id: 2, category: 'Hệ thống phanh', markupRate: 20, discountRate: 0.10, startDate: '', endDate: '' },
+    { id: 3, category: 'Lốp & Mâm xe', markupRate: 10, discountRate: 0.08, startDate: '2026-07-01', endDate: '' }
+  ]);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<any | null>(null);
+  const [policyCategory, setPolicyCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [policyMarkup, setPolicyMarkup] = useState('0');
+  const [policyDiscount, setPolicyDiscount] = useState('0');
+  const [policyStartDate, setPolicyStartDate] = useState('');
+  const [policyEndDate, setPolicyEndDate] = useState('');
+  const [policyErrors, setPolicyErrors] = useState<Record<string, string>>({});
 
   // Warranty Policy States
   const [warrantyPolicies, setWarrantyPolicies] = useState([
@@ -115,7 +142,7 @@ export default function AdminSettings() {
 
   const tabs: TabItem[] = [
     { id: 'general', label: 'General', icon: Store },
-    { id: 'pricing', label: 'Pricing Rules', icon: Coins },
+    { id: 'pricing', label: 'Quy tắc giá phụ tùng', icon: Coins },
     { id: 'warranty', label: 'Warranty Policies', icon: ShieldCheck },
     { id: 'commission', label: 'Commission Rules', icon: Calculator },
     { id: 'notifications', label: 'Notifications', icon: BellRing }
@@ -131,13 +158,177 @@ export default function AdminSettings() {
     }, 1000);
   };
 
-  const handleSavePricing = (e: React.FormEvent) => {
+  // Pricing Rules Validation & Save Handlers
+  const validatePricingRules = () => {
+    const errs: Record<string, string> = {};
+    if (!laborRate || parseFloat(laborRate) <= 0) {
+      errs.laborRate = 'Giá công thợ phải lớn hơn 0';
+    }
+
+    servicePrices.forEach((item, index) => {
+      if (!item.price || parseFloat(item.price) <= 0) {
+        errs[`service_${index}_price`] = 'Giá dịch vụ phải lớn hơn 0';
+      }
+      if (item.promoPrice) {
+        const pVal = parseFloat(item.price);
+        const promoVal = parseFloat(item.promoPrice);
+        if (promoVal <= 0) {
+          errs[`service_${index}_promo`] = 'Giá khuyến mãi phải lớn hơn 0';
+        }
+        if (promoVal >= pVal) {
+          errs[`service_${index}_promo`] = 'Giá khuyến mãi phải nhỏ hơn giá niêm yết';
+        }
+      }
+    });
+
+    Object.entries(membershipDiscounts).forEach(([tier, val]) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0 || num > 100) {
+        errs[`discount_${tier}`] = 'Chiết khấu phải từ 0% đến 100%';
+      }
+    });
+
+    if (!pricingEffectiveDate) {
+      errs.effectiveDate = 'Vui lòng chọn ngày hiệu lực';
+    } else {
+      const selected = new Date(pricingEffectiveDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selected <= today) {
+        errs.effectiveDate = 'Ngày hiệu lực phải là một ngày trong tương lai';
+      }
+    }
+
+    setErrorsPricingRules(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSavePricingRules = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingPricing(true);
+    if (!validatePricingRules()) {
+      showToast('Vui lòng kiểm tra lại các trường thông tin!', 'warning');
+      return;
+    }
+
+    setIsSavingPricingRules(true);
     setTimeout(() => {
-      setIsSavingPricing(false);
-      showToast('Đã cập nhật biểu phí và cấu hình giá dịch vụ!', 'success');
+      setIsSavingPricingRules(false);
+      showToast('Cấu hình biểu phí dịch vụ đã được cập nhật thành công.', 'success');
     }, 1000);
+  };
+
+  // Pricing Policies Validation & Save Handlers
+  const validatePolicyItem = () => {
+    const errs: Record<string, string> = {};
+    const finalCategory = policyCategory === 'Khác' ? customCategory : policyCategory;
+    if (!finalCategory || !finalCategory.trim()) {
+      errs.category = 'Danh mục phụ tùng không được bỏ trống';
+    }
+
+    const markupVal = parseFloat(policyMarkup);
+    if (isNaN(markupVal) || markupVal < 0 || markupVal > 1000) {
+      errs.markup = 'Tỷ lệ markup phải từ 0 đến 1000';
+    }
+
+    const discountVal = parseFloat(policyDiscount);
+    if (isNaN(discountVal) || discountVal < 0 || discountVal > 1) {
+      errs.discount = 'Tỷ lệ chiết khấu phải từ 0 đến 1 (ví dụ: 0.1 = 10%)';
+    }
+
+    if (policyStartDate && policyEndDate) {
+      const start = new Date(policyStartDate);
+      const end = new Date(policyEndDate);
+      if (start >= end) {
+        errs.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+      }
+    }
+
+    setPolicyErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleOpenCreatePolicy = () => {
+    setEditingPolicy(null);
+    setPolicyCategory('');
+    setCustomCategory('');
+    setPolicyMarkup('0');
+    setPolicyDiscount('0');
+    setPolicyStartDate('');
+    setPolicyEndDate('');
+    setPolicyErrors({});
+    setIsPolicyModalOpen(true);
+  };
+
+  const handleOpenEditPolicy = (policy: any) => {
+    const exists = pricingPolicies.some(p => p.id === policy.id);
+    if (!exists) {
+      showToast('Không tìm thấy chính sách giá.', 'warning');
+      return;
+    }
+
+    setEditingPolicy(policy);
+    const standardCategories = ['Dầu nhớt & Phụ gia', 'Hệ thống phanh', 'Lốp & Mâm xe', 'Hệ thống điện', 'Động cơ & Truyền động', 'Hệ thống treo & Lái'];
+    if (standardCategories.includes(policy.category)) {
+      setPolicyCategory(policy.category);
+      setCustomCategory('');
+    } else {
+      setPolicyCategory('Khác');
+      setCustomCategory(policy.category);
+    }
+    setPolicyMarkup(policy.markupRate.toString());
+    setPolicyDiscount(policy.discountRate.toString());
+    setPolicyStartDate(policy.startDate || '');
+    setPolicyEndDate(policy.endDate || '');
+    setPolicyErrors({});
+    setIsPolicyModalOpen(true);
+  };
+
+  const handleSavePolicyItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validatePolicyItem()) {
+      return;
+    }
+
+    const finalCategory = policyCategory === 'Khác' ? customCategory : policyCategory;
+
+    // Simulate Server Error (HTTP 500)
+    if (finalCategory === 'Server Error') {
+      showToast('Server error', 'warning');
+      return;
+    }
+
+    const policyData = {
+      id: editingPolicy ? editingPolicy.id : Date.now(),
+      category: finalCategory,
+      markupRate: parseFloat(policyMarkup),
+      discountRate: parseFloat(policyDiscount),
+      startDate: policyStartDate,
+      endDate: policyEndDate
+    };
+
+    if (editingPolicy) {
+      const exists = pricingPolicies.some(p => p.id === editingPolicy.id);
+      if (!exists) {
+        showToast('Không tìm thấy chính sách giá.', 'warning');
+        return;
+      }
+      setPricingPolicies(pricingPolicies.map(p => p.id === editingPolicy.id ? policyData : p));
+      showToast('Chính sách giá đã được cập nhật thành công.', 'success');
+    } else {
+      setPricingPolicies([...pricingPolicies, policyData]);
+      showToast('Chính sách giá được tạo thành công', 'success');
+    }
+    setIsPolicyModalOpen(false);
+  };
+
+  const handleDeletePolicyItem = (id: number) => {
+    const exists = pricingPolicies.some(p => p.id === id);
+    if (!exists) {
+      showToast('Không tìm thấy chính sách giá.', 'warning');
+      return;
+    }
+    setPricingPolicies(pricingPolicies.filter(p => p.id !== id));
+    showToast('Đã xóa chính sách giá thành công.', 'success');
   };
 
   const handleSaveNotifications = () => {
@@ -380,116 +571,366 @@ export default function AdminSettings() {
               </div>
             )}
 
-            {/* PRICING RULES TAB */}
+            {/* PRICING RULES & POLICIES TAB */}
             {activeTab === 'pricing' && (
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 md:p-8 max-w-4xl mx-auto">
-                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Coins className="text-[#00285E]" size={20} />
-                  Biểu phí & Cấu hình giá
-                </h2>
+              <div className="space-y-6 max-w-5xl mx-auto">
+                {/* SUB-TABS NAVIGATION */}
+                <div className="flex border-b border-slate-200">
+                  <button
+                    onClick={() => setPricingSubTab('rules')}
+                    className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                      pricingSubTab === 'rules'
+                        ? 'border-[#00285E] text-[#00285E]'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Coins size={16} />
+                    Cấu hình biểu phí dịch vụ
+                  </button>
+                  <button
+                    onClick={() => setPricingSubTab('policies')}
+                    className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                      pricingSubTab === 'policies'
+                        ? 'border-[#00285E] text-[#00285E]'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Tag size={16} />
+                    Quy tắc giá phụ tùng
+                  </button>
+                </div>
 
-                <form onSubmit={handleSavePricing} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Giá công thợ (/giờ)
-                      </label>
-                      <div className="relative rounded-xl shadow-xs">
-                        <input
-                          type="number"
-                          value={hourlyRate}
-                          onChange={(e) => setHourlyRate(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                          <span className="text-slate-400 font-bold text-xs">VND</span>
+                {/* RULES SUB-TAB */}
+                {pricingSubTab === 'rules' && (
+                  <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 md:p-8">
+                    <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <Coins className="text-[#00285E]" size={20} />
+                      Cấu hình biểu phí & Chiết khấu dịch vụ
+                    </h2>
+
+                    <form onSubmit={handleSavePricingRules} className="space-y-6">
+                      {/* LABOR HOURLY RATE */}
+                      <div className="border-b border-slate-100 pb-6">
+                        <h3 className="text-sm font-bold text-slate-700 mb-4">Chi phí nhân công</h3>
+                        <div className="max-w-md">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Giá công thợ mặc định (/giờ) *
+                          </label>
+                          <div className="relative rounded-xl shadow-xs">
+                            <input
+                              type="number"
+                              value={laborRate}
+                              onChange={(e) => setLaborRate(e.target.value)}
+                              className={`w-full bg-white border rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                errorsPricingRules.laborRate ? 'border-rose-500' : 'border-slate-200'
+                              }`}
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                              <span className="text-slate-400 font-bold text-xs">VND</span>
+                            </div>
+                          </div>
+                          {errorsPricingRules.laborRate && (
+                            <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              {errorsPricingRules.laborRate}
+                            </p>
+                          )}
                         </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Tỷ lệ biên lợi nhuận phụ tùng
-                      </label>
-                      <div className="relative rounded-xl shadow-xs">
-                        <input
-                          type="number"
-                          value={partsMarkup}
-                          onChange={(e) => setPartsMarkup(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                          <Percent size={14} className="text-slate-400" />
+                      {/* SERVICE ITEM PRICES */}
+                      <div className="border-b border-slate-100 pb-6">
+                        <h3 className="text-sm font-bold text-slate-700 mb-4">Biểu giá dịch vụ & Gói combo</h3>
+                        <div className="space-y-4">
+                          {servicePrices.map((service, index) => (
+                            <div key={service.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                              <div className="md:col-span-6">
+                                <span className="text-sm font-bold text-slate-700 block">{service.name}</span>
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase mb-1">
+                                  Giá niêm yết (VND) *
+                                </label>
+                                <div className="relative rounded-xl shadow-xs">
+                                  <input
+                                    type="number"
+                                    value={service.price}
+                                    onChange={(e) => {
+                                      const updated = [...servicePrices];
+                                      updated[index].price = e.target.value;
+                                      setServicePrices(updated);
+                                    }}
+                                    className={`w-full bg-white border rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                      errorsPricingRules[`service_${index}_price`] ? 'border-rose-500' : 'border-slate-200'
+                                    }`}
+                                  />
+                                </div>
+                                {errorsPricingRules[`service_${index}_price`] && (
+                                  <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                                    <AlertCircle size={10} />
+                                    {errorsPricingRules[`service_${index}_price`]}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="block md:hidden text-[10px] font-bold text-slate-400 uppercase mb-1">
+                                  Giá khuyến mãi (VND)
+                                </label>
+                                <div className="relative rounded-xl shadow-xs">
+                                  <input
+                                    type="number"
+                                    placeholder="Không áp dụng"
+                                    value={service.promoPrice}
+                                    onChange={(e) => {
+                                      const updated = [...servicePrices];
+                                      updated[index].promoPrice = e.target.value;
+                                      setServicePrices(updated);
+                                    }}
+                                    className={`w-full bg-white border rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                      errorsPricingRules[`service_${index}_promo`] ? 'border-rose-500' : 'border-slate-200'
+                                    }`}
+                                  />
+                                </div>
+                                {errorsPricingRules[`service_${index}_promo`] && (
+                                  <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                                    <AlertCircle size={10} />
+                                    {errorsPricingRules[`service_${index}_promo`]}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Thuế giá trị gia tăng (VAT)
-                      </label>
-                      <div className="relative rounded-xl shadow-xs">
-                        <input
-                          type="number"
-                          value={vatRate}
-                          onChange={(e) => setVatRate(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                          <Percent size={14} className="text-slate-400" />
+                      {/* MEMBERSHIP TIER DISCOUNTS */}
+                      <div className="border-b border-slate-100 pb-6">
+                        <h3 className="text-sm font-bold text-slate-700 mb-4">Chiết khấu theo hạng thành viên</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Hạng Bạc (Silver) % *
+                            </label>
+                            <div className="relative rounded-xl shadow-xs">
+                              <input
+                                type="number"
+                                value={membershipDiscounts.silver}
+                                onChange={(e) => setMembershipDiscounts({ ...membershipDiscounts, silver: e.target.value })}
+                                className={`w-full bg-white border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                  errorsPricingRules.discount_silver ? 'border-rose-500' : 'border-slate-200'
+                                }`}
+                              />
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <span className="text-slate-400 font-bold text-xs">%</span>
+                              </div>
+                            </div>
+                            {errorsPricingRules.discount_silver && (
+                              <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} />
+                                {errorsPricingRules.discount_silver}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Hạng Vàng (Gold) % *
+                            </label>
+                            <div className="relative rounded-xl shadow-xs">
+                              <input
+                                type="number"
+                                value={membershipDiscounts.gold}
+                                onChange={(e) => setMembershipDiscounts({ ...membershipDiscounts, gold: e.target.value })}
+                                className={`w-full bg-white border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                  errorsPricingRules.discount_gold ? 'border-rose-500' : 'border-slate-200'
+                                }`}
+                              />
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <span className="text-slate-400 font-bold text-xs">%</span>
+                              </div>
+                            </div>
+                            {errorsPricingRules.discount_gold && (
+                              <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} />
+                                {errorsPricingRules.discount_gold}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Hạng Kim Cương (Platinum) % *
+                            </label>
+                            <div className="relative rounded-xl shadow-xs">
+                              <input
+                                type="number"
+                                value={membershipDiscounts.platinum}
+                                onChange={(e) => setMembershipDiscounts({ ...membershipDiscounts, platinum: e.target.value })}
+                                className={`w-full bg-white border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                                  errorsPricingRules.discount_platinum ? 'border-rose-500' : 'border-slate-200'
+                                }`}
+                              />
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <span className="text-slate-400 font-bold text-xs">%</span>
+                              </div>
+                            </div>
+                            {errorsPricingRules.discount_platinum && (
+                              <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                                <AlertCircle size={12} />
+                                {errorsPricingRules.discount_platinum}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
+
+                      {/* EFFECTIVE DATE */}
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-700 mb-4">Ngày áp dụng biểu phí</h3>
+                        <div className="max-w-md">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Ngày hiệu lực biểu phí mới *
+                          </label>
+                          <input
+                            type="date"
+                            value={pricingEffectiveDate}
+                            onChange={(e) => setPricingEffectiveDate(e.target.value)}
+                            className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                              errorsPricingRules.effectiveDate ? 'border-rose-500' : 'border-slate-200'
+                            }`}
+                          />
+                          {errorsPricingRules.effectiveDate && (
+                            <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              {errorsPricingRules.effectiveDate}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* SUBMIT BUTTON */}
+                      <div className="flex justify-end border-t border-slate-100 pt-6">
+                        <button
+                          type="submit"
+                          disabled={isSavingPricingRules}
+                          className="flex items-center gap-2 px-6 py-3 bg-[#00285E] hover:bg-[#062047] disabled:bg-slate-400 text-white rounded-xl text-sm font-semibold shadow-md shadow-[#00285E]/10 hover:shadow-lg transition-all active:scale-[0.98]"
+                        >
+                          <Save size={16} />
+                          <span>{isSavingPricingRules ? 'Đang cập nhật...' : 'Lưu biểu phí'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* POLICIES SUB-TAB */}
+                {pricingSubTab === 'policies' && (
+                  <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 md:p-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                          <Tag className="text-[#00285E]" size={20} />
+                          Danh sách quy tắc định giá phụ tùng
+                        </h2>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Thiết lập hệ số markup biên lợi nhuận và giảm giá tối đa cho từng nhóm hàng phụ tùng cụ thể.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleOpenCreatePolicy}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#00285E] hover:bg-[#062047] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#00285E]/10 hover:shadow-lg self-start sm:self-center"
+                      >
+                        <Plus size={14} />
+                        <span>Tạo chính sách giá</span>
+                      </button>
+                    </div>
+
+                    {/* TABLE / LIST OF POLICIES */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-slate-600">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400">
+                            <th className="py-4 px-4">Nhóm phụ tùng</th>
+                            <th className="py-4 px-4 text-center">Markup Rate</th>
+                            <th className="py-4 px-4 text-center">Discount Rate</th>
+                            <th className="py-4 px-4">Ngày áp dụng</th>
+                            <th className="py-4 px-4">Trạng thái</th>
+                            <th className="py-4 px-4 text-right">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pricingPolicies.map((policy) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const start = policy.startDate ? new Date(policy.startDate) : null;
+                            const end = policy.endDate ? new Date(policy.endDate) : null;
+
+                            let statusText = 'Đang áp dụng';
+                            let statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                            if (start && start > today) {
+                              statusText = 'Chưa hiệu lực';
+                              statusColor = 'bg-blue-50 text-blue-600 border-blue-100';
+                            } else if (end && end < today) {
+                              statusText = 'Hết hiệu lực';
+                              statusColor = 'bg-slate-100 text-slate-500 border-slate-200';
+                            } else if (!start && !end) {
+                              statusText = 'Vô thời hạn';
+                              statusColor = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+                            }
+
+                            return (
+                              <tr key={policy.id} className="border-b border-slate-100/60 hover:bg-slate-50/50 transition-colors">
+                                <td className="py-4 px-4 font-bold text-slate-800 text-sm">
+                                  {policy.category}
+                                </td>
+                                <td className="py-4 px-4 text-center font-extrabold text-slate-700 text-sm">
+                                  +{policy.markupRate}%
+                                </td>
+                                <td className="py-4 px-4 text-center font-extrabold text-indigo-600 text-sm">
+                                  -{policy.discountRate * 100}%
+                                </td>
+                                <td className="py-4 px-4 text-xs font-semibold text-slate-500">
+                                  {policy.startDate || policy.endDate ? (
+                                    <>
+                                      {policy.startDate ? policy.startDate : 'Bất đầu'}
+                                      <span className="mx-1">→</span>
+                                      {policy.endDate ? policy.endDate : 'Vô hạn'}
+                                    </>
+                                  ) : (
+                                    <span className="text-slate-400">Áp dụng vô thời hạn</span>
+                                  )}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                                    {statusText}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleOpenEditPolicy(policy)}
+                                      className="text-slate-400 hover:text-[#00285E] transition-colors p-1.5 rounded-lg hover:bg-blue-50"
+                                      title="Chỉnh sửa"
+                                    >
+                                      <Edit size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeletePolicyItem(policy.id)}
+                                      className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50"
+                                      title="Xóa"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-
-                  <div className="border-t border-slate-100 pt-6">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-                      Phương thức thanh toán chấp nhận
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <label className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-100/75 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={paymentMethods.cash}
-                          onChange={(e) => setPaymentMethods({ ...paymentMethods, cash: e.target.checked })}
-                          className="rounded text-[#00285E] focus:ring-[#00285E]/20 w-4.5 h-4.5 border-slate-300"
-                        />
-                        <span className="text-sm font-semibold text-slate-700">Tiền mặt (Cash)</span>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-100/75 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={paymentMethods.transfer}
-                          onChange={(e) => setPaymentMethods({ ...paymentMethods, transfer: e.target.checked })}
-                          className="rounded text-[#00285E] focus:ring-[#00285E]/20 w-4.5 h-4.5 border-slate-300"
-                        />
-                        <span className="text-sm font-semibold text-slate-700">Chuyển khoản (Bank)</span>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-100/75 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={paymentMethods.card}
-                          onChange={(e) => setPaymentMethods({ ...paymentMethods, card: e.target.checked })}
-                          className="rounded text-[#00285E] focus:ring-[#00285E]/20 w-4.5 h-4.5 border-slate-300"
-                        />
-                        <span className="text-sm font-semibold text-slate-700">Thẻ VISA / Mastercard</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end border-t border-slate-100 pt-6">
-                    <button
-                      type="submit"
-                      disabled={isSavingPricing}
-                      className="flex items-center gap-2 px-6 py-3 bg-[#00285E] hover:bg-[#062047] disabled:bg-slate-400 text-white rounded-xl text-sm font-semibold shadow-md shadow-[#00285E]/10 hover:shadow-lg transition-all active:scale-[0.98]"
-                    >
-                      <Save size={16} />
-                      <span>{isSavingPricing ? 'Đang lưu...' : 'Lưu biểu phí'}</span>
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
             )}
 
@@ -961,6 +1402,178 @@ export default function AdminSettings() {
                   className="flex-1 py-3 text-sm font-semibold text-white bg-[#00285E] hover:bg-[#062047] rounded-xl transition-all shadow-md shadow-[#00285E]/10"
                 >
                   {editingRule ? 'Cập nhật' : 'Tạo mới'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* POLICY EDIT/CREATE MODAL */}
+      {isPolicyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsPolicyModalOpen(false)}
+          ></div>
+
+          {/* Modal Container */}
+          <div className="relative bg-white rounded-3xl border border-slate-200/50 shadow-2xl p-6 md:p-8 w-full max-w-lg transform transition-all font-sans">
+            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <Tag className="text-[#00285E]" size={20} />
+              {editingPolicy ? 'Cập nhật chính sách giá' : 'Thêm chính sách giá mới'}
+            </h3>
+
+            <form onSubmit={handleSavePolicyItem} className="space-y-4">
+              {/* Category Group */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Nhóm phụ tùng *
+                </label>
+                <select
+                  value={policyCategory}
+                  onChange={(e) => setPolicyCategory(e.target.value)}
+                  className={`w-full bg-white border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700 ${
+                    policyErrors.category ? 'border-rose-500' : 'border-slate-200'
+                  }`}
+                >
+                  <option value="">Chọn nhóm hàng...</option>
+                  <option value="Dầu nhớt & Phụ gia">Dầu nhớt & Phụ gia</option>
+                  <option value="Hệ thống phanh">Hệ thống phanh</option>
+                  <option value="Lốp & Mâm xe">Lốp & Mâm xe</option>
+                  <option value="Hệ thống điện">Hệ thống điện</option>
+                  <option value="Động cơ & Truyền động">Động cơ & Truyền động</option>
+                  <option value="Hệ thống treo & Lái">Hệ thống treo & Lái</option>
+                  <option value="Khác">Khác...</option>
+                </select>
+
+                {policyCategory === 'Khác' && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                      Tên nhóm hàng khác *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: Phụ kiện trang trí"
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                        policyErrors.category ? 'border-rose-500' : 'border-slate-200'
+                      }`}
+                    />
+                  </div>
+                )}
+
+                {policyErrors.category && (
+                  <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    {policyErrors.category}
+                  </p>
+                )}
+              </div>
+
+              {/* Markup and Discount */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Tỷ lệ Markup (0 - 1000%) *
+                  </label>
+                  <div className="relative rounded-xl shadow-xs">
+                    <input
+                      type="number"
+                      value={policyMarkup}
+                      onChange={(e) => setPolicyMarkup(e.target.value)}
+                      className={`w-full bg-white border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                        policyErrors.markup ? 'border-rose-500' : 'border-slate-200'
+                      }`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-slate-400 font-bold text-xs">%</span>
+                    </div>
+                  </div>
+                  {policyErrors.markup && (
+                    <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {policyErrors.markup}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Tỷ lệ chiết khấu (0 - 1.0) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={policyDiscount}
+                    onChange={(e) => setPolicyDiscount(e.target.value)}
+                    placeholder="Ví dụ: 0.1 cho 10%"
+                    className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                      policyErrors.discount ? 'border-rose-500' : 'border-slate-200'
+                    }`}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1 font-semibold">
+                    1.0 = 100%, 0.1 = 10%, 0.05 = 5%
+                  </p>
+                  {policyErrors.discount && (
+                    <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {policyErrors.discount}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Start and End Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Ngày bắt đầu hiệu lực
+                  </label>
+                  <input
+                    type="date"
+                    value={policyStartDate}
+                    onChange={(e) => setPolicyStartDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Ngày kết thúc
+                  </label>
+                  <input
+                    type="date"
+                    value={policyEndDate}
+                    onChange={(e) => setPolicyEndDate(e.target.value)}
+                    className={`w-full bg-white border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
+                      policyErrors.endDate ? 'border-rose-500' : 'border-slate-200'
+                    }`}
+                  />
+                  {policyErrors.endDate && (
+                    <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {policyErrors.endDate}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsPolicyModalOpen(false)}
+                  className="flex-1 py-3 text-sm font-semibold border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 text-sm font-semibold text-white bg-[#00285E] hover:bg-[#062047] rounded-xl transition-all shadow-md shadow-[#00285E]/10"
+                >
+                  {editingPolicy ? 'Cập nhật' : 'Tạo mới'}
                 </button>
               </div>
             </form>
