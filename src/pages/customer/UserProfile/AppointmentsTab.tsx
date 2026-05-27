@@ -428,7 +428,7 @@ export default function AppointmentsTab({
 
           <div className="flex items-center justify-center gap-1.5 pt-3 border-t border-gray-100 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
             <ShieldCheck className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <span>Đảm bảo bởi SmartGarage Professional</span>
+            <span>Đảm bảo bởi AGM Intelligent</span>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -16,13 +16,26 @@ import {
   X,
   CheckCircle,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Package
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from '../../store/store';
+import type { UserModel } from '../../model/User';
+import { useFetchClient } from '../../hook/useFetchClient';
+import { loginSuccess, logout } from '../../store/slices/userSlice';
+import { PROFILE_API_ENDPOINTS } from '../../constants/customer/profileApiEndpoint';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
+  const { fetchPrivate } = useFetchClient();
+
+  const user = useSelector((state: RootState) => state.user.user as UserModel | null);
+  const isAuthenticated = !!localStorage.getItem('token');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'info' | 'warning'; text: string } | null>(null);
@@ -34,6 +47,34 @@ export default function AdminLayout() {
     }, 3000);
   };
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetchPrivate(PROFILE_API_ENDPOINTS.GET_PROFILE);
+        const userData = response?.data;
+        if (!userData) return;
+        dispatch(
+          loginSuccess({
+            id: userData.id,
+            fullName: userData.fullName,
+            phoneNumber: userData.phoneNumber,
+            avatar: userData.avatar,
+            role: userData.role,
+          })
+        );
+      } catch (error) {
+        console.error('Không lấy được thông tin user:', error);
+      }
+    };
+
+    const token = localStorage.getItem('token');
+    if (token && !user) fetchUserProfile();
+  }, [dispatch, fetchPrivate, user]);
+
+  const avatarUrl = user?.avatar?.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&auto=format&fit=crop';
+  const displayName = user?.fullName || 'Nguyễn Văn Admin';
+  const displayRole = user?.role === 'admin' ? 'Quản trị viên' : (user?.role || 'Quản trị viên');
+
   // Menu items for the sidebar with corresponding route paths
   const menuItems = [
     { name: 'Tổng quan', icon: LayoutDashboard, path: '/admin' },
@@ -41,7 +82,9 @@ export default function AdminLayout() {
     { name: 'Khách Hàng', icon: Users, path: '/admin/customers' },
     { name: 'Nhân sự', icon: UserCog, path: '/admin/staff' },
     { name: 'Dịch vụ', icon: Wrench, path: '/admin/services' },
+    { name: 'Tài nguyên', icon: Package, path: '/admin/resources' },
     { name: 'Báo cáo tài chính', icon: BarChart3, path: '/admin/finance' },
+
     { name: 'Cài đặt', icon: Settings, path: '/admin/settings' },
   ];
 
@@ -49,12 +92,12 @@ export default function AdminLayout() {
   const activeMenu = useMemo(() => {
     const path = location.pathname;
     if (path === '/admin' || path === '/admin/') return 'Tổng quan';
-    if (path.startsWith('/parts')) return 'Kho phụ tùng';
-    if (path.startsWith('/customers')) return 'Khách Hàng';
-    if (path.startsWith('/employees')) return 'Nhân sự';
-    if (path.startsWith('/services')) return 'Dịch vụ';
-    if (path.startsWith('/finance')) return 'Báo cáo tài chính';
-    if (path.startsWith('/settings')) return 'Cài đặt';
+    if (path.includes('/parts')) return 'Kho phụ tùng';
+    if (path.includes('/customers')) return 'Khách Hàng';
+    if (path.includes('/employees')) return 'Nhân sự';
+    if (path.includes('/services')) return 'Dịch vụ';
+    if (path.includes('/finance')) return 'Báo cáo tài chính';
+    if (path.includes('/settings')) return 'Cài đặt';
     return 'Tổng quan';
   }, [location.pathname]);
 
@@ -88,7 +131,7 @@ export default function AdminLayout() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">SmartGarage</span>
+            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">AGM Intelligent</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -102,7 +145,7 @@ export default function AdminLayout() {
             </button>
           </div>
           <img
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop"
+            src={avatarUrl}
             alt="Admin Profile"
             className="w-9 h-9 rounded-full object-cover border border-slate-200"
           />
@@ -121,7 +164,7 @@ export default function AdminLayout() {
               <Wrench size={20} className="text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-[#00285E] uppercase tracking-wider text-base">SmartGarage</span>
+              <span className="font-bold text-[#00285E] uppercase tracking-wider text-base">AGM Intelligent</span>
               <span className="text-[10px] text-slate-500 font-semibold tracking-widest uppercase">Hệ thống quản lý</span>
             </div>
           </div>
@@ -179,8 +222,15 @@ export default function AdminLayout() {
           </button>
           <button
             onClick={() => {
-              showToast('Đang đăng xuất tài khoản...', 'warning');
-              setTimeout(() => navigate('/login'), 1000);
+              if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                showToast('Đang đăng xuất tài khoản...', 'warning');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userAvatar');
+                dispatch(logout());
+                setTimeout(() => {
+                  window.location.href = '/login';
+                }, 1000);
+              }
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
           >
@@ -205,7 +255,7 @@ export default function AdminLayout() {
                   <Wrench size={20} className="text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-[#00285E] uppercase tracking-wider text-sm">SmartGarage</span>
+                  <span className="font-bold text-[#00285E] uppercase tracking-wider text-sm">AGM Intelligent</span>
                   <span className="text-[9px] text-slate-500 font-semibold tracking-widest uppercase">Hệ thống quản lý</span>
                 </div>
               </div>
@@ -266,9 +316,16 @@ export default function AdminLayout() {
               </button>
               <button
                 onClick={() => {
-                  setIsMobileSidebarOpen(false);
-                  showToast('Đang đăng xuất tài khoản...', 'warning');
-                  setTimeout(() => navigate('/login'), 1000);
+                  if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                    setIsMobileSidebarOpen(false);
+                    showToast('Đang đăng xuất tài khoản...', 'warning');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userAvatar');
+                    dispatch(logout());
+                    setTimeout(() => {
+                      window.location.href = '/login';
+                    }, 1000);
+                  }
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
               >
@@ -328,12 +385,12 @@ export default function AdminLayout() {
             {/* User detail */}
             <div className="flex items-center gap-3">
               <div className="flex flex-col text-right">
-                <span className="font-bold text-slate-800 text-sm tracking-tight leading-tight">Nguyễn Văn Admin</span>
-                <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">Quản trị viên</span>
+                <span className="font-bold text-slate-800 text-sm tracking-tight leading-tight">{displayName}</span>
+                <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase">{displayRole}</span>
               </div>
               <div className="relative">
                 <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&auto=format&fit=crop"
+                  src={avatarUrl}
                   alt="Admin User Avatar"
                   className="w-10 h-10 rounded-full object-cover border-2 border-[#EDF3FF] shadow-sm"
                 />
@@ -349,7 +406,7 @@ export default function AdminLayout() {
         {/* PAGE FOOTER */}
         <footer className="mt-auto px-8 py-6 border-t border-slate-200/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-400">
           <div>
-            © 2024 <span className="text-slate-500 font-bold">SmartGarage</span> - Hệ thống quản lý gara chuyên nghiệp
+            © 2024 <span className="text-slate-500 font-bold">AGM Intelligent</span> - Hệ thống quản lý gara chuyên nghiệp
           </div>
           <div className="flex items-center gap-6">
             <a href="#" className="hover:text-slate-600 transition-colors">Điều khoản</a>

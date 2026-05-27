@@ -14,13 +14,15 @@ import OtpVerification from "./pages/customer/Home/verify-otp";
 import VerifyPhone from "./pages/customer/Home/verify-phone";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminServices from "./pages/admin/services/AdminServices";
+import AdminResources from "./pages/admin/resources/AdminResources";
 import AdminServiceManagement from "./pages/admin/AdminServiceManagement";
 import AdminStaffManagement from "./pages/admin/AdminStaffManagement";
 
 function App() {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin");
-
   return (
     <>
       <Routes>
@@ -39,6 +41,9 @@ function App() {
         </Route>
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="" element={<AdminDashboard />} />
+          <Route path="services" element={<AdminServices />} />
+          <Route path="resources" element={<AdminResources />} />
+          <Route path="settings" element={<AdminSettings />} />
           <Route path="services" element={<AdminServiceManagement />} />
           <Route path="staff" element={<AdminStaffManagement />} />
 
