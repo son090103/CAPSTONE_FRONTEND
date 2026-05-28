@@ -19,7 +19,7 @@ import AdminServicesCategories from "./pages/admin/services/AdminServicesCategor
 import AdminResources from "./pages/admin/resources/AdminResources";
 import AdminServiceCatalog from "./pages/admin/services/AdminServiceCatalog";
 import AdminStaffManagement from "./pages/admin/staff/AdminStaffManagement";
-import AdminSpareParts from "./pages/parts/AdminSpareParts";
+import AdminSpareParts from "./pages/admin/parts/AdminSpareParts";
 
 function App() {
   const location = useLocation();
