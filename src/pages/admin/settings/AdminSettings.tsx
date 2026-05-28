@@ -10,11 +10,11 @@ import {
 } from 'lucide-react';
 
 // Import subcomponents
-import GeneralSettings from './settings/GeneralSettings';
-import PricingSettings from './settings/PricingSettings';
-import WarrantySettings from './settings/WarrantySettings';
-import CommissionSettings from './settings/CommissionSettings';
-import NotificationSettings from './settings/NotificationSettings';
+import GeneralSettings from './GeneralSettings';
+import PricingSettings from './PricingSettings';
+import WarrantySettings from './WarrantySettings';
+import CommissionSettings from './CommissionSettings';
+import NotificationSettings from './NotificationSettings';
 
 // Define the tabs
 type TabType = 'general' | 'pricing' | 'warranty' | 'commission' | 'notifications';

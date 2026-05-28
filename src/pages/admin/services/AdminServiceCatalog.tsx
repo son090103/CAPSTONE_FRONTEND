@@ -15,10 +15,10 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
-import { type Category, type ServiceCatalog } from "../../model/dto/serviceCatalog.dto";
-import { useFetchClient } from '../../hook/useFetchClient';
-import { SERVICE_CATALOG_API_ENDPOINTS } from '../../constants/admin/serviceCatalog';
-import { SERVICE_CATEGORY_API_ENDPOINTS} from '../../constants/admin/serviceCategories';
+import { type Category, type ServiceCatalog } from "../../../model/dto/serviceCatalog.dto";
+import { useFetchClient } from '../../../hook/useFetchClient';
+import { SERVICE_CATALOG_API_ENDPOINTS } from '../../../constants/admin/serviceCatalog';
+import { SERVICE_CATEGORY_API_ENDPOINTS} from '../../../constants/admin/serviceCategories';
 const formatPrice = (price: number) => `${price.toLocaleString("vi-VN")}đ`;
 
 export default function AdminServiceManagement() {
@@ -65,7 +65,7 @@ export default function AdminServiceManagement() {
       {/* TITLE BAR */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#00285E] tracking-tight leading-none mb-2">
             Quản lý Dịch vụ
           </h1>
           <p className="text-slate-500 text-sm">

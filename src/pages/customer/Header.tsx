@@ -36,7 +36,7 @@ const MOBILE_TAB_ITEMS = [
     { name: 'Dịch Vụ', path: '/services', icon: Wrench },
     { name: 'Linh Kiện', path: '/parts', icon: Cpu },
     { name: 'Tư Vấn', path: '/phone-service', icon: Phone },
-    { name: 'Cá Nhân', path: '/userprofile', icon: User },
+    { name: 'Cá Nhân', path: '/user-profile', icon: User },
 ];
 
 function NavLink({ item, active, mobile = false, onClick }: NavLinkProps) {
@@ -183,8 +183,7 @@ export default function Navbar() {
                                         />
                                     </button>
 
-                                    {/* ✅ Avatar với skeleton */}
-                                    <Link to="/userprofile" className="group transition-transform duration-300 hover:scale-105">
+                                    <Link to="/user-profile" className="group transition-transform duration-300 hover:scale-105">
                                         <AvatarWithSkeleton src={avatarUrl} />
                                     </Link>
 

@@ -78,9 +78,10 @@ export default function AdminLayout() {
   // Menu items for the sidebar with corresponding route paths
   const menuItems = [
     { name: 'Tổng quan', icon: LayoutDashboard, path: '/admin' },
-    { name: 'Kho phụ tùng', icon: Boxes, path: '/admin/parts' },
+    { name: 'Kho phụ tùng', icon: Boxes, path: '/admin/spare-part' },
     { name: 'Khách Hàng', icon: Users, path: '/admin/customers' },
     { name: 'Nhân sự', icon: UserCog, path: '/admin/staff' },
+    { name: 'Phân loại dịch vụ', icon: Wrench, path: '/admin/services-category' },
     { name: 'Dịch vụ', icon: Wrench, path: '/admin/services' },
     { name: 'Tài nguyên', icon: Package, path: '/admin/resources' },
     { name: 'Báo cáo tài chính', icon: BarChart3, path: '/admin/finance' },
@@ -92,10 +93,12 @@ export default function AdminLayout() {
   const activeMenu = useMemo(() => {
     const path = location.pathname;
     if (path === '/admin' || path === '/admin/') return 'Tổng quan';
-    if (path.includes('/parts')) return 'Kho phụ tùng';
+    if (path.includes('/spare-part')) return 'Kho phụ tùng';
     if (path.includes('/customers')) return 'Khách Hàng';
-    if (path.includes('/employees')) return 'Nhân sự';
+    if (path.includes('/staff')) return 'Nhân sự';
+    if (path.includes('/services-category')) return 'Phân loại dịch vụ';
     if (path.includes('/services')) return 'Dịch vụ';
+    if (path.includes('/resources')) return 'Tài nguyên';
     if (path.includes('/finance')) return 'Báo cáo tài chính';
     if (path.includes('/settings')) return 'Cài đặt';
     return 'Tổng quan';

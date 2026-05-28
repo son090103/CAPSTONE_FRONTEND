@@ -10,9 +10,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
-import type { Role, StaffManagement } from "../../model/dto/staffManagement.dto";
-import { useFetchClient } from "../../hook/useFetchClient";
-import { STAFF_MANAGEMENT_API_ENDPOINTS } from "../../constants/admin/staffManagement";
+import type { Role, StaffManagement } from "../../../model/dto/staffManagement.dto";
+import { useFetchClient } from "../../../hook/useFetchClient";
+import { STAFF_MANAGEMENT_API_ENDPOINTS } from "../../../constants/admin/staffManagement";
 
 type StaffStatus = "ACTIVE" | "INACTIVE" | "PENDING" | "BANNED";
 
