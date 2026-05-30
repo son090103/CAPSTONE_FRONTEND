@@ -22,7 +22,7 @@ import { Button } from '../../../components/share/Button';
 
 
 export default function Home() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [activeMemberIndex, setActiveMemberIndex] = useState(0);
 
     const teamMembers = [
@@ -90,42 +90,82 @@ export default function Home() {
         }
     ];
 
-    const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0);
-
-    const testimonials = [
+    const googleReviews = [
         {
             id: 1,
-            name: 'Miu Lê',
-            role: 'Chủ sở hữu Porsche 911 GT3 RS',
-            image: '/images/miule.webp',
-            text: '"AGM đã thay đổi hoàn toàn trải nghiệm chuẩn bị xe trước mỗi chặng đua của tôi. Khả năng chẩn đoán chính xác của họ đã phát hiện ra lỗi mà đại lý chính hãng đã bỏ sót nhiều tháng qua. Kỹ thuật viên ở đây thực sự là những chuyên gia đầu ngành."',
-            rating: '5.0 SAO'
+            name: i18n.language === 'vi' ? 'Thanh Sơn' : 'Thanh Son',
+            role: i18n.language === 'vi' ? 'Local Guide · 15 đánh giá' : 'Local Guide · 15 reviews',
+            avatar: 'S',
+            color: '#10B981',
+            time: i18n.language === 'vi' ? '1 tuần trước' : '1 week ago',
+            text: i18n.language === 'vi'
+                ? 'Cơ sở vật chất của AGM thực sự rất hiện đại, máy móc chẩn đoán lỗi chính xác như đại lý chính hãng. Nhân viên kỹ thuật giải thích cặn kẽ tình trạng xe. Rất an tâm khi giao xe ở đây.'
+                : "AGM's facilities are truly modern, diagnostic equipment is as accurate as genuine dealers. The technical staff explained the vehicle condition in detail. Very reassuring to leave the car here."
         },
         {
             id: 2,
-            name: 'Dược Sĩ Tiến',
-            role: 'Chủ sở hữu BMW M4 Competition',
-            image: '/images/dst.webp',
-            text: '"Dịch vụ chăm sóc xe ở đây cực kỳ tỉ mỉ. Lớp phủ ceramic giúp xe của tôi luôn bóng bẩy như vừa xuất xưởng. Tôi rất ấn tượng với sự chuyên nghiệp cùng cơ sở vật chất hiện đại của AGM."',
-            rating: '5.0 SAO'
+            name: i18n.language === 'vi' ? 'Anh Tuấn' : 'Anh Tuan',
+            role: i18n.language === 'vi' ? 'Local Guide · 28 đánh giá' : 'Local Guide · 28 reviews',
+            avatar: 'T',
+            color: '#3B82F6',
+            time: i18n.language === 'vi' ? '3 tuần trước' : '3 weeks ago',
+            text: i18n.language === 'vi'
+                ? 'Dịch vụ phủ ceramic ở đây làm rất kỹ. Sau khi nhận xe thì độ bóng loáng cực kỳ cao và lớp sơn được bảo vệ hoàn hảo. Giá cả hợp lý và dịch vụ khách hàng cực kỳ chu đáo.'
+                : 'The ceramic coating service here is done very meticulously. After picking up the car, the gloss is extremely high and the paint is perfectly protected. Reasonable price and extremely attentive customer service.'
         },
         {
             id: 3,
-            name: 'Sơn Tùng M-TP',
-            role: 'Chủ sở hữu Mercedes-Benz S-Class',
-            image: '/images/sontung.jpg',
-            text: '"Tôi thường đến AGM để bảo dưỡng xe định kỳ và vô cùng hài lòng. Quy trình đặt lịch nhanh chóng, kỹ thuật viên tư vấn rõ ràng và chi phí rất minh bạch. Đây chắc chắn là địa chỉ chăm sóc xe tin cậy của tôi."',
-            rating: '5.0 SAO'
+            name: i18n.language === 'vi' ? 'Hoàng Minh' : 'Hoang Minh',
+            role: i18n.language === 'vi' ? '12 đánh giá' : '12 reviews',
+            avatar: 'M',
+            color: '#EC4899',
+            time: i18n.language === 'vi' ? '1 tháng trước' : '1 month ago',
+            text: i18n.language === 'vi'
+                ? 'Đã làm bảo dưỡng phanh gốm carbon và lập trình lại ECU tại AGM. Xe đi mượt hơn hẳn, cảm giác chân ga cực nhạy. Kỹ thuật viên Sơn hỗ trợ rất nhiệt tình.'
+                : 'Did carbon ceramic brake maintenance and reprogrammed the ECU at AGM. The car runs much smoother, the accelerator pedal feels extremely sensitive. Technician Son supported very enthusiastically.'
+        },
+        {
+            id: 4,
+            name: i18n.language === 'vi' ? 'Quốc Khánh' : 'Quoc Khanh',
+            role: i18n.language === 'vi' ? 'Local Guide · 45 đánh giá' : 'Local Guide · 45 reviews',
+            avatar: 'K',
+            color: '#F59E0B',
+            time: i18n.language === 'vi' ? '1 tháng trước' : '1 month ago',
+            text: i18n.language === 'vi'
+                ? 'Quy trình làm việc chuyên nghiệp, phòng chờ thoải mái có phục vụ nước. Chi phí sửa chữa được báo rõ ràng trước khi làm và không phát sinh thêm.'
+                : 'Professional working process, comfortable waiting room with beverage service. Repair costs are clearly reported before doing and no extra charges arise.'
         }
     ];
 
-    const handleNextTestimonial = () => {
-        setActiveTestimonialIndex((prev) => (prev + 1) % testimonials.length);
-    };
-
-    const handlePrevTestimonial = () => {
-        setActiveTestimonialIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
-    };
+    const customerStories = [
+        {
+            id: 1,
+            name: 'Chị Thảo Dương',
+            role: i18n.language === 'vi' ? 'Chủ sở hữu Porsche 911 GT3 RS' : 'Owner of Porsche 911 GT3 RS',
+            image: '/images/dn1.jpeg',
+            text: i18n.language === 'vi'
+                ? '"AGM đã thay đổi hoàn toàn trải nghiệm chuẩn bị xe trước mỗi chặng đua của tôi. Khả năng chẩn đoán chính xác của họ đã phát hiện ra lỗi mà đại lý chính hãng đã bỏ sót nhiều tháng qua. Kỹ thuật viên ở đây thực sự là những chuyên gia đầu ngành."'
+                : '"AGM completely changed my track-prep experience. Their accurate diagnostics detected a fault that the factory dealer missed for months. The technicians here are true industry leaders."'
+        },
+        {
+            id: 2,
+            name: 'Anh Hoàng Sơn',
+            role: i18n.language === 'vi' ? 'Chủ sở hữu BMW M4 Competition' : 'Owner of BMW M4 Competition',
+            image: '/images/dn2.jpeg',
+            text: i18n.language === 'vi'
+                ? '"Dịch vụ chăm sóc xe ở đây cực kỳ tỉ mỉ. Lớp phủ ceramic giúp xe của tôi luôn bóng bẩy như vừa xuất xưởng. Tôi rất ấn tượng với sự chuyên nghiệp cùng cơ sở vật chất hiện đại của AGM."'
+                : '"The car care service here is extremely meticulous. The ceramic coating keeps my car shining as if it just left the showroom. I am highly impressed by AGM\'s professionalism and modern facilities."'
+        },
+        {
+            id: 3,
+            name: 'Anh Duy Anh',
+            role: i18n.language === 'vi' ? 'Chủ sở hữu Mercedes-Benz S-Class' : 'Owner of Mercedes-Benz S-Class',
+            image: '/images/dn3.jpeg',
+            text: i18n.language === 'vi'
+                ? '"Tôi thường đến AGM để bảo dưỡng xe định kỳ và vô cùng hài lòng. Quy trình đặt lịch nhanh chóng, kỹ thuật viên tư vấn rõ ràng và chi phí rất minh bạch. Đây chắc chắn là địa chỉ chăm sóc xe tin cậy của tôi."'
+                : '"I regularly visit AGM for routine maintenance and am completely satisfied. Fast booking, clear consultation, and highly transparent pricing. This is definitely my trusted car care address."'
+        }
+    ];
 
     const stats = [
         { label: t('home.stats.experience'), value: '18+' },
@@ -576,71 +616,190 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Modern Testimonial Slider Area */}
-            <section className="hidden md:block py-40 bg-white">
+            {/* Expanded Premium Testimonial Section */}
+            <section className="py-20 md:py-32 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-24">
-                        <span className="font-bold text-[10px] tracking-[0.2em] uppercase mb-4 block" style={{ color: COLORS.orange }}>
-                            {t('home.testimonials.label')}
-                        </span>
-                        <h2 className="text-6xl font-display uppercase" style={{ color: COLORS.navy }}>{t('home.testimonials.title')}</h2>
+                    {/* Section 1: Google Reviews and Image Collage */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-16 items-center">
+                        {/* Left Side: Staggered Image Collage */}
+                        <div className="lg:col-span-5 relative w-full h-[320px] md:h-[460px] flex items-center justify-center select-none overflow-hidden rounded-3xl bg-slate-50/30">
+                            {/* Decorative background gradients */}
+                            <div className="absolute top-10 left-10 w-24 h-24 rounded-full bg-cyan-100/30 blur-2xl"></div>
+                            <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-amber-100/20 blur-3xl"></div>
+
+                            {/* Staggered overlapping pictures */}
+                            {/* Main Center Image */}
+                            <div className="absolute left-[33%] top-[15%] w-[42%] h-[66%] rounded-[2rem] overflow-hidden border-4 border-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-10 transform -rotate-2 hover:rotate-0 hover:scale-[1.02] transition-all duration-500">
+                                <img
+                                    src="/images/fb1.jpeg"
+                                    alt="Customer Portrait 1"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Top Left Image */}
+                            <div className="absolute left-[8%] top-[10%] w-[26%] h-[32%] rounded-2xl overflow-hidden border-2 border-white shadow-lg z-20 transform rotate-6 hover:rotate-0 hover:scale-105 transition-all duration-500">
+                                <img
+                                    src="/images/fb2.jpeg"
+                                    alt="Customer Portrait 2"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Bottom Left Image */}
+                            <div className="absolute left-[10%] bottom-[12%] w-[28%] h-[35%] rounded-2xl overflow-hidden border-2 border-white shadow-lg z-20 transform -rotate-12 hover:rotate-0 hover:scale-105 transition-all duration-500">
+                                <img
+                                    src="/images/fb3.jpeg"
+                                    alt="Customer Portrait 3"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Top Right Image */}
+                            <div className="absolute right-[10%] top-[14%] w-[24%] h-[30%] rounded-2xl overflow-hidden border-2 border-white shadow-lg z-20 transform rotate-12 hover:rotate-0 hover:scale-105 transition-all duration-500">
+                                <img
+                                    src="/images/fb4.jpeg"
+                                    alt="Customer Portrait 4"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Bottom Right Image */}
+                            <div className="absolute right-[6%] bottom-[18%] w-[26%] h-[32%] rounded-2xl overflow-hidden border-2 border-white shadow-lg z-20 transform -rotate-6 hover:rotate-0 hover:scale-105 transition-all duration-500">
+                                <img
+                                    src="/images/fb5.jpeg"
+                                    alt="Customer Portrait 5"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Silhouette Badge (Cyan glowing user profile) */}
+                            <div className="absolute right-[28%] bottom-[8%] w-14 h-14 bg-gradient-to-tr from-[#06B6D4] to-[#0EA5E9] rounded-full flex items-center justify-center border-4 border-white shadow-[0_10px_25px_rgba(6,182,212,0.4)] z-30 transform hover:scale-110 transition-transform duration-300">
+                                <ShieldCheck size={22} className="text-white" />
+                            </div>
+                        </div>
+
+                        {/* Right Side: Header and 2x2 Reviews Grid */}
+                        <div className="lg:col-span-7 flex flex-col justify-center">
+                            <span className="font-bold text-[10px] tracking-[0.2em] uppercase mb-4 block" style={{ color: COLORS.orange }}>
+                                {t('home.testimonials.label')}
+                            </span>
+                            <h3 className="text-3xl md:text-5xl font-display uppercase mb-4 leading-tight" style={{ color: COLORS.navy }}>
+                                {t('home.testimonials.googleReviewsTitle')}
+                            </h3>
+                            <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-6 font-medium max-w-xl">
+                                {t('home.testimonials.googleReviewsDesc')}
+                            </p>
+
+                            {/* Google Map Redirection Link */}
+                            <div className="mb-8 flex items-center gap-2 text-xs md:text-sm font-semibold text-slate-700">
+                                <span>{t('home.testimonials.googleMapLink')}</span>
+                                <a
+                                    href="https://maps.google.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 font-bold text-orange-500 hover:text-orange-600 transition-colors border-b border-orange-500 pb-0.5"
+                                >
+                                    {t('home.testimonials.viewHere')} <ArrowRight size={14} />
+                                </a>
+                            </div>
+
+                            {/* 2x2 Reviews Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {googleReviews.map((review) => (
+                                    <div
+                                        key={review.id}
+                                        className="bg-slate-50/50 p-5 md:p-6 rounded-3xl border border-slate-100/80 shadow-xs hover:shadow-md transition-all duration-300 relative flex flex-col justify-between min-h-[170px]"
+                                    >
+                                        <div>
+                                            {/* Top Row: User Avatar & Google Icon */}
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-xs text-sm"
+                                                        style={{ backgroundColor: review.color }}
+                                                    >
+                                                        {review.avatar}
+                                                    </div>
+                                                    <div>
+                                                        <h5 className="font-bold text-slate-800 text-xs md:text-sm">{review.name}</h5>
+                                                        <p className="text-[9px] md:text-[10px] text-slate-400 font-semibold tracking-wide mt-0.5">{review.role}</p>
+                                                    </div>
+                                                </div>
+                                                <img src="/images/google.png" alt="Google" className="w-4 h-4 opacity-70 shrink-0" />
+                                            </div>
+
+                                            {/* Stars Row */}
+                                            <div className="flex gap-0.5 mt-3">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={12} fill={COLORS.orange} style={{ color: COLORS.orange }} />
+                                                ))}
+                                                <span className="text-[9px] font-bold text-slate-400 ml-2 mt-0.5">{review.time}</span>
+                                            </div>
+
+                                            {/* Comment */}
+                                            <p className="text-slate-600 text-[11px] md:text-xs mt-3 leading-relaxed font-medium">
+                                                "{review.text}"
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="max-w-5xl mx-auto bg-white p-14 md:p-24 rounded-[4rem] shadow-3xl shadow-blue-900/10 relative border border-white">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTestimonialIndex}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.5 }}
-                            >
-                                <div className="absolute top-16 left-16 px-5 py-2.5 rounded-xl text-white font-bold text-[11px] flex items-center gap-2 shadow-lg"
-                                    style={{ backgroundColor: COLORS.navy }}>
-                                    <Star size={16} fill={COLORS.orange} style={{ color: COLORS.orange }} /> {testimonials[activeTestimonialIndex].rating}
-                                </div>
+                    {/* Separator / Divider */}
+                    <div className="my-20 md:my-28 border-t border-slate-100"></div>
 
-                                <p className="text-3xl italic leading-[1.5] mb-16 font-medium tracking-tight" style={{ color: COLORS.navy }}>
-                                    {testimonials[activeTestimonialIndex].text}
-                                </p>
+                    {/* Section 2: Customer Stories (Câu chuyện khách hàng) */}
+                    <div>
+                        <div className="text-center mb-16 md:mb-20">
+                            <span className="font-bold text-[10px] tracking-[0.2em] uppercase mb-4 inline-block" style={{ color: COLORS.orange }}>
+                                {t('home.testimonials.storiesBadge')}
+                            </span>
+                            <h3 className="text-3xl md:text-5xl font-display uppercase mb-4 leading-tight" style={{ color: COLORS.navy }}>
+                                {t('home.testimonials.storiesTitle')}
+                            </h3>
+                            <p className="text-slate-500 text-xs md:text-sm leading-relaxed font-medium max-w-2xl mx-auto">
+                                {t('home.testimonials.storiesDesc')}
+                            </p>
+                        </div>
 
-                                <div className="flex items-center justify-between border-t border-blue-50 pt-16">
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-blue-50 shadow-md">
-                                            <img src={testimonials[activeTestimonialIndex].image} alt="Avatar" />
-                                        </div>
-                                        <div>
-                                            <h5 className="text-lg font-bold" style={{ color: COLORS.navy }}>{testimonials[activeTestimonialIndex].name}</h5>
-                                            <p className="text-[10px] uppercase font-bold tracking-[0.2em] mt-1" style={{ color: `${COLORS.navy}4D` }}>{testimonials[activeTestimonialIndex].role}</p>
+                        {/* Customer Story Cards */}
+                        <div className="flex md:grid md:grid-cols-3 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none scrollbar-none gap-6 md:gap-8 pb-8 md:pb-0 px-4 md:px-0 -mx-4 md:mx-0">
+                            {customerStories.map((story) => (
+                                <div
+                                    key={story.id}
+                                    className="group cursor-pointer snap-align-start shrink-0 w-[85vw] md:w-auto bg-slate-50/30 md:bg-transparent rounded-3xl p-6 md:p-0 border border-slate-100 md:border-none shadow-xs md:shadow-none hover:shadow-md md:hover:shadow-none transition-all"
+                                >
+                                    {/* Circular Frame with Overlapping Accent Rings */}
+                                    <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto mb-6 md:mb-8 select-none">
+                                        <div className="absolute -inset-1.5 md:-inset-2 rounded-full border border-dashed border-cyan-400/50 scale-[1.03] animate-[spin_25s_linear_infinite] group-hover:scale-105 transition-transform duration-500"></div>
+                                        <div className="absolute -inset-3.5 md:-inset-4 rounded-full border border-cyan-200/30 scale-[1.06] -rotate-12 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500"></div>
+                                        <div className="w-full h-full rounded-full overflow-hidden border-[6px] border-white shadow-lg relative z-10 transform group-hover:scale-[0.98] transition-transform duration-500">
+                                            <img src={story.image} alt={story.name} className="w-full h-full object-cover" />
                                         </div>
                                     </div>
 
-                                    {/* ── TESTIMONIAL NAV — dùng Button ── */}
-                                    <div className="flex gap-5">
-                                        <Button
-                                            size="sm"
-                                            bg="#F8FAFC"
-                                            color={COLORS.navy}
-                                            icon={null}
-                                            onClick={handlePrevTestimonial}
-                                            style={{ border: '1px solid #EFF6FF', borderRadius: '1rem', padding: '0', width: '3.5rem', height: '3.5rem', justifyContent: 'center' }}
-                                        >
-                                            <ArrowRight size={22} className="rotate-180" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            bg={COLORS.navy}
-                                            color={COLORS.white}
-                                            icon={null}
-                                            onClick={handleNextTestimonial}
-                                            style={{ borderRadius: '1rem', padding: '0', width: '3.5rem', height: '3.5rem', justifyContent: 'center', boxShadow: `0 8px 24px ${COLORS.navy}33` }}
-                                        >
-                                            <ArrowRight size={22} />
-                                        </Button>
+                                    {/* Text Info */}
+                                    <div className="text-center px-2">
+                                        <h4 className="text-md md:text-lg font-bold text-slate-800 group-hover:text-orange-500 transition-colors duration-300">{story.name}</h4>
+                                        <p className="text-[9px] md:text-[10px] uppercase font-bold tracking-widest text-slate-400 mt-1">{story.role}</p>
+
+                                        {/* Stars */}
+                                        <div className="flex justify-center gap-0.5 mt-3">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={i} size={11} fill={COLORS.orange} style={{ color: COLORS.orange }} />
+                                            ))}
+                                        </div>
+
+                                        <p className="text-slate-500 text-[11px] md:text-xs mt-4 leading-relaxed font-medium max-w-sm mx-auto italic">
+                                            {story.text}
+                                        </p>
                                     </div>
                                 </div>
-                            </motion.div>
-                        </AnimatePresence>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </section>

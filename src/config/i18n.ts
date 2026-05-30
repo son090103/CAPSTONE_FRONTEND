@@ -310,10 +310,13 @@ const resources = {
       services: {
         heroTitle: "Dịch vụ chuyên nghiệp",
         heroDesc: "Nâng tầm trải nghiệm bảo dưỡng xe với đội ngũ kỹ thuật viên tay nghề cao và công nghệ chẩn đoán tiên tiến nhất. Chúng tôi cam kết mang lại sự an toàn tuyệt đối cho mọi hành trình của bạn.",
-        emergencyConsult: "Tư vấn khẩn cấp",
+        emergencyConsult: "Tư vấn nhanh",
         forYourCar: "DÀNH CHO XE CỦA BẠN",
         catalogTitle: "Danh mục dịch vụ",
         searchPlaceholder: "Tìm kiếm dịch vụ bảo dưỡng...",
+        originalPriceLabel: "Giá gốc:",
+        discountLabel: "Giảm {{percent}}%",
+        promoBadge: "Khuyến mãi",
         categories: {
           maintenance: "Bảo dưỡng",
           repair: "Sửa chữa"
@@ -342,9 +345,9 @@ const resources = {
             desc: "Chính sách bảo hành uy tín cho mọi hạng mục sửa chữa và phụ tùng."
           }
         },
-        faqTitle: "Câu hỏi thường gặp",
-        faq: {
-          q1: "Thời gian bảo dưỡng định kỳ mất bao lâu?",
+        faqTitle: "Câu hỏi thường gặp về dịch vụ",
+        faqs: {
+          q1: "Bao lâu tôi nên bảo dưỡng xe một lần?",
           q2: "Tôi có cần đặt lịch trước không?",
           q3: "AGM Intelligent có hỗ trợ xe mượn khi sửa chữa lâu không?"
         },
@@ -353,6 +356,8 @@ const resources = {
             title: "Bảo dưỡng định kỳ",
             desc: "Kiểm tra tổng quát và thay thế linh kiện hao mòn định kỳ để xe luôn vận hành êm ái.",
             price: "Từ 500.000đ",
+            originalPrice: "Từ 550.000đ",
+            promoText: "Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí",
             duration: "60 - 120 phút",
             details: [
               "Thay nhớt động cơ chính hãng phù hợp thông số xe.",
@@ -366,6 +371,8 @@ const resources = {
             title: "Sửa chữa động cơ",
             desc: "Xử lý triệt để các vấn đề phức tạp của động cơ bởi các chuyên gia dày dạn kinh nghiệm.",
             price: "Từ 1.200.000đ",
+            originalPrice: "Từ 1.400.000đ",
+            promoText: "Giảm 15% gói vệ sinh kim phun buồng đốt đi kèm",
             duration: "Buổi hoặc ngày (tùy tình trạng)",
             details: [
               "Đo áp suất buồng đốt, kiểm tra tỉ số nén động cơ.",
@@ -379,6 +386,8 @@ const resources = {
             title: "Dịch vụ lốp & phanh",
             desc: "Đảm bảo an toàn tối đa với dịch vụ kiểm tra lốp, cân bằng động và bảo dưỡng hệ thống phanh.",
             price: "Từ 400.000đ",
+            originalPrice: "Từ 500.000đ",
+            promoText: "Miễn phí cân bằng động khi thay từ 2 lốp Michelin",
             duration: "30 - 60 phút",
             details: [
               "Cân chỉnh thước lái 3D tiên tiến nhất hiện nay.",
@@ -392,6 +401,8 @@ const resources = {
             title: "Chăm sóc nội thất",
             desc: "Làm sạch sâu, khử mùi và bảo dưỡng các bề mặt da, nhựa bên trong xe như mới.",
             price: "Từ 800.000đ",
+            originalPrice: "Từ 900.000đ",
+            promoText: "Tặng gói khử mùi cabin Ozon trị giá 200.000đ",
             duration: "120 - 240 phút",
             details: [
               "Dọn nội thất toàn diện, hút bụi và giặt thảm sàn.",
@@ -405,6 +416,8 @@ const resources = {
             title: "Chẩn đoán điện tử",
             desc: "Sử dụng máy quét chuyên dụng để phát hiện chính xác mọi lỗi hệ thống điện tử trên xe.",
             price: "Từ 300.000đ",
+            originalPrice: "Từ 350.000đ",
+            promoText: "Miễn phí chẩn đoán lỗi OBD nhanh bằng máy chuyên dụng",
             duration: "30 - 45 phút",
             details: [
               "Quét toàn bộ lỗi hệ thống điện thân xe, hộp điều khiển.",
@@ -417,6 +430,9 @@ const resources = {
           rescue: {
             title: "Cứu hộ 24/7",
             desc: "Hỗ trợ khẩn cấp mọi lúc, mọi nơi khi xe gặp sự cố bất ngờ trên đường.",
+            price: "Liên hệ",
+            originalPrice: "",
+            promoText: "Hỗ trợ khẩn cấp 24/7 toàn khu vực nội thành",
             duration: "Phản hồi trong 15 - 30 phút",
             details: [
               "Hỗ trợ kích nổ ắc quy tại chỗ nhanh chóng.",
@@ -543,21 +559,72 @@ const resources = {
         },
         services: {
           popularBadge: "Phổ biến",
-          oilChange: {
-            title: "Thay nhớt định kỳ",
-            desc: "Kiểm tra tổng quát, thay nhớt máy và lọc nhớt tiêu chuẩn."
+          emergencyBadge: "Khẩn cấp",
+          periodic: {
+            title: "Bảo Dưỡng Định Kỳ",
+            desc: "Kiểm tra tổng quát và thay thế linh kiện hao mòn định kỳ để xe luôn vận hành êm ái.",
+            details: [
+              "Thay nhớt động cơ chính hãng phù hợp thông số xe.",
+              "Kiểm tra và làm sạch lọc gió động cơ, lọc gió cabin.",
+              "Kiểm tra hệ thống phanh, má phanh, đĩa phanh.",
+              "Kiểm tra bình ắc quy và hệ thống chiếu sáng.",
+              "Đọc lỗi lỗi hộp đen (OBD) bằng thiết bị chuyên dụng."
+            ]
           },
-          brakes: {
-            title: "Kiểm tra hệ thống phanh",
-            desc: "Vệ sinh cụm phanh, kiểm tra má phanh và dầu phanh an toàn."
+          engine: {
+            title: "Sửa Chữa Động Cơ",
+            desc: "Xử lý triệt để các vấn đề phức tạp của động cơ bởi các chuyên gia dày dạn kinh nghiệm.",
+            details: [
+              "Đo áp suất buồng đốt, kiểm tra tỉ số nén động cơ.",
+              "Xử lý hiện tượng rò rỉ dầu máy, hao nước làm mát.",
+              "Cân chỉnh cam, khắc phục tiếng gõ động cơ lạ.",
+              "Đại tu động cơ chuyên nghiệp theo tiêu chuẩn hãng.",
+              "Vệ sinh kim phun, họng hút và buồng đốt bằng máy chuyên dụng."
+            ]
           },
-          ac: {
-            title: "Vệ sinh điều hòa",
-            desc: "Làm sạch dàn lạnh, nạp gas và thay lọc gió điều hòa."
+          tireBrake: {
+            title: "Dịch Vụ Lốp & Phanh",
+            desc: "Đảm bảo an toàn tối đa với dịch vụ kiểm tra lốp, cân bằng động và bảo dưỡng hệ thống phanh.",
+            details: [
+              "Cân chỉnh thước lái 3D tiên tiến nhất hiện nay.",
+              "Cân bằng động lốp xe triệt tiêu hiện tượng rung vô lăng.",
+              "Láng đĩa phanh trực tiếp không cần tháo rời.",
+              "Thay mới má phanh chính hãng nhập khẩu.",
+              "Kiểm tra toàn bộ đường ống dẫn dầu và cụm heo phanh."
+            ]
           },
-          full: {
-            title: "Bảo dưỡng tổng thể",
-            desc: "Kiểm tra 50 hạng mục kỹ thuật chuyên sâu cho toàn bộ xe."
+          detailing: {
+            title: "Chăm Sóc Nội Thất",
+            desc: "Làm sạch sâu, khử mùi và bảo dưỡng các bề mặt da, nhựa bên trong xe như mới.",
+            details: [
+              "Dọn nội thất toàn diện, hút bụi và giặt thảm sàn.",
+              "Vệ sinh bề mặt da ghế bằng dung dịch chuyên sâu bảo vệ da.",
+              "Khử trùng hệ thống điều hòa và khử mùi ozon cabin.",
+              "Dưỡng bóng táp-lô, táp-pi cửa chống lão hóa tia UV.",
+              "Làm sạch trần nỉ và cốp sau tỉ mỉ."
+            ]
+          },
+          electronics: {
+            title: "Chẩn Đoán Điện Tử",
+            desc: "Sử dụng máy quét chuyên dụng để phát hiện chính xác mọi lỗi hệ thống điện tử trên xe.",
+            details: [
+              "Quét toàn bộ lỗi hệ thống điện thân xe, hộp điều khiển.",
+              "Chẩn đoán lỗi cảm biến ABS, ESP, túi khí SRS.",
+              "Kiểm tra tình trạng máy phát điện, máy khởi động.",
+              "Cập nhật phần mềm hệ thống (ECU flashing) nếu có.",
+              "Xóa các mã lỗi ảo phát sinh do sụt điện."
+            ]
+          },
+          rescue: {
+            title: "Cứu Hộ 24/7",
+            desc: "Hỗ trợ khẩn cấp mọi lúc, mọi nơi khi xe gặp sự cố bất ngờ trên đường.",
+            details: [
+              "Hỗ trợ kích nổ ắc quy tại chỗ nhanh chóng.",
+              "Hỗ trợ thay lốp dự phòng khẩn cấp.",
+              "Cung cấp nhiên liệu khẩn cấp trên đường.",
+              "Xe cẩu kéo chuyên dụng đưa về trung tâm gần nhất.",
+              "Đội ngũ cứu hộ túc trực sẵn sàng 24 giờ mỗi ngày."
+            ]
           }
         },
         timeSlots: {
@@ -565,7 +632,8 @@ const resources = {
           afternoon: "Chiều"
         },
         alerts: {
-          validationError: "Vui lòng điền đầy đủ và đúng thông tin yêu cầu của bước hiện tại."
+          validationError: "Vui lòng điền đầy đủ và đúng thông tin yêu cầu của bước hiện tại.",
+          minOneTask: "Bạn phải chọn ít nhất một hạng mục công việc."
         },
         success: {
           title: "Đặt lịch thành công!",
@@ -577,11 +645,14 @@ const resources = {
           serviceLabel: "Dịch vụ:",
           timeLabel: "Thời gian:",
           plateLabel: "Biển số xe:",
-          customerLabel: "Khách hàng:"
+          customerLabel: "Khách hàng:",
+          itemsLabel: "Hạng mục thực hiện:"
         },
         step1: {
           title: "Chọn dịch vụ bảo dưỡng",
-          estimatedPrice: "Giá dự kiến"
+          estimatedPrice: "Giá dự kiến",
+          customizeTasks: "Tùy chỉnh hạng mục công việc",
+          customizeTasksDesc: "Chọn hoặc bỏ chọn các hạng mục cụ thể bạn mong muốn thực hiện trong gói dịch vụ."
         },
         step2: {
           title: "Chọn thời gian hẹn",
@@ -623,7 +694,8 @@ const resources = {
           installationFee: "Công lắp đặt / kiểm tra",
           free: "Miễn phí",
           total: "Tổng cộng",
-          estimatedNote: "* Giá tạm tính"
+          estimatedNote: "* Giá tạm tính",
+          itemsLabel: "Hạng mục đã chọn"
         },
         hotline: {
           title: "Cần tư vấn trực tiếp?",
@@ -690,7 +762,14 @@ const resources = {
         },
         testimonials: {
           label: "Ý KIẾN KHÁCH HÀNG",
-          title: "Trải nghiệm khách hàng"
+          title: "Trải nghiệm khách hàng",
+          googleReviewsTitle: "Phản hồi từ khách hàng",
+          googleReviewsDesc: "Lắng nghe ý kiến và cảm nhận chân thực của khách hàng đã tin tưởng trải nghiệm dịch vụ chăm sóc, bảo dưỡng xe tại AGM Intelligent.",
+          googleMapLink: "👉 Xem thêm các đánh giá trên Google Map: ",
+          viewHere: "Xem tại đây",
+          storiesTitle: "Câu chuyện khách hàng",
+          storiesDesc: "Những chia sẻ thật tâm từ Khách hàng chính là niềm tự hào vô giá của AGM Intelligent, là minh chứng cho chất lượng dịch vụ tận tâm của chúng tôi!",
+          storiesBadge: "HÀNH TRÌNH BẢO DƯỠNG"
         },
         news: {
           label: "TIN TỨC",
@@ -1022,10 +1101,13 @@ const resources = {
       services: {
         heroTitle: "Professional Services",
         heroDesc: "Elevate your maintenance experience with our highly skilled technicians and advanced diagnostics. We commit to bringing absolute safety to your journey.",
-        emergencyConsult: "Emergency Consultation",
+        emergencyConsult: "Quick Consultation",
         forYourCar: "FOR YOUR VEHICLE",
         catalogTitle: "Service Catalog",
         searchPlaceholder: "Search maintenance services...",
+        originalPriceLabel: "Original Price:",
+        discountLabel: "{{percent}}% Off",
+        promoBadge: "Promo",
         categories: {
           maintenance: "Maintenance",
           repair: "Repair"
@@ -1065,6 +1147,8 @@ const resources = {
             title: "Periodic Maintenance",
             desc: "General checkup and periodic replacement of worn parts to keep your vehicle running smoothly.",
             price: "From 500,000đ",
+            originalPrice: "From 550,000đ",
+            promoText: "Free premium windshield fluid & tire inspection",
             duration: "60 - 120 mins",
             details: [
               "Change engine oil matching vehicle specifications.",
@@ -1078,6 +1162,8 @@ const resources = {
             title: "Engine Repair",
             desc: "Resolve complex engine problems completely by highly experienced engine specialists.",
             price: "From 1,200,000đ",
+            originalPrice: "From 1,400,000đ",
+            promoText: "15% off fuel injector cleaning package",
             duration: "Half-day or full-day (depending on condition)",
             details: [
               "Measure combustion pressure, check engine compression ratio.",
@@ -1091,6 +1177,8 @@ const resources = {
             title: "Tire & Brake Service",
             desc: "Ensure maximum safety with tire checks, wheel balancing, and brake system maintenance.",
             price: "From 400,000đ",
+            originalPrice: "From 500,000đ",
+            promoText: "Free wheel balancing when buying 2+ Michelin tires",
             duration: "30 - 60 mins",
             details: [
               "Conduct advanced 3D wheel alignment.",
@@ -1104,6 +1192,8 @@ const resources = {
             title: "Interior Detailing",
             desc: "Deep clean, deodorize, and condition leather and plastic surfaces inside the vehicle.",
             price: "From 800,000đ",
+            originalPrice: "From 900,000đ",
+            promoText: "Free Cabin Ozone deodorization package ($10 value)",
             duration: "120 - 240 mins",
             details: [
               "Conduct complete interior cleaning, vacuuming, and floor mat washing.",
@@ -1117,6 +1207,8 @@ const resources = {
             title: "Electronic Diagnostics",
             desc: "Use special scanning tools to detect exact electronic system faults in your vehicle.",
             price: "From 300,000đ",
+            originalPrice: "From 350,000đ",
+            promoText: "Free quick OBD fault diagnostic scan",
             duration: "30 - 45 mins",
             details: [
               "Scan all body electrical control module errors.",
@@ -1129,6 +1221,9 @@ const resources = {
           rescue: {
             title: "Emergency Roadside 24/7",
             desc: "Emergency assistance anytime, anywhere when your car encounters sudden issues.",
+            price: "Contact",
+            originalPrice: "",
+            promoText: "24/7 Roadside support in all metropolitan areas",
             duration: "Response in 15 - 30 mins",
             details: [
               "Provide rapid roadside jump start assistance.",
@@ -1255,21 +1350,72 @@ const resources = {
         },
         services: {
           popularBadge: "POPULAR",
-          oilChange: {
-            title: "Periodic Oil Change",
-            desc: "General inspection, replacement of engine oil and standard oil filter."
+          emergencyBadge: "EMERGENCY",
+          periodic: {
+            title: "Periodic Maintenance",
+            desc: "General inspection and replacement of wear items periodically to ensure smooth vehicle operation.",
+            details: [
+              "Replace engine oil with manufacturer-matching specifications.",
+              "Inspect and clean engine air filter and cabin air filter.",
+              "Inspect brake system, brake pads, and brake discs.",
+              "Check battery health and lighting systems.",
+              "Scan OBD diagnostics for faults using specialized scanners."
+            ]
           },
-          brakes: {
-            title: "Brake System Inspection",
-            desc: "Clean calipers, inspect brake pads and check brake fluid safety."
+          engine: {
+            title: "Engine Repair",
+            desc: "Resolve complex engine issues with certified master technicians.",
+            details: [
+              "Measure combustion pressure and engine compression ratio.",
+              "Fix engine oil leaks and coolant loss issues.",
+              "Calibrate camshaft and resolve unusual engine knocking sounds.",
+              "Professional engine overhaul according to manufacturer standards.",
+              "Clean injectors, intake manifold, and combustion chamber."
+            ]
           },
-          ac: {
-            title: "AC System Cleaning",
-            desc: "Clean evaporator coil, recharge refrigerant, and replace cabin filter."
+          tireBrake: {
+            title: "Tire & Brake Services",
+            desc: "Ensure maximum safety with tire checks, dynamic balancing, and brake system maintenance.",
+            details: [
+              "Align wheels using state-of-the-art 3D technology.",
+              "Balance tire weight to eliminate steering wheel vibration.",
+              "Resurface brake discs directly without removal.",
+              "Replace brake pads with genuine imported parts.",
+              "Inspect all brake lines and caliper assemblies."
+            ]
           },
-          full: {
-            title: "General Maintenance",
-            desc: "Detailed 50-point technical checklist inspection."
+          detailing: {
+            title: "Interior Detailing",
+            desc: "Deep clean, deodorize, and condition leather and plastic surfaces to like-new condition.",
+            details: [
+              "Comprehensive interior detailing, vacuuming, and carpet washing.",
+              "Clean leather seats with specialized protective solutions.",
+              "Deodorize A/C system and cabin with ozone treatment.",
+              "Condition dashboard and door cards to prevent UV aging.",
+              "Meticulously clean headliner and rear trunk."
+            ]
+          },
+          electronics: {
+            title: "Digital Diagnostics",
+            desc: "Use advanced scanners to accurately detect all electronic system faults.",
+            details: [
+              "Scan all body electrical control unit errors.",
+              "Diagnose ABS, ESP, and SRS airbag sensor faults.",
+              "Test alternator and starter motor conditions.",
+              "Flash ECU software updates if available.",
+              "Clear ghost fault codes caused by voltage drops."
+            ]
+          },
+          rescue: {
+            title: "24/7 Roadside Rescue",
+            desc: "Emergency assistance anytime, anywhere when your car encounters unexpected failures.",
+            details: [
+              "Provide on-site battery jump-starts quickly.",
+              "Provide emergency spare tire replacement.",
+              "Deliver emergency fuel on the road.",
+              "Tow vehicle with specialized crane to nearest center.",
+              "Rescue team on standby 24 hours a day."
+            ]
           }
         },
         timeSlots: {
@@ -1277,7 +1423,8 @@ const resources = {
           afternoon: "Afternoon"
         },
         alerts: {
-          validationError: "Please fill in all required information for the current step."
+          validationError: "Please fill in all required information for the current step.",
+          minOneTask: "You must select at least one task."
         },
         success: {
           title: "Booking Successful!",
@@ -1289,11 +1436,14 @@ const resources = {
           serviceLabel: "Service:",
           timeLabel: "Time:",
           plateLabel: "Plate Number:",
-          customerLabel: "Customer:"
+          customerLabel: "Customer:",
+          itemsLabel: "Tasks to Perform:"
         },
         step1: {
           title: "Select Maintenance Service",
-          estimatedPrice: "Estimated Price"
+          estimatedPrice: "Estimated Price",
+          customizeTasks: "Customize service tasks",
+          customizeTasksDesc: "Select or deselect specific tasks you want performed in the service package."
         },
         step2: {
           title: "Select Appointment Time",
@@ -1335,7 +1485,8 @@ const resources = {
           installationFee: "Installation & Check labor",
           free: "Free",
           total: "Total",
-          estimatedNote: "* Estimated Price"
+          estimatedNote: "* Estimated Price",
+          itemsLabel: "Selected Tasks"
         },
         hotline: {
           title: "Need direct consultation?",
@@ -1402,7 +1553,14 @@ const resources = {
         },
         testimonials: {
           label: "CUSTOMER REVIEWS",
-          title: "Customer Experiences"
+          title: "Customer Experiences",
+          googleReviewsTitle: "Customer feedback",
+          googleReviewsDesc: "Listen to authentic feedback and feelings from customers who have trusted and experienced car care and maintenance services at AGM Intelligent.",
+          googleMapLink: "👉 See more reviews on Google Maps: ",
+          viewHere: "View here",
+          storiesTitle: "Customer Stories",
+          storiesDesc: "Sincere shares from Customers are the invaluable pride of AGM Intelligent, a testament to our dedicated service quality!",
+          storiesBadge: "MAINTENANCE JOURNEY"
         },
         news: {
           label: "NEWS",

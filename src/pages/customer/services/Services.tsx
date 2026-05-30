@@ -19,6 +19,9 @@ interface ServiceItem {
     image: string;
     duration?: string;
     details?: string[];
+    originalPrice?: string;
+    discountPercentage?: number;
+    promoText?: string;
 }
 
 export default function Services() {
@@ -41,6 +44,9 @@ export default function Services() {
             desc: t('services.list.periodic.desc', 'Kiểm tra tổng quát và thay thế linh kiện hao mòn định kỳ để xe luôn vận hành êm ái.'),
             icon: <Settings size={18} />,
             price: t('services.list.periodic.price', 'Từ 500.000đ'),
+            originalPrice: t('services.list.periodic.originalPrice', 'Từ 550.000đ'),
+            discountPercentage: 10,
+            promoText: t('services.list.periodic.promoText', 'Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí'),
             category: 'maintenance',
             image: '/images/Precision Maintenance (1).png',
             duration: t('services.list.periodic.duration', '60 - 120 phút'),
@@ -58,6 +64,9 @@ export default function Services() {
             desc: t('services.list.engine.desc', 'Xử lý triệt để các vấn đề phức tạp của động cơ bởi các chuyên gia dày dạn kinh nghiệm.'),
             icon: <Wrench size={18} />,
             price: t('services.list.engine.price', 'Từ 1.200.000đ'),
+            originalPrice: t('services.list.engine.originalPrice', 'Từ 1.400.000đ'),
+            discountPercentage: 15,
+            promoText: t('services.list.engine.promoText', 'Giảm 15% gói vệ sinh kim phun buồng đốt đi kèm'),
             category: 'repair',
             image: '/images/Advanced Repair.png',
             duration: t('services.list.engine.duration', 'Buổi hoặc ngày (tùy tình trạng)'),
@@ -75,6 +84,9 @@ export default function Services() {
             desc: t('services.list.tireBrake.desc', 'Đảm bảo an toàn tối đa với dịch vụ kiểm tra lốp, cân bằng động và bảo dưỡng hệ thống phanh.'),
             icon: <Car size={18} />,
             price: t('services.list.tireBrake.price', 'Từ 400.000đ'),
+            originalPrice: t('services.list.tireBrake.originalPrice', 'Từ 500.000đ'),
+            discountPercentage: 20,
+            promoText: t('services.list.tireBrake.promoText', 'Miễn phí cân bằng động khi thay từ 2 lốp Michelin'),
             category: 'maintenance',
             image: '/images/Vehicle Protection.png',
             duration: t('services.list.tireBrake.duration', '30 - 60 phút'),
@@ -92,6 +104,9 @@ export default function Services() {
             desc: t('services.list.detailing.desc', 'Làm sạch sâu, khử mùi và bảo dưỡng các bề mặt da, nhựa bên trong xe như mới.'),
             icon: <Droplets size={18} />,
             price: t('services.list.detailing.price', 'Từ 800.000đ'),
+            originalPrice: t('services.list.detailing.originalPrice', 'Từ 900.000đ'),
+            discountPercentage: 12,
+            promoText: t('services.list.detailing.promoText', 'Tặng gói khử mùi cabin Ozon trị giá 200.000đ'),
             category: 'maintenance',
             image: '/images/Elite Detailing.png',
             duration: t('services.list.detailing.duration', '120 - 240 phút'),
@@ -109,6 +124,9 @@ export default function Services() {
             desc: t('services.list.electronics.desc', 'Sử dụng máy quét chuyên dụng để phát hiện chính xác mọi lỗi hệ thống điện tử trên xe.'),
             icon: <Zap size={18} />,
             price: t('services.list.electronics.price', 'Từ 300.000đ'),
+            originalPrice: t('services.list.electronics.originalPrice', 'Từ 350.000đ'),
+            discountPercentage: 15,
+            promoText: t('services.list.electronics.promoText', 'Miễn phí chẩn đoán lỗi OBD nhanh bằng máy chuyên dụng'),
             category: 'repair',
             image: '/images/Digital Diagnostics.png',
             duration: t('services.list.electronics.duration', '30 - 45 phút'),
@@ -125,7 +143,9 @@ export default function Services() {
             title: t('services.list.rescue.title', 'Cứu Hộ 24/7'),
             desc: t('services.list.rescue.desc', 'Hỗ trợ khẩn cấp mọi lúc, mọi nơi khi xe gặp sự cố bất ngờ trên đường.'),
             icon: <Zap size={18} />,
-            price: '24/7',
+            price: t('services.list.rescue.price', 'Liên hệ'),
+            originalPrice: '',
+            promoText: t('services.list.rescue.promoText', 'Hỗ trợ khẩn cấp 24/7 toàn khu vực nội thành'),
             category: 'repair',
             image: '/images/Performance Tuning.png',
             duration: t('services.list.rescue.duration', 'Phản hồi trong 15 - 30 phút'),
@@ -191,7 +211,7 @@ export default function Services() {
                                     window.open('tel:19001234');
                                 }}
                             >
-                                {t('services.emergencyConsult', 'Tư vấn khẩn cấp')}
+                                {t('services.emergencyConsult', 'Tư vấn nhanh')}
                             </Button>
                         </div>
                     </motion.div>
@@ -284,6 +304,11 @@ export default function Services() {
                             >
                                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-950">
                                     <img src={service.image} alt={service.title} className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105" />
+                                    {service.discountPercentage && (
+                                        <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider shadow-md z-10">
+                                            {t('services.discountLabel', 'Giảm {{percent}}%', { percent: service.discountPercentage })}
+                                        </div>
+                                    )}
                                     <div className="absolute top-3 right-3 px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-md"
                                         style={{ backgroundColor: `${COLORS.navy}F0` }}>
                                         {service.price}
@@ -296,9 +321,36 @@ export default function Services() {
                                             <span className="text-brand-blue bg-blue-50 p-2 rounded-lg shrink-0">{service.icon}</span>
                                             <h3 className="text-base md:text-lg font-bold text-brand-blue line-clamp-1">{service.title}</h3>
                                         </div>
-                                        <p className="text-xs md:text-sm text-gray-500 leading-relaxed mb-6 flex-grow line-clamp-2">
+                                        <p className="text-xs md:text-sm text-gray-500 leading-relaxed mb-4 flex-grow line-clamp-2">
                                             {service.desc}
                                         </p>
+
+                                        {/* Price & Promo Info */}
+                                        <div className="mb-6 py-2.5 px-3.5 bg-slate-50 rounded-xl border border-gray-100 flex flex-col gap-1.5 text-left">
+                                            <div className="flex items-baseline justify-between">
+                                                <span className="text-[11px] text-gray-400 font-medium">
+                                                    {service.originalPrice ? t('services.originalPriceLabel', 'Giá gốc:') : ''}
+                                                </span>
+                                                <div className="flex items-baseline gap-2">
+                                                    {service.originalPrice && (
+                                                        <span className="text-[11px] text-gray-400 line-through font-medium">
+                                                            {service.originalPrice}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs font-extrabold text-brand-blue">
+                                                        {service.price}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {service.promoText && (
+                                                <div className="flex items-start gap-1.5 text-[11px] text-amber-700 font-semibold bg-amber-50/50 p-1.5 rounded-lg border border-amber-100/50">
+                                                    <span className="inline-block mt-0.5 shrink-0">🎁</span>
+                                                    <span className="line-clamp-2 leading-tight">
+                                                        {service.promoText}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex gap-2">
@@ -434,16 +486,35 @@ export default function Services() {
 
                             {/* Modal Body */}
                             <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-grow">
-                                <div className="flex flex-wrap items-center gap-6 text-xs text-brand-blue font-bold">
-                                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
+                                <div className="flex flex-wrap items-center gap-4 text-xs font-bold">
+                                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg text-brand-blue">
                                         <Clock className="w-4 h-4 text-brand-blue" />
                                         <span>{t('services.modal.duration', 'Thời gian: {{duration}}', { duration: selectedService.duration || '60 - 90 phút' })}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg text-amber-800">
-                                        <Wallet className="w-4 h-4 text-amber-600" />
-                                        <span>{t('services.modal.price', 'Giá dự kiến: {{price}}', { price: selectedService.price })}</span>
+                                    <div className="flex flex-wrap items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg text-amber-800 border border-amber-100/50">
+                                        <Wallet className="w-4 h-4 text-amber-600 shrink-0" />
+                                        <span className="text-amber-900">{t('services.modal.priceLabel', 'Giá dự kiến:')}</span>
+                                        {selectedService.originalPrice && (
+                                            <span className="text-amber-700/60 line-through font-medium">{selectedService.originalPrice}</span>
+                                        )}
+                                        <span className="text-amber-950 font-extrabold">{selectedService.price}</span>
+                                        {selectedService.discountPercentage && (
+                                            <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 font-extrabold text-[10px] rounded-md uppercase">
+                                                {t('services.discountLabel', 'Giảm {{percent}}%', { percent: selectedService.discountPercentage })}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
+
+                                {selectedService.promoText && (
+                                    <div className="flex items-start gap-3 bg-amber-50/40 p-4 rounded-2xl border border-amber-100/30 text-xs text-amber-900 leading-relaxed text-left">
+                                        <span className="text-lg shrink-0 mt-0.5">🎁</span>
+                                        <div>
+                                            <h5 className="font-bold text-amber-950 mb-0.5">{t('services.promoBadge', 'Khuyến mãi')}</h5>
+                                            <p className="font-medium text-amber-800/90">{selectedService.promoText}</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-bold text-brand-blue uppercase tracking-wider">{t('services.modal.descriptionLabel', 'Mô tả dịch vụ')}</h4>
