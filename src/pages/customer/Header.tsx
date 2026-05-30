@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, Menu, X, Home, Wrench, Cpu, Phone, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import Logo from '../../components/share/Logo';
 import { Button } from '../../components/share/Button';
@@ -22,22 +23,6 @@ type NavLinkProps = {
     mobile?: boolean;
     onClick?: () => void;
 };
-
-const NAV_ITEMS: NavItem[] = [
-    { name: 'Trang Chủ', path: '/' },
-    { name: 'Dịch Vụ', path: '/services' },
-    { name: 'Linh Kiện', path: '/parts' },
-    { name: 'Đội Ngũ', path: '/team' },
-    { name: 'Tư Vấn', path: '/phone-service' },
-];
-
-const MOBILE_TAB_ITEMS = [
-    { name: 'Trang Chủ', path: '/', icon: Home },
-    { name: 'Dịch Vụ', path: '/services', icon: Wrench },
-    { name: 'Linh Kiện', path: '/parts', icon: Cpu },
-    { name: 'Tư Vấn', path: '/phone-service', icon: Phone },
-    { name: 'Cá Nhân', path: '/user-profile', icon: User },
-];
 
 function NavLink({ item, active, mobile = false, onClick }: NavLinkProps) {
     if (mobile) {
@@ -115,6 +100,7 @@ export default function Navbar() {
     const location = useLocation();
     const dispatch = useDispatch();
     const { fetchPrivate } = useFetchClient();
+    const { t, i18n } = useTranslation();
 
     const [isOpen, setIsOpen] = useState(false);
 
@@ -123,6 +109,22 @@ export default function Navbar() {
 
     // Không còn DEFAULT_AVATAR — null nếu chưa có
     const avatarUrl = user?.avatar?.trim() || null;
+
+    const currentNavItems: NavItem[] = [
+        { name: t('nav.home', 'Trang chủ'), path: '/' },
+        { name: t('nav.services', 'Dịch vụ'), path: '/services' },
+        { name: t('nav.parts', 'Linh kiện'), path: '/parts' },
+        { name: t('nav.team', 'Đội ngũ'), path: '/team' },
+        { name: t('nav.booking', 'Đặt lịch ngay'), path: '/phone-service' },
+    ];
+
+    const currentMobileTabItems = [
+        { name: t('nav.home', 'Trang chủ'), path: '/', icon: Home },
+        { name: t('nav.services', 'Dịch vụ'), path: '/services', icon: Wrench },
+        { name: t('nav.parts', 'Linh kiện'), path: '/parts', icon: Cpu },
+        { name: t('nav.booking', 'Đặt lịch ngay'), path: '/phone-service', icon: Phone },
+        { name: t('nav.profile', 'Cá nhân'), path: '/user-profile', icon: User },
+    ];
 
     useEffect(() => {
         const fetchUserProfile = async () => {
@@ -162,13 +164,37 @@ export default function Navbar() {
                         <Logo size="md" />
 
                         <nav className="hidden md:flex items-center gap-10 ml-12 mr-auto">
-                            {NAV_ITEMS.map((item) => (
+                            {currentNavItems.map((item) => (
                                 <NavLink key={item.name} item={item} active={location.pathname === item.path} />
                             ))}
                         </nav>
 
                         {/* DESKTOP ACTIONS */}
                         <div className="hidden md:flex items-center gap-5">
+                            {/* Language Switcher */}
+                            <div className="flex items-center gap-1 border border-white/10 rounded-full p-0.5 bg-white/5 mr-1 select-none shrink-0">
+                                <button
+                                    onClick={() => i18n.changeLanguage('vi')}
+                                    className={`px-2 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${
+                                        i18n.language === 'vi'
+                                            ? 'bg-[#F9A11B] text-brand-blue'
+                                            : 'text-white/60 hover:text-white'
+                                    }`}
+                                >
+                                    VI
+                                </button>
+                                <button
+                                    onClick={() => i18n.changeLanguage('en')}
+                                    className={`px-2 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${
+                                        i18n.language.startsWith('en')
+                                            ? 'bg-[#F9A11B] text-brand-blue'
+                                            : 'text-white/60 hover:text-white'
+                                    }`}
+                                >
+                                    EN
+                                </button>
+                            </div>
+
                             {isAuthenticated ? (
                                 <>
                                     <button
@@ -188,18 +214,18 @@ export default function Navbar() {
                                     </Link>
 
                                     <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy}>
-                                        Tư Vấn Ngay
+                                        {t('nav.booking', 'Đặt lịch ngay')}
                                     </Button>
                                 </>
                             ) : (
                                 <>
                                     <motion.div whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
                                         <Link to="/login" className="text-base font-bold text-white hover:text-white/70 transition-colors">
-                                            Đăng Nhập
+                                            {t('nav.login', 'Đăng nhập')}
                                         </Link>
                                     </motion.div>
                                     <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy}>
-                                        Tư Vấn Ngay
+                                        {t('nav.booking', 'Đặt lịch ngay')}
                                     </Button>
                                 </>
                             )}
@@ -207,6 +233,30 @@ export default function Navbar() {
 
                         {/* MOBILE ACTIONS */}
                         <div className="flex md:hidden items-center gap-3">
+                            {/* Language Switcher Mobile */}
+                            <div className="flex items-center gap-1 border border-white/10 rounded-full p-0.5 bg-white/5 select-none shrink-0">
+                                <button
+                                    onClick={() => i18n.changeLanguage('vi')}
+                                    className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full transition-all cursor-pointer ${
+                                        i18n.language === 'vi'
+                                            ? 'bg-[#F9A11B] text-brand-blue'
+                                            : 'text-white/60 hover:text-white'
+                                    }`}
+                                >
+                                    VI
+                                </button>
+                                <button
+                                    onClick={() => i18n.changeLanguage('en')}
+                                    className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full transition-all cursor-pointer ${
+                                        i18n.language.startsWith('en')
+                                            ? 'bg-[#F9A11B] text-brand-blue'
+                                            : 'text-white/60 hover:text-white'
+                                    }`}
+                                >
+                                    EN
+                                </button>
+                            </div>
+
                             {isAuthenticated && (
                                 <button type="button" aria-label="Notifications" className="relative p-2 text-white/70 hover:text-white transition-colors">
                                     <Bell className="w-5 h-5" />
@@ -233,28 +283,28 @@ export default function Navbar() {
                         >
                             <div className="px-4 py-6 space-y-6">
                                 <nav className="flex flex-col gap-3">
-                                    {NAV_ITEMS.map((item) => (
+                                    {currentNavItems.map((item) => (
                                         <NavLink key={item.name} item={item} mobile onClick={closeMenu} active={location.pathname === item.path} />
                                     ))}
                                 </nav>
                                 <div className="pt-4 border-t border-white/5 flex flex-col gap-3">
                                     {isAuthenticated ? (
-                                        <Link to="/userprofile" onClick={closeMenu}>
+                                        <Link to="/user-profile" onClick={closeMenu}>
                                             <button
                                                 type="button"
                                                 className="w-full px-4 py-3 rounded-2xl text-white font-semibold border transition-all hover:bg-white/10"
                                                 style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)' }}
                                             >
-                                                Thông tin cá nhân
+                                                {t('profile.personalInfo', 'Thông tin cá nhân')}
                                             </button>
                                         </Link>
                                     ) : (
                                         <Link to="/login" onClick={closeMenu} className="w-full text-center py-3 text-white font-bold text-base hover:text-white/70 transition-colors">
-                                            Đăng Nhập
+                                            {t('nav.login', 'Đăng nhập')}
                                         </Link>
                                     )}
                                     <Button to="/phone-service" size="sm" bg={COLORS.orange} color={COLORS.navy} onClick={closeMenu}>
-                                        Tư Vấn Ngay
+                                        {t('nav.booking', 'Đặt lịch ngay')}
                                     </Button>
                                 </div>
                             </div>
@@ -270,16 +320,16 @@ export default function Navbar() {
             {/* MOBILE BOTTOM NAV */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#00285E]/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgb(0,0,0,0.5)]">
                 <div className="h-16 flex items-center justify-around px-2 relative">
-                    {MOBILE_TAB_ITEMS.map((item) => {
+                    {currentMobileTabItems.map((item) => {
                         const active =
                             item.path === '/'
                                 ? location.pathname === '/'
-                                : item.path === '/userprofile'
-                                    ? ['/userprofile', '/login', '/signup', '/forgot-password'].includes(location.pathname)
+                                : item.path === '/user-profile'
+                                    ? ['/user-profile', '/login', '/signup', '/forgot-password'].includes(location.pathname)
                                     : location.pathname === item.path;
 
                         const Icon = item.icon;
-                        const targetPath = item.path === '/userprofile' && !isAuthenticated ? '/login' : item.path;
+                        const targetPath = item.path === '/user-profile' && !isAuthenticated ? '/login' : item.path;
 
                         return (
                             <Link key={item.name} to={targetPath} className="flex flex-col items-center justify-center flex-1 h-full relative group">

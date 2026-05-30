@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   Package,
@@ -6,7 +6,6 @@ import {
   Boxes,
   Filter,
   Pencil,
-  Trash2,
   X,
   Wrench,
   Upload,
@@ -18,11 +17,9 @@ import { useOutletContext } from "react-router-dom";
 import { type Category, type ServiceCatalog } from "../../../model/dto/serviceCatalog.dto";
 import { useFetchClient } from '../../../hook/useFetchClient';
 import { SERVICE_CATALOG_API_ENDPOINTS } from '../../../constants/admin/serviceCatalogApiEndPoint';
-const formatPrice = (price: number) => `${price.toLocaleString("vi-VN")}đ`;
 
 export default function AdminServiceManagement() {
-  const { searchQuery, showToast } = useOutletContext<{
-    searchQuery: string;
+  const { showToast } = useOutletContext<{
     showToast: (text: string, type?: "success" | "info" | "warning") => void;
   }>();
   const { fetchPrivate } = useFetchClient();
@@ -313,12 +310,12 @@ function ServiceFormModal({ initial, onClose, onRefresh }: ServiceFormModalProps
           is_active: isActive
         }
       )
-      setSuccessMsg("Tạo nhân sự thành công!");
+      setSuccessMsg("Tạo dịch vụ thành công!");
       onRefresh();
       onClose();
     } catch (error: any) {
-      console.error("Lỗi lấy danh sách vai trò:", error);
-      setErrorMsg(error?.message || "Cập nhật nhân sự thất bại, vui lòng thử lại");
+      console.error("Lỗi tạo dịch vụ:", error);
+      setErrorMsg(error?.message || "Thêm dịch vụ thất bại, vui lòng thử lại");
     }
   }; 
   
@@ -339,8 +336,8 @@ function ServiceFormModal({ initial, onClose, onRefresh }: ServiceFormModalProps
         onRefresh();
         onClose();
       } catch (error: any) {
-        console.error("Lỗi lấy danh sách vai trò:", error);
-        setErrorMsg(error?.message || "Cập nhật thông tin nhân sự thất bại, vui lòng thử lại");
+        console.error("Lỗi cập nhật dịch vụ:", error);
+        setErrorMsg(error?.message || "Cập nhật dịch vụ thất bại, vui lòng thử lại");
       }
     }; 
   

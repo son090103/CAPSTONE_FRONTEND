@@ -6,11 +6,11 @@ export const useFetchClient = () => {
   // ==========================================
   // LOẠI 1: PUBLIC (Không Token - Dùng cho Login, Register)
   // ==========================================
-  const fetchPublic = async (
+  const fetchPublic = async <T = any>(
     url: string,
     method: string = "GET",
     bodyData: any = null,
-  ) => {
+  ): Promise<any> => {
     const options: RequestInit = {
       method: method,
       headers: { "Content-Type": "application/json" },
@@ -28,7 +28,7 @@ export const useFetchClient = () => {
       if (!response.ok) {
         throw new Error(data.message || "Có lỗi xảy ra từ máy chủ");
       }
-      return data;
+      return data as T;
     } catch (error) {
       console.error("Lỗi Public API:", error);
       throw error;
@@ -39,11 +39,11 @@ export const useFetchClient = () => {
   // LOẠI 2: PRIVATE JSON (Có Token + Bảo vệ)
   // Dùng cho: Xem xe, Đặt lịch... (Nơi cần quyền, body là JSON)
   // ==========================================
-  const fetchPrivate = async <T>(
+  const fetchPrivate = async <T = any>(
     url: string,
     method: string = "GET",
     bodyData: any = null,
-  ) => {
+  ): Promise<any> => {
     const token = localStorage.getItem("token");
     const options: RequestInit = {
       method: method,
@@ -71,7 +71,7 @@ export const useFetchClient = () => {
         throw new Error(data.message || "Có lỗi xảy ra từ máy chủ");
       }
 
-      return data;
+      return data as T;
     } catch (error) {
       console.error("Lỗi Private API:", error);
       throw error;
@@ -87,11 +87,11 @@ export const useFetchClient = () => {
   // "multipart/form-data; boundary=----..." với đúng boundary.
   // Nếu tự set Content-Type thì multer trên BE không parse được.
   // ==========================================
-  const fetchPrivateForm = async (
+  const fetchPrivateForm = async <T = any>(
     url: string,
     method: string = "POST",
     formData: FormData,
-  ) => {
+  ): Promise<any> => {
     const token = localStorage.getItem("token");
 
     const options: RequestInit = {
@@ -119,7 +119,7 @@ export const useFetchClient = () => {
         throw new Error(data.message || "Có lỗi xảy ra từ máy chủ");
       }
 
-      return data;
+      return data as T;
     } catch (error) {
       console.error("Lỗi Private Form API:", error);
       throw error;

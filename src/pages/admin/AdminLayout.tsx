@@ -34,7 +34,6 @@ export default function AdminLayout() {
   const { fetchPrivate } = useFetchClient();
 
   const user = useSelector((state: RootState) => state.user.user as UserModel | null);
-  const isAuthenticated = !!localStorage.getItem('token');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -73,7 +72,7 @@ export default function AdminLayout() {
 
   const avatarUrl = user?.avatar?.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&auto=format&fit=crop';
   const displayName = user?.fullName || 'Nguyễn Văn Admin';
-  const displayRole = user?.role === 'admin' ? 'Quản trị viên' : (user?.role || 'Quản trị viên');
+  const displayRole = user?.role?.toUpperCase() === 'ADMIN' ? 'Quản trị viên' : (user?.role || 'Quản trị viên');
 
   // Menu items for the sidebar with corresponding route paths
   const menuItems = [

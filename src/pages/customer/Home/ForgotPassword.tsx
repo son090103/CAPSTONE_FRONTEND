@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ShieldAlert, ChevronLeft, Send, KeyRound, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, ChevronLeft, Send, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import 'react-phone-input-2/lib/style.css';
@@ -325,6 +325,24 @@ export default function ForgotPassword() {
         setIsLoading(true);
         setErrorMsg('');
         try {
+            // Kiểm tra số điện thoại tồn tại trên hệ thống
+            try {
+                await fetchPublic(AUTH_API_ENDPOINTS.CHECK_PHONE, 'POST', { phone: digits });
+                // Nếu CHECK_PHONE thành công thì có nghĩa là số điện thoại chưa tồn tại trong hệ thống (vì CHECK_PHONE trả 200 nếu chưa đăng ký)
+                setErrors((prev) => ({ ...prev, phone: 'Số điện thoại này chưa được đăng ký trong hệ thống.' }));
+                setIsLoading(false);
+                return;
+            } catch (err: any) {
+                // Nếu lỗi trả về là "Người dùng đã tồn tại, vui lòng đăng nhập" nghĩa là số điện thoại ĐÃ đăng ký trong hệ thống (Hợp lệ cho reset password)
+                if (err.message === 'Người dùng đã tồn tại, vui lòng đăng nhập') {
+                    // Số điện thoại hợp lệ, tiếp tục gửi OTP
+                } else {
+                    setErrorMsg(err.message || 'Có lỗi xảy ra trong quá trình xác thực.');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
             let formattedPhone = phone;
             if (!formattedPhone.startsWith('+')) {
                 if (formattedPhone.startsWith('84')) {

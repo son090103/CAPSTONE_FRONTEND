@@ -93,10 +93,12 @@ export default function AdminStaffManagement() {
             <Users size={22} />
           </div>
           <div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">
+              Tổng số nhân sự
+            </span>
             <span className="text-2xl font-bold text-slate-900 tracking-tight block">
               {staff.length}
             </span>
-            <span className="text-2xl font-bold text-slate-900 tracking-tight block"></span>
           </div>
         </motion.div>
 
@@ -185,7 +187,7 @@ export default function AdminStaffManagement() {
                       {s.phoneNumber}
                     </td>
                     <td className="py-4 px-4">
-                      <RoleBadge roleCode={s.role.roleName} />
+                      <RoleBadge roleCode={s.role.roleCode} roleName={s.role.roleName} />
                     </td>
                     <td className="py-4 px-4">
                       <StatusBadge status={s.status as StaffStatus} />
@@ -501,20 +503,20 @@ function StatusBadge({ status }: { status: StaffStatus }) {
   );
 }
 
-function RoleBadge({ roleCode }: { roleCode: string }) {
+function RoleBadge({ roleCode, roleName }: { roleCode: string; roleName: string }) {
   const styleMap: Record<string, string> = {
     TECHNICIAN: "bg-blue-50 text-blue-700 border border-blue-200",
     RECEPTIONIST: "bg-violet-50 text-violet-700 border border-violet-200",
     MANAGER: "bg-orange-50 text-orange-700 border border-orange-200",
+    ADMIN: "bg-rose-50 text-rose-700 border border-rose-200",
   };
   const style =
-    styleMap[roleCode] ?? "bg-slate-50 text-slate-600 border border-slate-200";
-  const label = roleCode;
+    styleMap[roleCode.toUpperCase()] ?? "bg-slate-50 text-[#00285E] border border-slate-200";
   return (
     <span
       className={`inline-block px-2.5 py-1 rounded-md text-[10px] font-extrabold tracking-wide uppercase ${style}`}
     >
-      {label}
+      {roleName}
     </span>
   );
 }

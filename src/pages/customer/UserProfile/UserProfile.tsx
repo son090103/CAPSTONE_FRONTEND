@@ -9,15 +9,19 @@ import {
     HelpCircle,
     LogOut,
     CheckCircle2,
+    History,
+    ShieldCheck,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-// ✅ Import logout action từ slice thay vì định nghĩa inline
+import { useTranslation } from 'react-i18next';
 import { logout, loginSuccess } from '../../../store/slices/userSlice';
 
 import DashboardTab from './DashboardTab';
 import VehiclesTab from './VehiclesTab';
 import AppointmentsTab from './AppointmentsTab';
 import SettingsTab from './SettingsTab';
+import HistoryTab from './HistoryTab';
+import WarrantyTab from './WarrantyTab';
 import type { RootState } from '../../../store/store';
 import type { UserModel } from '../../../model/User';
 import { useFetchClient } from '../../../hook/useFetchClient';
@@ -27,15 +31,19 @@ const MENU_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'vehicles', label: 'Xe sở hữu', icon: Car },
     { id: 'appointments', label: 'Lịch hẹn', icon: Calendar },
+    { id: 'history', label: 'Lịch sử sửa chữa', icon: History },
+    { id: 'warranty', label: 'Bảo hành & Báo giá', icon: ShieldCheck },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
 ] as const;
 
 type TabId = typeof MENU_ITEMS[number]['id'];
 
 export default function UserProfile() {
+    const { t } = useTranslation();
+
     useEffect(() => {
-        document.title = 'Thông tin cá nhân | AGM Intelligent';
-    }, []);
+        document.title = `${t('profile.title', 'Thông tin cá nhân')} | AGM Intelligent`;
+    }, [t]);
 
     const dispatch = useDispatch();
     const { fetchPrivate, fetchPrivateForm } = useFetchClient();
@@ -51,7 +59,7 @@ export default function UserProfile() {
     const [activeTab, setActiveTab] = useState<TabId | string>('dashboard');
     const [isEditing, setIsEditing] = useState(false);
     const [showToast, setShowToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('Cập nhật thông tin thành công!');
+    const [toastMessage, setToastMessage] = useState(t('profile.updateSuccess', 'Cập nhật thông tin thành công!'));
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // =====================================================
@@ -129,7 +137,7 @@ export default function UserProfile() {
     // HELPER: Hiện toast
     // =====================================================
 
-    const showSuccessToast = (message = 'Cập nhật thông tin thành công!') => {
+    const showSuccessToast = (message = t('profile.updateSuccess', 'Cập nhật thông tin thành công!')) => {
         setToastMessage(message);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
@@ -194,7 +202,6 @@ export default function UserProfile() {
         try {
             const form = new FormData();
 
-            // Trim ngay từ đầu để tránh whitespace-only string vượt qua guard nhưng không append vào form
             const newFullName = editOverrides.fullName?.trim() ?? '';
             if (newFullName) {
                 form.append('fullName', newFullName);
@@ -204,7 +211,6 @@ export default function UserProfile() {
                 form.append('avatar', pendingAvatarFile);
             }
 
-            // Không có gì thực sự thay đổi → thoát sớm, không gọi API
             if (!newFullName && !pendingAvatarFile) {
                 setIsEditing(false);
                 return;
@@ -223,9 +229,9 @@ export default function UserProfile() {
             setAvatarPreview('');
 
             setIsEditing(false);
-            showSuccessToast('Cập nhật thông tin thành công!');
+            showSuccessToast(t('profile.updateSuccess', 'Cập nhật thông tin thành công!'));
         } catch (error: any) {
-            alert(error.message || 'Cập nhật thất bại, vui lòng thử lại.');
+            alert(error.message || t('profile.updateFail', 'Cập nhật thất bại, vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -238,11 +244,9 @@ export default function UserProfile() {
     const handleAvatarSave = async () => {
         if (!pendingAvatarFile) return;
         setIsSubmitting(true);
-        console.log("Starting avatar upload...", pendingAvatarFile);
         try {
             const form = new FormData();
 
-            // Luôn gửi kèm fullName giống hệt như ở phần thông tin cá nhân
             const currentFullName = formData.fullName || user?.fullName || '';
             if (currentFullName) {
                 form.append('fullName', currentFullName);
@@ -250,23 +254,19 @@ export default function UserProfile() {
 
             form.append('avatar', pendingAvatarFile);
 
-            console.log("Sending PUT request to profile update endpoint...");
             const response = await fetchPrivateForm(
                 PROFILE_API_ENDPOINTS.UPDATE_PROFILE,
                 'PUT',
                 form,
             );
 
-            console.log("Response received from profile update:", response);
-
             syncUserToRedux(response.data);
 
             setPendingAvatarFile(null);
             setAvatarPreview('');
-            showSuccessToast('Cập nhật ảnh đại diện thành công!');
+            showSuccessToast(t('profile.avatarUpdateSuccess', 'Cập nhật ảnh đại diện thành công!'));
         } catch (error: any) {
-            console.error("Error updating avatar:", error);
-            alert(error.message || 'Cập nhật ảnh đại diện thất bại, vui lòng thử lại.');
+            alert(error.message || t('profile.avatarUpdateFail', 'Cập nhật ảnh đại diện thất bại, vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -286,7 +286,7 @@ export default function UserProfile() {
             settingsOverrides.newPassword &&
             settingsOverrides.newPassword !== settingsOverrides.confirmPassword
         ) {
-            alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
+            alert(t('settings.passwordMismatch', 'Mật khẩu mới và xác nhận mật khẩu không khớp!'));
             return;
         }
 
@@ -294,7 +294,6 @@ export default function UserProfile() {
         try {
             const form = new FormData();
 
-            // Trim ngay từ đầu để tránh whitespace-only string vượt qua guard nhưng không append vào form
             const newFullName = settingsOverrides.fullName?.trim() ?? '';
             if (newFullName) {
                 form.append('fullName', newFullName);
@@ -304,9 +303,8 @@ export default function UserProfile() {
                 form.append('avatar', pendingSettingsAvatarFile);
             }
 
-            // Không có gì thực sự thay đổi → thoát sớm, không gọi API
             if (!newFullName && !pendingSettingsAvatarFile) {
-                showSuccessToast('Đã lưu cài đặt!');
+                showSuccessToast(t('settings.updateSuccess', 'Đã lưu cài đặt thành công!'));
                 return;
             }
 
@@ -325,9 +323,9 @@ export default function UserProfile() {
             setPendingSettingsAvatarFile(null);
             setAvatarPreview('');
 
-            showSuccessToast('Đã lưu cài đặt thành công!');
+            showSuccessToast(t('settings.updateSuccess', 'Đã lưu cài đặt thành công!'));
         } catch (error: any) {
-            alert(error.message || 'Cập nhật thất bại, vui lòng thử lại.');
+            alert(error.message || t('profile.updateFail', 'Cập nhật thất bại, vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -342,7 +340,7 @@ export default function UserProfile() {
             'PUT',
             data
         );
-        showSuccessToast('Đổi mật khẩu thành công!');
+        showSuccessToast(t('settings.changePasswordSuccess', 'Đổi mật khẩu thành công!'));
     };
 
     const handleSettingChange = (field: string, value: string | boolean) => {
@@ -377,6 +375,7 @@ export default function UserProfile() {
                         hasPendingAvatar={!!pendingAvatarFile}
                         onAvatarSave={handleAvatarSave}
                         onAvatarCancel={handleAvatarCancel}
+                        onViewAllHistory={() => setActiveTab('history')}
                     />
                 );
 
@@ -400,6 +399,12 @@ export default function UserProfile() {
                         onNavigateBack={() => setActiveTab('vehicles')}
                     />
                 );
+
+            case 'history':
+                return <HistoryTab />;
+
+            case 'warranty':
+                return <WarrantyTab />;
 
             case 'settings':
                 return (
@@ -441,7 +446,7 @@ export default function UserProfile() {
                 <div className="lg:col-span-3 flex flex-col gap-2 md:gap-3">
                     <div className="hidden lg:block px-4 py-1">
                         <h2 className="text-gray-400 font-bold text-base tracking-wide">
-                            Thông tin cá nhân
+                            {t('profile.title', 'Thông tin cá nhân')}
                         </h2>
                     </div>
 
@@ -471,7 +476,7 @@ export default function UserProfile() {
                                             className={`w-4 h-4 md:w-5 md:h-5 shrink-0 ${isActive ? 'text-brand-blue' : 'text-brand-blue/60'
                                                 }`}
                                         />
-                                        <span className="truncate">{item.label}</span>
+                                        <span className="truncate">{t(`profile.tabs.${item.id}`, item.label)}</span>
                                     </motion.button>
                                 );
                             })}
@@ -479,19 +484,18 @@ export default function UserProfile() {
 
                         <div className="pt-3 lg:pt-4 border-t border-gray-200/80 grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2 mt-3 lg:mt-auto">
                             <button
-                                onClick={() => alert('Hệ thống hỗ trợ trực tuyến đang kết nối...')}
+                                onClick={() => alert(t('profile.supportMessage', 'Hệ thống hỗ trợ trực tuyến đang kết nối...'))}
                                 className="w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl font-medium text-xs md:text-sm text-brand-blue/70 hover:bg-white/60 hover:text-brand-blue transition-all text-left bg-white/40 lg:bg-transparent"
                             >
                                 <HelpCircle className="w-4 h-4 md:w-5 md:h-5 text-brand-blue/60 shrink-0" />
-                                <span className="truncate">Trợ giúp & Hỗ trợ</span>
+                                <span className="truncate">{t('profile.support', 'Trợ giúp & Hỗ trợ')}</span>
                             </button>
 
                             <button
                                 onClick={() => {
-                                    if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                                    if (confirm(t('profile.logoutConfirm', 'Bạn có chắc chắn muốn đăng xuất?'))) {
                                         localStorage.removeItem('token');
                                         localStorage.removeItem('userAvatar');
-                                        // ✅ Dùng action creator đã import từ slice
                                         dispatch(logout());
                                         window.location.href = '/login';
                                     }
@@ -499,7 +503,7 @@ export default function UserProfile() {
                                 className="w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl font-bold text-xs md:text-sm text-red-600 hover:bg-red-50 transition-all text-left group bg-red-50/30 lg:bg-transparent"
                             >
                                 <LogOut className="w-4 h-4 md:w-5 md:h-5 text-red-600 group-hover:translate-x-1 transition-transform shrink-0" />
-                                <span className="truncate">Đăng xuất</span>
+                                <span className="truncate">{t('profile.logout', 'Đăng xuất')}</span>
                             </button>
                         </div>
                     </motion.div>
@@ -514,7 +518,7 @@ export default function UserProfile() {
                         className="pt-1"
                     >
                         <h1 className="text-2xl font-display font-bold text-brand-blue">
-                            Hồ sơ người dùng
+                            {t('profile.userProfile', 'Hồ sơ người dùng')}
                         </h1>
                     </motion.div>
 

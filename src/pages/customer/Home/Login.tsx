@@ -443,7 +443,7 @@ export default function Login() {
                                 className="relative z-10 bg-[#F8FAFC] px-4 text-[10px] font-bold uppercase tracking-widest"
                                 style={{ color: `${COLORS.navy}4D` }}
                             >
-                                OR CONTINUE WITH
+                                HOẶC TIẾP TỤC VỚI
                             </span>
                         </div>
 

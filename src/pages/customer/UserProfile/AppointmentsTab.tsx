@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import {
   Car,
   Wrench,
@@ -12,12 +13,6 @@ import {
   ShieldCheck,
   Settings,
 } from 'lucide-react';
-
-const SERVICES_MAP: Record<string, { title: string; price: number; time: string }> = {
-  thaynhot: { title: 'Thay nhớt', price: 1500000, time: '60 phút' },
-  canchinh: { title: 'Cân chỉnh lốp', price: 800000, time: '45 phút' },
-  tongquat: { title: 'Kiểm tra tổng quát', price: 2200000, time: '120 phút' },
-};
 
 const TIME_SLOTS = [
   { time: '08:00 AM', status: 'available' },
@@ -57,11 +52,23 @@ export default function AppointmentsTab({
   onReset,
   onNavigateBack,
 }: AppointmentsTabProps) {
-  const currentSvc = SERVICES_MAP[selectedService];
+  const { t } = useTranslation();
+
+  const SERVICES_MAP: Record<string, { title: string; price: number; time: string }> = {
+    thaynhot: { title: t('appointments.services.thaynhot', 'Thay nhớt'), price: 1500000, time: t('appointments.services.durationThayNhot', '60 phút') },
+    canchinh: { title: t('appointments.services.canchinh', 'Cân chỉnh lốp'), price: 800000, time: t('appointments.services.durationCanChinh', '45 phút') },
+    tongquat: { title: t('appointments.services.tongquat', 'Kiểm tra tổng quát'), price: 2200000, time: t('appointments.services.durationTongQuat', '120 phút') },
+  };
+
+  const currentSvc = SERVICES_MAP[selectedService] || SERVICES_MAP.thaynhot;
   const vat = currentSvc.price * 0.1;
   const total = currentSvc.price + vat;
+  
   const vehicleLabel =
     selectedVehicle === 'porsche' ? 'Porsche 911 Carrera' : 'BMW M4 Competition';
+
+  const dayOfWeek = t('appointments.dayOfWeek', 'Thứ 3');
+  const monthYearLabel = t('appointments.monthYear', 'Tháng 10, 2023');
 
   return (
     <motion.div
@@ -72,10 +79,10 @@ export default function AppointmentsTab({
     >
       <div>
         <h2 className="text-2xl font-display font-bold text-brand-blue tracking-tight">
-          Đặt lịch hẹn dịch vụ
+          {t('appointments.title', 'Đặt lịch hẹn dịch vụ')}
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          Hoàn thành các bước dưới đây để đặt lịch chăm sóc cho xế yêu của bạn.
+          {t('appointments.description', 'Hoàn thành các bước dưới đây để đặt lịch chăm sóc cho xế yêu của bạn.')}
         </p>
       </div>
 
@@ -85,10 +92,10 @@ export default function AppointmentsTab({
         <div className="absolute top-5 left-[10%] w-[33%] h-0.5 bg-brand-blue z-0" />
 
         {[
-          { num: 1, label: 'Chọn xe', color: 'bg-brand-blue', labelColor: 'text-brand-blue' },
-          { num: 2, label: 'Chọn dịch vụ', color: 'bg-brand-orange', labelColor: 'text-brand-orange' },
-          { num: 3, label: 'Chọn thời gian', color: 'bg-gray-100', labelColor: 'text-gray-400', textColor: 'text-gray-600' },
-          { num: 4, label: 'Xác nhận', color: 'bg-gray-100', labelColor: 'text-gray-400', textColor: 'text-gray-600' },
+          { num: 1, label: t('appointments.steps.selectVehicle', 'Chọn xe'), color: 'bg-brand-blue', labelColor: 'text-brand-blue' },
+          { num: 2, label: t('appointments.steps.selectService', 'Chọn dịch vụ'), color: 'bg-brand-orange', labelColor: 'text-brand-orange' },
+          { num: 3, label: t('appointments.steps.selectTime', 'Chọn thời gian'), color: 'bg-gray-100', labelColor: 'text-gray-400', textColor: 'text-gray-600' },
+          { num: 4, label: t('appointments.steps.confirm', 'Xác nhận'), color: 'bg-gray-100', labelColor: 'text-gray-400', textColor: 'text-gray-600' },
         ].map((step) => (
           <div key={step.num} className="relative z-10 flex flex-col items-center gap-2">
             <div
@@ -110,7 +117,7 @@ export default function AppointmentsTab({
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-brand-blue font-bold text-sm">
               <Car className="w-4 h-4 text-brand-blue" />
-              <span>Chọn phương tiện của bạn</span>
+              <span>{t('appointments.selectVehicleTitle', 'Chọn phương tiện của bạn')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -154,14 +161,14 @@ export default function AppointmentsTab({
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-brand-blue font-bold text-sm">
               <Wrench className="w-4 h-4 text-brand-blue" />
-              <span>Chọn dịch vụ cần thiết</span>
+              <span>{t('appointments.selectServiceTitle', 'Chọn dịch vụ cần thiết')}</span>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { id: 'thaynhot', label: 'Thay nhớt', desc: 'Nhớt tổng hợp cao cấp', price: '1.500.000đ', icon: Wrench },
-                { id: 'canchinh', label: 'Cân chỉnh lốp', desc: 'Kiểm tra áp suất & đảo lốp', price: '800.000đ', icon: Settings },
-                { id: 'tongquat', label: 'Kiểm tra tổng quát', desc: '50 điểm kỹ thuật chi tiết', price: '2.200.000đ', icon: FileText, popular: true },
+                { id: 'thaynhot', label: t('appointments.services.thaynhot', 'Thay nhớt'), desc: t('appointments.services.thaynhotDesc', 'Nhớt tổng hợp cao cấp'), price: '1.500.000đ', icon: Wrench },
+                { id: 'canchinh', label: t('appointments.services.canchinh', 'Cân chỉnh lốp'), desc: t('appointments.services.canchinhDesc', 'Kiểm tra áp suất & đảo lốp'), price: '800.000đ', icon: Settings },
+                { id: 'tongquat', label: t('appointments.services.tongquat', 'Kiểm tra tổng quát'), desc: t('appointments.services.tongquatDesc', '50 điểm kỹ thuật chi tiết'), price: '2.200.000đ', icon: FileText, popular: true },
               ].map((svc) => {
                 const isSelected = selectedService === svc.id;
                 const IconCmp = svc.icon;
@@ -178,7 +185,7 @@ export default function AppointmentsTab({
                   >
                     {svc.popular && (
                       <div className="absolute top-0 right-0 bg-brand-orange text-brand-blue font-bold text-[8px] px-6 py-1 translate-x-4 translate-y-2 rotate-45 shadow-sm uppercase tracking-wider font-mono">
-                        PHỔ BIẾN
+                        {t('appointments.popular', 'PHỔ BIẾN')}
                       </div>
                     )}
                     <div className="flex flex-col items-center">
@@ -203,7 +210,7 @@ export default function AppointmentsTab({
                             : 'border border-brand-blue text-brand-blue hover:bg-blue-50'
                         }`}
                       >
-                        {isSelected ? 'Đã chọn' : 'Chọn'}
+                        {isSelected ? t('appointments.selected', 'Đã chọn') : t('appointments.select', 'Chọn')}
                       </div>
                     </div>
                   </button>
@@ -216,14 +223,14 @@ export default function AppointmentsTab({
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-brand-blue font-bold text-sm">
               <Clock className="w-4 h-4 text-brand-blue" />
-              <span>Chọn thời gian phù hợp</span>
+              <span>{t('appointments.selectTimeTitle', 'Chọn thời gian phù hợp')}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
               {/* Calendar */}
               <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
                 <div className="flex items-center justify-between mb-4 px-1">
-                  <span className="font-bold text-xs text-brand-blue">Tháng 10, 2023</span>
+                  <span className="font-bold text-xs text-brand-blue">{monthYearLabel}</span>
                   <div className="flex items-center gap-1 text-gray-400">
                     <button type="button" className="p-1 hover:text-brand-blue transition-colors">
                       <ChevronLeft className="w-4 h-4" />
@@ -234,7 +241,15 @@ export default function AppointmentsTab({
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-400 mb-2">
-                  {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d) => (
+                  {[
+                    t('common.days.sun', 'CN'),
+                    t('common.days.mon', 'T2'),
+                    t('common.days.tue', 'T3'),
+                    t('common.days.wed', 'T4'),
+                    t('common.days.thu', 'T5'),
+                    t('common.days.fri', 'T6'),
+                    t('common.days.sat', 'T7'),
+                  ].map((d) => (
                     <span key={d}>{d}</span>
                   ))}
                 </div>
@@ -266,7 +281,7 @@ export default function AppointmentsTab({
               {/* Time Slots */}
               <div className="flex flex-col gap-2.5">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-                  Khung giờ trống
+                  {t('appointments.availableTimeSlots', 'Khung giờ trống')}
                 </span>
                 <div className="flex flex-col gap-2">
                   {TIME_SLOTS.map((slot, i) => {
@@ -299,15 +314,17 @@ export default function AppointmentsTab({
 
         {/* Right Summary Card */}
         <div className="lg:col-span-5 xl:col-span-4 sticky top-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col gap-6">
-          <h3 className="text-lg font-display font-bold text-brand-blue">Tóm tắt dịch vụ</h3>
+          <h3 className="text-lg font-display font-bold text-brand-blue">
+            {t('appointments.summaryTitle', 'Tóm tắt dịch vụ')}
+          </h3>
 
           <div className="flex flex-col gap-4">
             {[
-              { icon: Car, label: 'Phương tiện', value: vehicleLabel },
+              { icon: Car, label: t('appointments.vehicle', 'Phương tiện'), value: vehicleLabel },
               {
                 icon: Calendar,
-                label: 'Thời gian',
-                value: `${selectedTimeSlot}, Thứ 3 - 0${selectedDate}/10/2023`,
+                label: t('appointments.time', 'Thời gian'),
+                value: `${selectedTimeSlot}, ${dayOfWeek} - 0${selectedDate}/10/2023`,
               },
             ].map((item) => {
               const IconCmp = item.icon;
@@ -328,7 +345,7 @@ export default function AppointmentsTab({
               <Wrench className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
               <div className="flex flex-col w-full">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Dịch vụ đã chọn
+                  {t('appointments.selectedService', 'Dịch vụ đã chọn')}
                 </span>
                 <div className="flex justify-between items-start gap-2 mt-0.5 w-full">
                   <span className="font-bold text-xs text-brand-blue leading-tight">
@@ -339,7 +356,7 @@ export default function AppointmentsTab({
                   </span>
                 </div>
                 <span className="text-[10px] text-gray-400 mt-1">
-                  Thuế (VAT 10%) {vat.toLocaleString()}đ
+                  {t('appointments.vatLabel', 'Thuế (VAT 10%)')} {vat.toLocaleString()}đ
                 </span>
               </div>
             </div>
@@ -349,11 +366,11 @@ export default function AppointmentsTab({
 
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-500">Thời gian dự kiến:</span>
+              <span className="text-gray-500">{t('appointments.estimatedTime', 'Thời gian dự kiến:')}</span>
               <span className="font-bold text-brand-blue">⏱ {currentSvc.time}</span>
             </div>
             <div className="flex justify-between items-baseline mt-2">
-              <span className="font-bold text-sm text-brand-blue">Tổng cộng:</span>
+              <span className="font-bold text-sm text-brand-blue">{t('appointments.totalPrice', 'Tổng cộng:')}</span>
               <span className="text-2xl font-display font-bold text-brand-blue">
                 {total.toLocaleString()}đ
               </span>
@@ -365,12 +382,18 @@ export default function AppointmentsTab({
               type="button"
               onClick={() =>
                 alert(
-                  `Báo giá chi tiết:\n- ${currentSvc.title}: ${currentSvc.price.toLocaleString()}đ\n- Thuế VAT (10%): ${vat.toLocaleString()}đ\n=> TỔNG THÀNH TIỀN: ${total.toLocaleString()}đ`
+                  t('appointments.detailedQuoteAlert', {
+                    defaultValue: `Báo giá chi tiết:\n- ${currentSvc.title}: ${currentSvc.price.toLocaleString()}đ\n- Thuế VAT (10%): ${vat.toLocaleString()}đ\n=> TỔNG THÀNH TIỀN: ${total.toLocaleString()}đ`,
+                    title: currentSvc.title,
+                    price: currentSvc.price.toLocaleString(),
+                    vat: vat.toLocaleString(),
+                    total: total.toLocaleString(),
+                  })
                 )
               }
               className="w-full py-2.5 rounded-xl border border-brand-blue font-bold text-xs text-brand-blue hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
             >
-              <FileText className="w-4 h-4" /> Xem báo giá
+              <FileText className="w-4 h-4" /> {t('appointments.viewQuote', 'Xem báo giá')}
             </button>
 
             <div className="grid grid-cols-2 gap-3">
@@ -384,7 +407,7 @@ export default function AppointmentsTab({
                 }`}
               >
                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                {isAccepted ? 'Đã chấp nhận' : 'Chấp nhận'}
+                {isAccepted ? t('appointments.accepted', 'Đã chấp nhận') : t('appointments.accept', 'Chấp nhận')}
               </button>
               <button
                 type="button"
@@ -395,7 +418,7 @@ export default function AppointmentsTab({
                     : 'border border-red-500 text-red-500 hover:bg-red-50'
                 }`}
               >
-                <X className="w-3.5 h-3.5 stroke-[2.5]" /> Từ chối
+                <X className="w-3.5 h-3.5 stroke-[2.5]" /> {t('appointments.decline', 'Từ chối')}
               </button>
             </div>
 
@@ -403,7 +426,7 @@ export default function AppointmentsTab({
               type="button"
               disabled={!isAccepted}
               onClick={() =>
-                alert('Hệ thống xác nhận và đặt lịch hẹn thành công! Xin cảm ơn quý khách.')
+                alert(t('appointments.successAlert', 'Hệ thống xác nhận và đặt lịch hẹn thành công! Xin cảm ơn quý khách.'))
               }
               className={`w-full py-3 font-bold text-xs rounded-xl transition-all mt-4 flex items-center justify-center gap-2 group ${
                 isAccepted
@@ -411,7 +434,7 @@ export default function AppointmentsTab({
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             >
-              <span>Tiếp theo</span>
+              <span>{t('common.next', 'Tiếp theo')}</span>
               <ChevronRight
                 className={`w-4 h-4 stroke-[2.5] ${isAccepted ? 'group-hover:translate-x-0.5 transition-transform' : ''}`}
               />
@@ -422,13 +445,13 @@ export default function AppointmentsTab({
               onClick={onNavigateBack}
               className="w-full py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
             >
-              <ChevronLeft className="w-4 h-4" /> Quay lại
+              <ChevronLeft className="w-4 h-4" /> {t('common.back', 'Quay lại')}
             </button>
           </div>
 
           <div className="flex items-center justify-center gap-1.5 pt-3 border-t border-gray-100 text-[8px] font-bold text-gray-400 uppercase tracking-widest">
             <ShieldCheck className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <span>Đảm bảo bởi AGM Intelligent</span>
+            <span>{t('appointments.securedBy', 'Đảm bảo bởi AGM Intelligent')}</span>
           </div>
         </div>
       </div>
