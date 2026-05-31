@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Menu, X, Home, Wrench, Cpu, Phone, User } from 'lucide-react';
+import { Bell, Menu, X, Home, Wrench, Cpu, Phone, User, Check, Trash2, Info, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import Logo from '../../components/share/Logo';
@@ -107,6 +107,192 @@ export default function Navbar() {
     const user = useSelector((state: RootState) => state.user.user as UserModel | null);
     const isAuthenticated = !!localStorage.getItem('token');
 
+    // =====================================================
+    // NOTIFICATION DROPDOWN STATE & LOGIC
+    // =====================================================
+    interface NotificationItem {
+        id: string;
+        titleKey: string;
+        descKey: string;
+        timeKey: string;
+        read: boolean;
+        type: 'info' | 'success' | 'warning';
+    }
+
+    const [notifications, setNotifications] = useState<NotificationItem[]>([
+        {
+            id: '1',
+            titleKey: 'notification.item1.title',
+            descKey: 'notification.item1.desc',
+            timeKey: 'notification.item1.time',
+            read: false,
+            type: 'success'
+        },
+        {
+            id: '2',
+            titleKey: 'notification.item2.title',
+            descKey: 'notification.item2.desc',
+            timeKey: 'notification.item2.time',
+            read: false,
+            type: 'info'
+        },
+        {
+            id: '3',
+            titleKey: 'notification.item3.title',
+            descKey: 'notification.item3.desc',
+            timeKey: 'notification.item3.time',
+            read: true,
+            type: 'warning'
+        }
+    ]);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    const unreadCount = notifications.filter(n => !n.read).length;
+
+    const toggleRead = (id: string) => {
+        setNotifications(prev =>
+            prev.map(n => (n.id === id ? { ...n, read: true } : n))
+        );
+    };
+
+    const markAllAsRead = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    };
+
+    const clearAll = () => {
+        setNotifications([]);
+    };
+
+    useEffect(() => {
+        setShowDropdown(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (!showDropdown) return;
+        const handleOutsideClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.notification-bell-container')) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('click', handleOutsideClick);
+        return () => document.removeEventListener('click', handleOutsideClick);
+    }, [showDropdown]);
+
+    const renderDropdown = () => {
+        return (
+            <AnimatePresence>
+                {showDropdown && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-[290px] xs:w-80 sm:w-96 bg-[#001C43] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 text-left"
+                    >
+                        {/* Header */}
+                        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                            <span className="font-bold text-xs sm:text-sm text-white flex items-center gap-2">
+                                {t('notification.title', 'Thông báo')}
+                                {unreadCount > 0 && (
+                                    <span className="px-1.5 py-0.5 text-[9px] font-bold bg-[#F9A11B] text-brand-blue rounded-full">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </span>
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        markAllAsRead();
+                                    }}
+                                    className="text-[10px] font-bold text-[#F9A11B] hover:underline"
+                                >
+                                    {t('notification.markAllRead', 'Đọc tất cả')}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* List */}
+                        <div className="max-h-[280px] overflow-y-auto divide-y divide-white/5">
+                            {notifications.length > 0 ? (
+                                notifications.map((item) => {
+                                    const IconComponent =
+                                        item.type === 'success'
+                                            ? Check
+                                            : item.type === 'warning'
+                                                ? AlertTriangle
+                                                : Info;
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleRead(item.id);
+                                            }}
+                                            className={`p-3.5 hover:bg-white/5 cursor-pointer transition-colors flex gap-3 items-start relative ${
+                                                !item.read ? 'bg-white/[0.02]' : ''
+                                            }`}
+                                        >
+                                            {/* Unread Indicator Bar */}
+                                            {!item.read && (
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F9A11B]" />
+                                            )}
+
+                                            {/* Icon indicator */}
+                                            <div className={`p-1.5 rounded-lg shrink-0 ${
+                                                item.type === 'success'
+                                                    ? 'bg-emerald-500/10 text-emerald-400'
+                                                    : item.type === 'warning'
+                                                        ? 'bg-amber-500/10 text-amber-400'
+                                                        : 'bg-blue-500/10 text-blue-400'
+                                            }`}>
+                                                <IconComponent className="w-3.5 h-3.5" />
+                                            </div>
+
+                                            <div className="space-y-0.5 flex-1 min-w-0">
+                                                <h4 className={`text-xs font-bold text-white truncate ${!item.read ? 'font-extrabold text-[#F9A11B]' : ''}`}>
+                                                    {t(item.titleKey)}
+                                                </h4>
+                                                <p className="text-[10px] text-white/60 leading-normal break-words">
+                                                    {t(item.descKey)}
+                                                </p>
+                                                <span className="text-[9px] text-white/40 block pt-1">
+                                                    {t(item.timeKey)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="p-8 text-center text-white/40 text-xs flex flex-col items-center gap-2">
+                                    <Bell className="w-6 h-6 text-white/20" />
+                                    <span>{t('notification.empty', 'Không có thông báo mới')}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        {notifications.length > 0 && (
+                            <div className="p-2 border-t border-white/5 text-center">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        clearAll();
+                                    }}
+                                    className="w-full py-1.5 text-[10px] font-bold text-white/50 hover:text-white hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    {t('notification.clearAll', 'Xóa tất cả')}
+                                </button>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        );
+    };
+
     // Không còn DEFAULT_AVATAR — null nếu chưa có
     const avatarUrl = user?.avatar?.trim() || null;
 
@@ -197,17 +383,23 @@ export default function Navbar() {
 
                             {isAuthenticated ? (
                                 <>
-                                    <button
-                                        type="button"
-                                        aria-label="Notifications"
-                                        className="relative p-2 text-white/70 hover:text-white transition-colors"
-                                    >
-                                        <Bell className="w-5 h-5" />
-                                        <span
-                                            className="absolute top-1 right-1 w-2 h-2 rounded-full"
-                                            style={{ backgroundColor: COLORS.orange }}
-                                        />
-                                    </button>
+                                    <div className="relative notification-bell-container">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDropdown(prev => !prev)}
+                                            aria-label="Notifications"
+                                            className="relative p-2 text-white/70 hover:text-white transition-colors"
+                                        >
+                                            <Bell className="w-5 h-5" />
+                                            {unreadCount > 0 && (
+                                                <span
+                                                    className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                                                    style={{ backgroundColor: COLORS.orange }}
+                                                />
+                                            )}
+                                        </button>
+                                        {renderDropdown()}
+                                    </div>
 
                                     <Link to="/user-profile" className="group transition-transform duration-300 hover:scale-105">
                                         <AvatarWithSkeleton src={avatarUrl} />
@@ -258,10 +450,20 @@ export default function Navbar() {
                             </div>
 
                             {isAuthenticated && (
-                                <button type="button" aria-label="Notifications" className="relative p-2 text-white/70 hover:text-white transition-colors">
-                                    <Bell className="w-5 h-5" />
-                                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.orange }} />
-                                </button>
+                                <div className="relative notification-bell-container">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDropdown(prev => !prev)}
+                                        aria-label="Notifications"
+                                        className="relative p-2 text-white/70 hover:text-white transition-colors"
+                                    >
+                                        <Bell className="w-5 h-5" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.orange }} />
+                                        )}
+                                    </button>
+                                    {renderDropdown()}
+                                </div>
                             )}
                             <button type="button" onClick={toggleMenu} aria-label="Toggle menu" className="p-2 text-white/70 hover:text-white transition-colors">
                                 {isOpen ? <X size={24} /> : <Menu size={24} />}

@@ -88,8 +88,29 @@ const resources = {
           vehicles: "Xe sở hữu",
           appointments: "Lịch hẹn",
           history: "Lịch sử sửa chữa",
-          warranty: "Bảo hành & Báo giá",
+          warranty: "Bảo hành",
           settings: "Cài đặt"
+        }
+      },
+      notification: {
+        title: "Thông báo",
+        markAllRead: "Đọc tất cả",
+        empty: "Không có thông báo mới",
+        clearAll: "Xóa tất cả",
+        item1: {
+          title: "Lịch hẹn được xác nhận",
+          desc: "Lịch hẹn bảo dưỡng định kỳ xe Porsche 911 Carrera lúc 10:30 AM ngày 03/06/2026 đã được xác nhận.",
+          time: "2 giờ trước"
+        },
+        item2: {
+          title: "Báo giá đã phê duyệt",
+          desc: "Yêu cầu báo giá cân chỉnh thước lái & đảo lốp 3D (BG-2023-4912) đã được duyệt thành công.",
+          time: "1 ngày trước"
+        },
+        item3: {
+          title: "Khuyến nghị bảo trì",
+          desc: "Ắc quy xe BMW M4 Competition có dấu hiệu yếu nguồn điện. Bạn nên đặt lịch kiểm tra sớm.",
+          time: "3 ngày trước"
         }
       },
       history: {
@@ -879,8 +900,29 @@ const resources = {
           vehicles: "My Vehicles",
           appointments: "Appointments",
           history: "Repair History",
-          warranty: "Warranty & Quotations",
+          warranty: "Warranty",
           settings: "Settings"
+        }
+      },
+      notification: {
+        title: "Notifications",
+        markAllRead: "Mark all as read",
+        empty: "No new notifications",
+        clearAll: "Clear all",
+        item1: {
+          title: "Appointment Confirmed",
+          desc: "Your routine maintenance appointment for Porsche 911 Carrera at 10:30 AM on 03/06/2026 has been confirmed.",
+          time: "2 hours ago"
+        },
+        item2: {
+          title: "Quote Approved",
+          desc: "Your wheel alignment & 3D tire rotation quote request (BG-2023-4912) has been successfully approved.",
+          time: "1 day ago"
+        },
+        item3: {
+          title: "Maintenance Recommendation",
+          desc: "Your BMW M4 Competition battery is showing weak voltage. You should schedule an inspection soon.",
+          time: "3 days ago"
         }
       },
       history: {

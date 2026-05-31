@@ -301,7 +301,7 @@ export default function BookingPage() {
                     <div className="pt-4 flex flex-col gap-2">
                         <button
                             onClick={() => window.location.href = '/'}
-                            className="w-full py-3 bg-brand-blue text-white rounded-xl text-xs font-bold shadow-md hover:bg-brand-blue/90 transition-all cursor-pointer"
+                            className="w-full py-3 bg-[#00285E] text-white rounded-xl text-xs font-bold shadow-md hover:bg-[#00285E]/90 transition-all cursor-pointer"
                         >
                             {t('booking.success.goHome', 'Về trang chủ')}
                         </button>
@@ -716,7 +716,7 @@ export default function BookingPage() {
                             <button
                                 disabled={isSubmitting}
                                 onClick={handleNext}
-                                className="flex items-center gap-2 px-6 py-3 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
+                                className="flex items-center gap-2 px-6 py-3 bg-[#00285E] hover:bg-[#00285E]/90 text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
                             >
                                 {isSubmitting 
                                     ? t('booking.buttons.processing', 'Đang xử lý...') 
@@ -733,7 +733,7 @@ export default function BookingPage() {
                         <div className="p-8 rounded-3xl shadow-xl text-white sticky top-24 overflow-hidden"
                             style={{ backgroundColor: '#00285E' }}>
                             {/* Backdrop Subtle Gradient */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-brand-blue via-brand-blue to-slate-900 z-0" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#00285E] via-[#00285E] to-[#001C43] z-0" />
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl z-0" />
 
                             <h3 className="text-xl font-bold mb-8 border-b border-white/10 pb-6 relative z-10 font-display">

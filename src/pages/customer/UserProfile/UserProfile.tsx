@@ -32,7 +32,7 @@ const MENU_ITEMS = [
     { id: 'vehicles', label: 'Xe sở hữu', icon: Car },
     { id: 'appointments', label: 'Lịch hẹn', icon: Calendar },
     { id: 'history', label: 'Lịch sử sửa chữa', icon: History },
-    { id: 'warranty', label: 'Bảo hành & Báo giá', icon: ShieldCheck },
+    { id: 'warranty', label: 'Bảo hành', icon: ShieldCheck },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
 ] as const;
 
