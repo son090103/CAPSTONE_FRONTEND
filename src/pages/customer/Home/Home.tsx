@@ -26,66 +26,129 @@ export default function Home() {
     const [activeMemberIndex, setActiveMemberIndex] = useState(0);
 
     const teamMembers = [
-        { name: 'Sơn', fullName: 'Đào Lưu Đức Sơn', role: 'Kỹ thuật viên trưởng', specialty: 'Chuyên gia kỹ thuật dòng xe Đức', experience: '18 năm', tags: ['ASE Master', 'BMW Certified', 'Mercedes-Benz Specialist'], masterTechs: '24+', certifications: '47', image: '/images/son.jpg', label: 'Kỹ thuật viên dòng xe Đức' },
-        { name: 'Bình', fullName: 'Trần Lương Bình', role: 'Kỹ thuật viên cao cấp', specialty: 'Chuyên gia hệ thống truyền động', experience: '15 năm', tags: ['Porsche Certified', 'ASE Advanced', 'Audi Master'], masterTechs: '18+', certifications: '35', image: '/images/binh.jpg', label: 'Chuyên gia dòng xe Ý' },
-        { name: 'Ngân', fullName: 'Đỗ Thị Thu Ngân', role: 'Chuyên gia chẩn đoán', specialty: 'Kỹ thuật viên điện tử & ECU', experience: '12 năm', tags: ['Tesla Specialist', 'Electric Vehicle Master', 'MIT Graduate'], masterTechs: '12+', certifications: '28', image: '/images/ngan.jpg', label: 'Chuyên gia điện tử' },
-        { name: 'Thiện', fullName: 'Lê Văn Thiện', role: 'Chuyên gia đồng sơn & thân vỏ', specialty: 'Phục hồi xe cổ & sơn cao cấp', experience: '20 năm', tags: ['Master Painter', 'Classic Car Restoration', 'Ferrari Grade'], masterTechs: '15+', certifications: '42', image: '/images/thien.jpg', label: 'Bậc thầy phục chế xe cổ' },
-        { name: 'Mạnh', fullName: 'Phan Đức Mạnh', role: 'Kỹ thuật viên hiệu năng', specialty: 'Tuning & Nâng cấp hệ thống tăng áp', experience: '14 năm', tags: ['Tuning Master', 'Turbo Specialist', 'Race Prep Expert'], masterTechs: '20+', certifications: '39', image: '/images/manh.jpg', label: 'Chuyên gia tối ưu hiệu năng' }
+        {
+            name: 'Sơn',
+            fullName: 'Đào Lưu Đức Sơn',
+            role: i18n.language === 'vi' ? 'Kỹ thuật viên trưởng' : 'Head Technician',
+            specialty: i18n.language === 'vi' ? 'Chuyên gia kỹ thuật dòng xe Đức' : 'German Car Specialist',
+            experience: i18n.language === 'vi' ? '18 năm' : '18 years',
+            tags: ['ASE Master', 'BMW Certified', 'Mercedes-Benz Specialist'],
+            masterTechs: '24+',
+            certifications: '47',
+            image: '/images/son.jpg',
+            label: i18n.language === 'vi' ? 'Kỹ thuật viên dòng xe Đức' : 'German Car Master Tech'
+        },
+        {
+            name: 'Bình',
+            fullName: 'Trần Lương Bình',
+            role: i18n.language === 'vi' ? 'Kỹ thuật viên cao cấp' : 'Senior Technician',
+            specialty: i18n.language === 'vi' ? 'Chuyên gia hệ thống truyền động' : 'Drivetrain Specialist',
+            experience: i18n.language === 'vi' ? '15 năm' : '15 years',
+            tags: ['Porsche Certified', 'ASE Advanced', 'Audi Master'],
+            masterTechs: '18+',
+            certifications: '35',
+            image: '/images/binh.jpg',
+            label: i18n.language === 'vi' ? 'Chuyên gia dòng xe Ý' : 'Italian Car Specialist'
+        },
+        {
+            name: 'Ngân',
+            fullName: 'Đỗ Thị Thu Ngân',
+            role: i18n.language === 'vi' ? 'Chuyên gia chẩn đoán' : 'Diagnostics Specialist',
+            specialty: i18n.language === 'vi' ? 'Kỹ thuật viên điện tử & ECU' : 'Electronics & ECU Technician',
+            experience: i18n.language === 'vi' ? '12 năm' : '12 years',
+            tags: ['Tesla Specialist', 'Electric Vehicle Master', 'MIT Graduate'],
+            masterTechs: '12+',
+            certifications: '28',
+            image: '/images/ngan.jpg',
+            label: i18n.language === 'vi' ? 'Chuyên gia điện tử' : 'Electronics Expert'
+        },
+        {
+            name: 'Thiện',
+            fullName: 'Lê Văn Thiện',
+            role: i18n.language === 'vi' ? 'Chuyên gia đồng sơn & thân vỏ' : 'Body & Paint Specialist',
+            specialty: i18n.language === 'vi' ? 'Phục hồi xe cổ & sơn cao cấp' : 'Classic Car Restoration & Premium Paint',
+            experience: i18n.language === 'vi' ? '20 năm' : '20 years',
+            tags: ['Master Painter', 'Classic Car Restoration', 'Ferrari Grade'],
+            masterTechs: '15+',
+            certifications: '42',
+            image: '/images/thien.jpg',
+            label: i18n.language === 'vi' ? 'Bậc thầy phục chế xe cổ' : 'Classic Car Restoration Master'
+        },
+        {
+            name: 'Mạnh',
+            fullName: 'Phan Đức Mạnh',
+            role: i18n.language === 'vi' ? 'Kỹ thuật viên hiệu năng' : 'Performance Technician',
+            specialty: i18n.language === 'vi' ? 'Tuning & Nâng cấp hệ thống tăng áp' : 'Tuning & Turbochargers Upgrade',
+            experience: i18n.language === 'vi' ? '14 năm' : '14 years',
+            tags: ['Tuning Master', 'Turbo Specialist', 'Race Prep Expert'],
+            masterTechs: '20+',
+            certifications: '39',
+            image: '/images/manh.jpg',
+            label: i18n.language === 'vi' ? 'Chuyên gia tối ưu hiệu năng' : 'Performance Optimization Expert'
+        }
     ];
 
     const [activeTechIndex, setActiveTechIndex] = useState(0);
 
     const techSpecs = [
         {
-            title: 'Hệ thống tăng áp',
-            displayTitle: 'Bộ tăng áp động cơ',
-            sub: 'Hệ thống truyền động',
+            title: i18n.language === 'vi' ? 'Hệ thống tăng áp' : 'Turbocharger System',
+            displayTitle: i18n.language === 'vi' ? 'Bộ tăng áp động cơ' : 'Engine Turbocharger',
+            sub: i18n.language === 'vi' ? 'Hệ thống truyền động' : 'Drivetrain',
             image: '/images/Turbocharger Assembly.png',
             icon: <Cpu size={22} />,
-            desc: 'Dịch vụ tối ưu hóa và nâng cấp hệ thống tăng áp nhằm cung cấp công suất tối đa và độ bền bỉ vượt trội. Mỗi bộ phận đều được kiểm tra độ cân bằng động chính xác.',
+            desc: i18n.language === 'vi'
+                ? 'Dịch vụ tối ưu hóa và nâng cấp hệ thống tăng áp nhằm cung cấp công suất tối đa và độ bền bỉ vượt trội. Mỗi bộ phận đều được kiểm tra độ cân bằng động chính xác.'
+                : 'Optimization and upgrade services for turbocharger systems to deliver maximum power and outstanding durability. Each component is balanced dynamically.',
             stats: [
-                { label: 'Linh kiện', value: 'OEM' },
-                { label: 'Thời gian TB', value: '48h' },
-                { label: 'Bảo hành', value: '2 năm' }
+                { label: i18n.language === 'vi' ? 'Linh kiện' : 'Component', value: 'OEM' },
+                { label: i18n.language === 'vi' ? 'Thời gian TB' : 'Avg Time', value: '48h' },
+                { label: i18n.language === 'vi' ? 'Bảo hành' : 'Warranty', value: i18n.language === 'vi' ? '2 năm' : '2 years' }
             ]
         },
         {
-            title: 'Phanh gốm Carbon',
-            displayTitle: 'Hệ thống phanh gốm',
-            sub: 'Phanh & An toàn',
+            title: i18n.language === 'vi' ? 'Phanh gốm Carbon' : 'Carbon Ceramic Brakes',
+            displayTitle: i18n.language === 'vi' ? 'Hệ thống phanh gốm' : 'Ceramic Brake System',
+            sub: i18n.language === 'vi' ? 'Phanh & An toàn' : 'Brakes & Safety',
             image: '/images/phanhgom.jpg',
             icon: <ShieldCheck size={22} />,
-            desc: 'Ứng dụng vật liệu ma sát tiên tiến cho hiệu năng phanh vượt trội, không bị giảm hiệu suất khi ở nhiệt độ cực cao. Thích hợp cho xe hiệu năng cao và xe đua.',
+            desc: i18n.language === 'vi'
+                ? 'Ứng dụng vật liệu ma sát tiên tiến cho hiệu năng phanh vượt trội, không bị giảm hiệu suất khi ở nhiệt độ cực cao. Thích hợp cho xe hiệu năng cao và xe đua.'
+                : 'Utilizes advanced friction materials for superior brake performance with zero fade at extreme temperatures. Suitable for high-performance and race cars.',
             stats: [
-                { label: 'Tiêu chuẩn', value: 'Track' },
-                { label: 'Độ bền', value: '100K km' },
-                { label: 'Hiệu năng', value: '+40%' }
+                { label: i18n.language === 'vi' ? 'Tiêu chuẩn' : 'Standard', value: 'Track' },
+                { label: i18n.language === 'vi' ? 'Độ bền' : 'Durability', value: '100K km' },
+                { label: i18n.language === 'vi' ? 'Hiệu năng' : 'Performance', value: '+40%' }
             ]
         },
         {
-            title: 'Hệ thống treo thích ứng',
-            displayTitle: 'Hệ thống treo chủ động',
-            sub: 'Khung gầm & Hệ thống treo',
+            title: i18n.language === 'vi' ? 'Hệ thống treo thích ứng' : 'Adaptive Suspension',
+            displayTitle: i18n.language === 'vi' ? 'Hệ thống treo chủ động' : 'Active Suspension System',
+            sub: i18n.language === 'vi' ? 'Khung gầm & Hệ thống treo' : 'Chassis & Suspension',
             image: '/images/treo.jpg',
             icon: <Wrench size={22} />,
-            desc: 'Hiệu chuẩn giảm chấn điện tử để mang lại sự cân bằng hoàn hảo giữa cảm giác lái êm ái và khả năng xử lý thể thao. Chẩn đoán rò rỉ và lỗi cảm biến chính xác.',
+            desc: i18n.language === 'vi'
+                ? 'Hiệu chuẩn giảm chấn điện tử để mang lại sự cân bằng hoàn hảo giữa cảm giác lái êm ái và khả năng xử lý thể thao. Chẩn đoán rò rỉ và lỗi cảm biến chính xác.'
+                : 'Calibrates electronic dampening to deliver the perfect balance between ride comfort and sport handling. Precise sensor diagnostics.',
             stats: [
-                { label: 'Phản hồi', value: '10ms' },
-                { label: 'Cảm biến', value: '4 điểm' },
-                { label: 'Độ chuẩn', value: '99%' }
+                { label: i18n.language === 'vi' ? 'Phản hồi' : 'Response', value: '10ms' },
+                { label: i18n.language === 'vi' ? 'Cảm biến' : 'Sensors', value: i18n.language === 'vi' ? '4 điểm' : '4-point' },
+                { label: i18n.language === 'vi' ? 'Độ chuẩn' : 'Accuracy', value: '99%' }
             ]
         },
         {
-            title: 'Lập trình ECU chuyên sâu',
-            displayTitle: 'Tối ưu hóa ECU',
-            sub: 'Hệ thống điện & Điện tử',
+            title: i18n.language === 'vi' ? 'Lập trình ECU chuyên sâu' : 'Advanced ECU Tuning',
+            displayTitle: i18n.language === 'vi' ? 'Tối ưu hóa ECU' : 'ECU Optimization',
+            sub: i18n.language === 'vi' ? 'Hệ thống điện & Điện tử' : 'Electrical & Electronics',
             image: '/images/ECU.jpg',
             icon: <Settings size={22} />,
-            desc: 'Hiệu chỉnh phần mềm điều khiển động cơ nhằm tối ưu hóa công suất, mô-men xoắn và hiệu quả nhiên liệu. Đảm bảo các thông số vận hành luôn trong giới hạn an toàn.',
+            desc: i18n.language === 'vi'
+                ? 'Hiệu chỉnh phần mềm điều khiển động cơ nhằm tối ưu hóa công suất, mô-men xoắn và hiệu quả nhiên liệu. Đảm bảo các thông số vận hành luôn trong giới hạn an toàn.'
+                : 'Tunes engine control unit software to optimize power output, torque, and fuel efficiency while keeping operating parameters safely within limits.',
             stats: [
-                { label: 'Công suất', value: '+25%' },
-                { label: 'Mô-men xoắn', value: '+30%' },
-                { label: 'Độ trễ ga', value: 'Cực thấp' }
+                { label: i18n.language === 'vi' ? 'Công suất' : 'Power', value: '+25%' },
+                { label: i18n.language === 'vi' ? 'Mô-men xoắn' : 'Torque', value: '+30%' },
+                { label: i18n.language === 'vi' ? 'Độ trễ ga' : 'Throttle Lag', value: i18n.language === 'vi' ? 'Cực thấp' : 'Ultra-low' }
             ]
         }
     ];
@@ -176,7 +239,7 @@ export default function Home() {
     return (
         <div className="overflow-hidden bg-white">
             {/* Hero Section */}
-            <section className="relative h-44 sm:h-56 md:min-h-[90vh] flex items-center bg-[#00285E] overflow-hidden py-0 md:py-20">
+            <section className="relative h-44 sm:h-56 md:min-h-[90vh] flex items-center bg-[#00285E] overflow-hidden py-0 md:pt-28 md:pb-20">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <img
                         src="/images/Container.png"
@@ -192,14 +255,14 @@ export default function Home() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.8 }}
                         >
-                            <div className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 text-white/80 text-[10px] font-bold uppercase tracking-widest mb-8 border border-white/10 backdrop-blur-sm">
+                            <div className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 text-white/80 text-[10px] font-bold uppercase tracking-widest mb-8 border border-white/10 backdrop-blur-sm mt-12">
                                 <ShieldCheck size={14} style={{ color: COLORS.orange }} />
                                 {t('home.hero.badge')}
                             </div>
 
-                            <h1 className="text-2xl sm:text-3xl md:text-[5.5rem] font-display text-white mb-2 md:mb-6 leading-[1.1] md:leading-[1.05] tracking-tight">
-                                <span className="inline md:block">Chăm sóc </span>
-                                <span className="inline md:block mt-0 md:mt-2" style={{ color: COLORS.orange }}>XẾ YÊU</span>
+                            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[4.5rem] 2xl:text-[5.5rem] font-display text-white mb-2 md:mb-6 leading-[1.1] md:leading-[1.05] tracking-tight">
+                                <span className="inline md:block">{t('home.hero.title1', 'Chăm sóc ')}</span>
+                                <span className="inline md:block mt-0 md:mt-4" style={{ color: COLORS.orange }}>{t('home.hero.title2', 'XẾ YÊU').toUpperCase()}</span>
                             </h1>
 
                             <div className="hidden md:block space-y-4 mb-10 max-w-lg">
@@ -212,7 +275,7 @@ export default function Home() {
                             </div>
 
                             {/* ── HERO BUTTONS ── */}
-                            <div className="flex items-center gap-4 mt-4 md:mt-0 mb-0 md:mb-16">
+                            <div className="flex items-center gap-4 mt-4 md:mt-0 mb-0 md:mb-8">
                                 {/* Primary — nền cam, chữ navy */}
                                 <div className="scale-75 md:scale-100 origin-left">
                                     <Button to="/phone-service" size="md" bg={COLORS.orange} color={COLORS.navy} icon={<ArrowRight size={20} />}>
@@ -228,14 +291,12 @@ export default function Home() {
                                 </div>
                             </div>
 
-                            <div className="hidden md:grid grid-cols-3 gap-12 border-t border-white/10 pt-10">
+                            <div className="hidden md:grid grid-cols-3 gap-12 border-t border-white/10 pt-6">
                                 {stats.map((stat) => (
                                     <div key={stat.label}>
                                         <div className="text-4xl font-bold text-white mb-1 font-display">{stat.value}</div>
-                                        <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-tight">
-                                            {stat.label.split(' ').map((w, i) => (
-                                                <span key={i} className="block">{w}</span>
-                                            ))}
+                                        <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-normal max-w-[120px]">
+                                            {stat.label}
                                         </div>
                                     </div>
                                 ))}

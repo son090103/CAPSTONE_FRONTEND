@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Calendar, Car, User, Settings,
     Check, ChevronRight, Phone, Clock, Edit2, ArrowLeft,
@@ -10,18 +10,21 @@ import {
 } from 'lucide-react';
 import { COLORS } from '../../../components/share/Color';
 import { useFetchClient } from '../../../hook/useFetchClient';
+import SingleServicesSelector from './SingleServicesSelector';
+import ComboServicesSelector from './ComboServicesSelector';
+import CategoryServicesSelector from './CategoryServicesSelector';
 
-interface ServiceCombo {
-  id: number;
-  combo_name: string;
-  category_id: number;
-  service_ids: number[];
-  discount_percentage: number;
-  is_active: boolean;
-  createdAt: string;
+export interface ServiceCombo {
+    id: number;
+    combo_name: string;
+    category_id: number;
+    service_ids: number[];
+    discount_percentage: number;
+    is_active: boolean;
+    createdAt: string;
 }
 
-interface ServiceItem {
+export interface ServiceItem {
     id: number;
     title: string;
     desc: string;
@@ -36,35 +39,55 @@ interface ServiceItem {
     promoText?: string;
 }
 
+// Fallbacks
+const fallbackCategories = [
+    { id: 1, category_name: 'Bảo dưỡng định kỳ' },
+    { id: 2, category_name: 'Sửa chữa động cơ' },
+    { id: 3, category_name: 'Dịch vụ lốp & phanh' },
+    { id: 4, category_name: 'Chăm sóc nội thất' },
+    { id: 5, category_name: 'Chẩn đoán điện tử' },
+    { id: 6, category_name: 'Cứu hộ 24/7' }
+];
+
+const fallbackServices = [
+    { id: 1, service_name: 'Bảo Dưỡng Định Kỳ Cấp 1', description: 'Kiểm tra tổng quát, thay dầu động cơ, vệ sinh lọc gió, lọc điều hòa.', category_id: 1 },
+    { id: 2, service_name: 'Bảo Dưỡng Định Kỳ Cấp 2', description: 'Bảo dưỡng phanh 4 bánh, đảo lốp, thay nhớt lọc nhớt, vệ sinh họng hút.', category_id: 1 },
+    { id: 3, service_name: 'Sửa Chữa Động Cơ Chuyên Sâu', description: 'Xử lý rung giật, hao nước, yếu máy, rò rỉ dầu nhớt xi lanh.', category_id: 2 },
+    { id: 4, service_name: 'Cân Chỉnh Thước Lái 3D', description: 'Cân chỉnh góc đặt bánh xe bằng máy Hunter hiện đại chống ăn mòn lốp.', category_id: 3 },
+    { id: 5, service_name: 'Dọn Nội Thất Toàn Diện', description: 'Vệ sinh ghế da, giặt trần nỉ, dưỡng bóng taplo tapbi, khử trùng ozon.', category_id: 4 },
+    { id: 6, service_name: 'Cứu Hộ Ắc Quy & Kích Bình', description: 'Hỗ trợ khẩn cấp tại chỗ kích nổ bình ắc quy xe bị hết điện.', category_id: 6 }
+];
+
 export default function BookingPage() {
     const { t } = useTranslation();
     const [step, setStep] = useState(1);
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const { fetchPublic } = useFetchClient();
-    
+
     // Booking Type State: 'service' | 'combo' | 'category'
     const [bookingType, setBookingType] = useState<'service' | 'combo' | 'category'>('service');
-    
+
     // Form States
     const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
     const [selectedComboId, setSelectedComboId] = useState<number | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
     const [selectedSubItems, setSelectedSubItems] = useState<string[]>([]);
-    
+
     const [bookingDate, setBookingDate] = useState('');
     const [bookingTime, setBookingTime] = useState('');
-    
+
     const [vehicleBrand, setVehicleBrand] = useState('');
     const [vehicleModel, setVehicleModel] = useState('');
     const [vehiclePlate, setVehiclePlate] = useState('');
-    
+
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [contactEmail, setContactEmail] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-    
+
     // Dynamic Data States
     const [dbServices, setDbServices] = useState<any[]>([]);
     const [dbCategories, setDbCategories] = useState<any[]>([]);
@@ -113,24 +136,24 @@ export default function BookingPage() {
                 setDbCombos(JSON.parse(stored));
             } else {
                 setDbCombos([
-                  {
-                    id: 10001,
-                    combo_name: "Combo Bảo dưỡng Định kỳ Cơ bản",
-                    category_id: 1,
-                    service_ids: [1, 2, 3],
-                    discount_percentage: 10,
-                    is_active: true,
-                    createdAt: new Date().toISOString(),
-                  },
-                  {
-                    id: 10002,
-                    combo_name: "Combo Chăm sóc & Làm đẹp Toàn diện",
-                    category_id: 4,
-                    service_ids: [3, 4],
-                    discount_percentage: 15,
-                    is_active: true,
-                    createdAt: new Date().toISOString(),
-                  }
+                    {
+                        id: 10001,
+                        combo_name: "Combo Bảo dưỡng Định kỳ Cơ bản",
+                        category_id: 1,
+                        service_ids: [1, 2, 3],
+                        discount_percentage: 10,
+                        is_active: true,
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: 10002,
+                        combo_name: "Combo Chăm sóc & Làm đẹp Toàn diện",
+                        category_id: 4,
+                        service_ids: [3, 4],
+                        discount_percentage: 15,
+                        is_active: true,
+                        createdAt: new Date().toISOString(),
+                    }
                 ]);
             }
         } catch (e) {
@@ -145,7 +168,7 @@ export default function BookingPage() {
                 const prices = JSON.parse(storedPrices);
                 if (prices[id] !== undefined) return prices[id];
             }
-        } catch (e) {}
+        } catch (e) { }
 
         const priceMap: Record<number, number> = {
             1: 500000,
@@ -247,24 +270,7 @@ export default function BookingPage() {
         ];
     };
 
-    // Fallbacks
-    const fallbackCategories = [
-        { id: 1, category_name: 'Bảo dưỡng định kỳ' },
-        { id: 2, category_name: 'Sửa chữa động cơ' },
-        { id: 3, category_name: 'Dịch vụ lốp & phanh' },
-        { id: 4, category_name: 'Chăm sóc nội thất' },
-        { id: 5, category_name: 'Chẩn đoán điện tử' },
-        { id: 6, category_name: 'Cứu hộ 24/7' }
-    ];
-
-    const fallbackServices = [
-        { id: 1, service_name: 'Bảo Dưỡng Định Kỳ Cấp 1', description: 'Kiểm tra tổng quát, thay dầu động cơ, vệ sinh lọc gió, lọc điều hòa.', category_id: 1 },
-        { id: 2, service_name: 'Bảo Dưỡng Định Kỳ Cấp 2', description: 'Bảo dưỡng phanh 4 bánh, đảo lốp, thay nhớt lọc nhớt, vệ sinh họng hút.', category_id: 1 },
-        { id: 3, service_name: 'Sửa Chữa Động Cơ Chuyên Sâu', description: 'Xử lý rung giật, hao nước, yếu máy, rò rỉ dầu nhớt xi lanh.', category_id: 2 },
-        { id: 4, service_name: 'Cân Chỉnh Thước Lái 3D', description: 'Cân chỉnh góc đặt bánh xe bằng máy Hunter hiện đại chống ăn mòn lốp.', category_id: 3 },
-        { id: 5, service_name: 'Dọn Nội Thất Toàn Diện', description: 'Vệ sinh ghế da, giặt trần nỉ, dưỡng bóng taplo tapbi, khử trùng ozon.', category_id: 4 },
-        { id: 6, service_name: 'Cứu Hộ Ắc Quy & Kích Bình', description: 'Hỗ trợ khẩn cấp tại chỗ kích nổ bình ắc quy xe bị hết điện.', category_id: 6 }
-    ];
+    // Active categories & services use module-level fallbacks if database data is not loaded yet
 
     const activeCategories = dbCategories.length > 0 ? dbCategories : fallbackCategories;
     const activeDbServices = dbServices.length > 0 ? dbServices : fallbackServices;
@@ -278,7 +284,7 @@ export default function BookingPage() {
             const priceValue = getServicePriceValue(s.id);
             const originalPriceValue = discountPercent > 0 ? Math.round(priceValue / (1 - discountPercent / 100)) : 0;
             const originalPriceStr = originalPriceValue > 0 ? `Từ ${originalPriceValue.toLocaleString("vi-VN")}đ` : "";
-            
+
             // Rating details simulator
             const ratingVal = 4.7 + ((s.id * 3) % 4) * 0.1;
             const reviewVal = 50 + (s.id * 17) % 250;
@@ -397,12 +403,16 @@ export default function BookingPage() {
                 const service = mappedServices.find(s => s.id === id);
                 return service?.details ?? [];
             });
-            // deduplicate
-            setSelectedSubItems([...new Set(allDetails)]);
+            const newDetails = [...new Set(allDetails)];
+            if (JSON.stringify(newDetails) !== JSON.stringify(selectedSubItems)) {
+                setSelectedSubItems(newDetails);
+            }
         } else {
-            setSelectedSubItems([]);
+            if (selectedSubItems.length > 0) {
+                setSelectedSubItems([]);
+            }
         }
-    }, [bookingType, selectedServiceIds, mappedServices]);
+    }, [bookingType, selectedServiceIds, mappedServices, selectedSubItems]);
 
     const timeSlots = [
         { time: '08:00', label: t('booking.timeSlots.morning', 'Sáng') },
@@ -448,6 +458,8 @@ export default function BookingPage() {
     const handleBack = () => {
         if (step > 1) {
             setStep(prev => prev - 1);
+        } else {
+            navigate(-1);
         }
     };
 
@@ -516,7 +528,7 @@ export default function BookingPage() {
 
                     <div className="pt-4 flex flex-col gap-2">
                         <button
-                            onClick={() => window.location.href = '/'}
+                            onClick={() => navigate('/')}
                             className="w-full py-3 bg-[#00285E] text-white rounded-xl text-xs font-bold shadow-md hover:bg-[#00285E]/90 transition-all cursor-pointer"
                         >
                             {t('booking.success.goHome', 'Về trang chủ')}
@@ -623,9 +635,8 @@ export default function BookingPage() {
                                         <button
                                             type="button"
                                             onClick={() => { setBookingType('service'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                                                bookingType === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                            }`}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${bookingType === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                }`}
                                         >
                                             <Settings size={14} />
                                             Dịch vụ lẻ
@@ -633,9 +644,8 @@ export default function BookingPage() {
                                         <button
                                             type="button"
                                             onClick={() => { setBookingType('combo'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                                                bookingType === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                            }`}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${bookingType === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                }`}
                                         >
                                             <Sparkles size={14} />
                                             Gói Combo
@@ -643,9 +653,8 @@ export default function BookingPage() {
                                         <button
                                             type="button"
                                             onClick={() => { setBookingType('category'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                                                bookingType === 'category' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                            }`}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${bookingType === 'category' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                }`}
                                         >
                                             <Layers size={14} />
                                             Trọn gói danh mục
@@ -654,293 +663,38 @@ export default function BookingPage() {
 
                                     {/* List Display according to type */}
                                     {bookingType === 'service' && (
-                                        <>
-                                            {/* Multi-select count hint */}
-                                            {selectedServiceIds.length > 0 && (
-                                                <div className="mb-3 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 flex items-center gap-2">
-                                                    <Check size={12} className="text-brand-blue shrink-0" />
-                                                    <span className="text-[10px] font-bold text-brand-blue">
-                                                        Đã chọn {selectedServiceIds.length} dịch vụ — nhấp vào thẻ để thêm hoặc bỏ
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-fadeIn">
-                                                {currentServices.map((service) => {
-                                                    const isSelected = selectedServiceIds.includes(service.id);
-                                                    return (
-                                                        <div
-                                                            key={service.id}
-                                                            onClick={() => {
-                                                                setSelectedServiceIds(prev =>
-                                                                    prev.includes(service.id)
-                                                                        ? prev.filter(id => id !== service.id)
-                                                                        : [...prev, service.id]
-                                                                );
-                                                            }}
-                                                            className="relative p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left min-h-[175px]"
-                                                            style={{
-                                                                borderColor: isSelected ? COLORS.orange : '#F1F5F9',
-                                                                backgroundColor: isSelected ? 'rgba(249,161,27,0.05)' : '#FFFFFF',
-                                                                boxShadow: isSelected ? '0 6px 12px rgba(249,161,27,0.08)' : 'none'
-                                                            }}
-                                                        >
-                                                            <div>
-                                                                <div className="absolute top-2 right-2 flex items-center gap-1 flex-wrap justify-end max-w-[80%]">
-                                                                    <div className="flex items-center gap-0.5 bg-amber-50 border border-amber-100 text-amber-700 px-1 py-0.2 rounded text-[8px] font-bold shadow-xs shrink-0">
-                                                                        <Star size={6.5} fill="currentColor" className="text-amber-500 shrink-0" />
-                                                                        <span>{service.rating}</span>
-                                                                    </div>
-                                                                    {service.discountPercentage && (
-                                                                        <div className="bg-red-100 text-red-600 text-[7.5px] font-black uppercase px-1 py-0.2 rounded shadow-xs shrink-0">
-                                                                            -{service.discountPercentage}%
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-xs">
-                                                                    <Settings size={11} className="text-gray-400" />
-                                                                </div>
-
-                                                                <h3 className="text-[11px] md:text-xs font-bold mb-0.5 text-brand-blue line-clamp-1">{service.title}</h3>
-                                                                <p className="text-[9px] text-slate-400 mb-1 leading-snug line-clamp-2">
-                                                                    {service.desc}
-                                                                </p>
-
-                                                                {service.promoText && (
-                                                                    <div className="mb-2 p-1 bg-amber-50/40 rounded-md border border-amber-100/40 flex items-start gap-1 text-[8px] text-amber-700 font-medium text-left">
-                                                                        <span className="shrink-0">🎁</span>
-                                                                        <span className="line-clamp-2 leading-tight">{service.promoText}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="flex justify-between items-end mt-1.5 pt-1.5 border-t border-slate-50/70">
-                                                                <div>
-                                                                    <div className="text-[7px] font-black uppercase mb-0.5 text-gray-400">Giá dự kiến</div>
-                                                                    <div className="flex flex-wrap items-baseline gap-1">
-                                                                        {service.originalPrice && (
-                                                                            <span className="text-[8px] text-gray-400 line-through font-medium">{service.originalPrice}</span>
-                                                                        )}
-                                                                        <span className="text-[10px] md:text-xs font-bold text-brand-orange">{service.price}</span>
-                                                                    </div>
-                                                                </div>
-                                                                {/* Checkbox indicator */}
-                                                                <div
-                                                                    className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0"
-                                                                    style={{
-                                                                        borderColor: isSelected ? COLORS.orange : '#CBD5E1',
-                                                                        backgroundColor: isSelected ? COLORS.orange : 'transparent',
-                                                                        color: isSelected ? COLORS.navy : 'transparent',
-                                                                        borderRadius: '4px',
-                                                                    }}
-                                                                >
-                                                                    <Check size={8} strokeWidth={4} />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* Service Pagination Controls */}
-                                            {totalServicePages > 1 && (
-                                                <div className="flex justify-center items-center gap-1.5 mt-8">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setServicePage(prev => Math.max(prev - 1, 1))}
-                                                        disabled={servicePage === 1}
-                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
-                                                            servicePage === 1
-                                                                ? 'text-gray-300 bg-gray-50/50 border border-gray-100 cursor-not-allowed'
-                                                                : 'text-brand-blue bg-white border border-gray-200 hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        Trước
-                                                    </button>
-                                                    {Array.from({ length: totalServicePages }).map((_, index) => {
-                                                        const pageNumber = index + 1;
-                                                        return (
-                                                            <button
-                                                                type="button"
-                                                                key={pageNumber}
-                                                                onClick={() => setServicePage(pageNumber)}
-                                                                className={`w-7 h-7 rounded-xl text-[10px] font-bold transition-all ${
-                                                                    servicePage === pageNumber
-                                                                        ? 'bg-brand-blue text-white shadow-md shadow-blue-900/10'
-                                                                        : 'bg-white text-brand-blue border border-gray-200 hover:bg-gray-50'
-                                                                }`}
-                                                            >
-                                                                {pageNumber}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setServicePage(prev => Math.min(prev + 1, totalServicePages))}
-                                                        disabled={servicePage === totalServicePages}
-                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
-                                                            servicePage === totalServicePages
-                                                                ? 'text-gray-300 bg-gray-50/50 border border-gray-100 cursor-not-allowed'
-                                                                : 'text-brand-blue bg-white border border-gray-200 hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        Sau
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
+                                        <SingleServicesSelector
+                                            currentServices={currentServices}
+                                            selectedServiceIds={selectedServiceIds}
+                                            setSelectedServiceIds={setSelectedServiceIds}
+                                            servicePage={servicePage}
+                                            setServicePage={setServicePage}
+                                            totalServicePages={totalServicePages}
+                                            COLORS={COLORS}
+                                            t={t as any}
+                                        />
                                     )}
 
                                     {bookingType === 'combo' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
-                                            {dbCombos.filter(c => c.is_active).map((combo) => {
-                                                const isSelected = selectedComboId === combo.id;
-                                                const original = combo.service_ids.reduce((sum, id) => sum + getServicePriceValue(id), 0);
-                                                const discounted = Math.round(original * (1 - combo.discount_percentage / 100));
-                                                const comboServiceNames = combo.service_ids.map(id => {
-                                                    const s = mappedServices.find(x => x.id === id);
-                                                    return s ? s.title : "Dịch vụ bảo dưỡng";
-                                                });
-
-                                                return (
-                                                    <div
-                                                        key={combo.id}
-                                                        onClick={() => setSelectedComboId(combo.id)}
-                                                        className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group text-left"
-                                                        style={{
-                                                            borderColor: isSelected ? COLORS.orange : '#F1F5F9',
-                                                            backgroundColor: isSelected ? 'rgba(249,161,27,0.03)' : '#FFFFFF',
-                                                            boxShadow: isSelected ? '0 10px 20px rgba(249,161,27,0.04)' : 'none'
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end">
-                                                                <div className="bg-red-100 text-red-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shadow-xs shrink-0">
-                                                                    Giảm {combo.discount_percentage}%
-                                                                </div>
-                                                                <div className="text-[9px] font-bold px-2 py-0.5 rounded-lg shrink-0 bg-brand-orange text-brand-blue">
-                                                                    Combo
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-sm">
-                                                                <Sparkles size={18} className="text-gray-400" />
-                                                            </div>
-
-                                                            <h3 className="text-base font-bold mb-1 text-brand-blue">{combo.combo_name}</h3>
-                                                            
-                                                            <div className="my-3 space-y-1.5 pl-2 border-l-2 border-amber-400/50">
-                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-display">Dịch vụ đi kèm:</span>
-                                                                {comboServiceNames.map((name, idx) => (
-                                                                    <div key={idx} className="text-[11px] text-slate-500 leading-snug flex items-center gap-1">
-                                                                        <span className="text-[#F9A11B] shrink-0">•</span>
-                                                                        <span>{name}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-50">
-                                                            <div>
-                                                                <div className="text-[9px] font-bold uppercase mb-0.5 text-gray-400">Giá combo ưu đãi</div>
-                                                                <div className="flex items-baseline gap-1.5">
-                                                                    <span className="text-xs text-gray-400 line-through font-medium">Từ {original.toLocaleString("vi-VN")}đ</span>
-                                                                    <span className="text-base font-bold text-brand-orange">Từ {discounted.toLocaleString("vi-VN")}đ</span>
-                                                                </div>
-                                                            </div>
-                                                            <div
-                                                                className="w-6 h-6 rounded-full border flex items-center justify-center transition-all shrink-0"
-                                                                style={{
-                                                                    borderColor: isSelected ? COLORS.orange : '#CBD5E1',
-                                                                    backgroundColor: isSelected ? COLORS.orange : 'transparent',
-                                                                    color: isSelected ? COLORS.navy : 'transparent',
-                                                                }}
-                                                            >
-                                                                <Check size={12} strokeWidth={4} />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        <ComboServicesSelector
+                                            dbCombos={dbCombos}
+                                            selectedComboId={selectedComboId}
+                                            setSelectedComboId={setSelectedComboId}
+                                            mappedServices={mappedServices}
+                                            getServicePriceValue={getServicePriceValue}
+                                            COLORS={COLORS}
+                                        />
                                     )}
 
                                     {bookingType === 'category' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
-                                            {activeCategories.map((cat) => {
-                                                const isSelected = selectedCategoryId === cat.id;
-                                                const catServices = mappedServices.filter(s => {
-                                                    const rawService = activeDbServices.find(x => x.id === s.id);
-                                                    return rawService && String(rawService.category_id) === String(cat.id);
-                                                });
-                                                
-                                                if (catServices.length === 0) return null;
-
-                                                const original = catServices.reduce((sum, s) => sum + s.numericPrice, 0);
-                                                const discountPercent = 10;
-                                                const discounted = Math.round(original * (1 - discountPercent / 100));
-
-                                                return (
-                                                    <div
-                                                        key={cat.id}
-                                                        onClick={() => setSelectedCategoryId(cat.id)}
-                                                        className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group text-left"
-                                                        style={{
-                                                            borderColor: isSelected ? COLORS.orange : '#F1F5F9',
-                                                            backgroundColor: isSelected ? 'rgba(249,161,27,0.03)' : '#FFFFFF',
-                                                            boxShadow: isSelected ? '0 10px 20px rgba(249,161,27,0.04)' : 'none'
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end">
-                                                                <div className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shadow-xs shrink-0">
-                                                                    Tiết kiệm {discountPercent}%
-                                                                </div>
-                                                                <div className="text-[9px] font-bold px-2 py-0.5 rounded-lg shrink-0 bg-[#00285E] text-white">
-                                                                    Trọn gói
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-sm">
-                                                                <Layers size={18} className="text-gray-400" />
-                                                            </div>
-
-                                                            <h3 className="text-base font-bold mb-1 text-brand-blue">Trọn gói {cat.category_name}</h3>
-                                                            
-                                                            <div className="my-3 space-y-1.5 pl-2 border-l-2 border-emerald-400/50">
-                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-display">Gồm {catServices.length} dịch vụ:</span>
-                                                                {catServices.map((s, idx) => (
-                                                                    <div key={idx} className="text-[11px] text-slate-500 leading-snug flex items-center gap-1">
-                                                                        <span className="text-emerald-600 shrink-0">•</span>
-                                                                        <span>{s.title}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-50">
-                                                            <div>
-                                                                <div className="text-[9px] font-bold uppercase mb-0.5 text-gray-400">Giá trọn gói ưu đãi</div>
-                                                                <div className="flex items-baseline gap-1.5">
-                                                                    <span className="text-xs text-gray-400 line-through font-medium">Từ {original.toLocaleString("vi-VN")}đ</span>
-                                                                    <span className="text-base font-bold text-brand-orange">Từ {discounted.toLocaleString("vi-VN")}đ</span>
-                                                                </div>
-                                                            </div>
-                                                            <div
-                                                                className="w-6 h-6 rounded-full border flex items-center justify-center transition-all shrink-0"
-                                                                style={{
-                                                                    borderColor: isSelected ? COLORS.orange : '#CBD5E1',
-                                                                    backgroundColor: isSelected ? COLORS.orange : 'transparent',
-                                                                    color: isSelected ? COLORS.navy : 'transparent',
-                                                                }}
-                                                            >
-                                                                <Check size={12} strokeWidth={4} />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        <CategoryServicesSelector
+                                            activeCategories={activeCategories}
+                                            selectedCategoryId={selectedCategoryId}
+                                            setSelectedCategoryId={setSelectedCategoryId}
+                                            mappedServices={mappedServices}
+                                            activeDbServices={activeDbServices}
+                                            COLORS={COLORS}
+                                        />
                                     )}
 
                                     {bookingType === 'service' && selectedServiceIds.length > 0 && activeSelection && (
@@ -1027,8 +781,8 @@ export default function BookingPage() {
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 px-1 text-left">
                                                 {t('booking.step2.dateLabel', 'Chọn ngày hẹn')}
                                             </label>
-                                            <input 
-                                                type="date" 
+                                            <input
+                                                type="date"
                                                 value={bookingDate}
                                                 onChange={(e) => setBookingDate(e.target.value)}
                                                 min={new Date().toISOString().split('T')[0]}
@@ -1047,11 +801,10 @@ export default function BookingPage() {
                                                         <div
                                                             key={slot.time}
                                                             onClick={() => setBookingTime(slot.time)}
-                                                            className={`p-3.5 rounded-xl border text-center cursor-pointer transition-all ${
-                                                                isSelected 
-                                                                    ? 'border-brand-orange bg-amber-50/20 text-brand-orange font-bold shadow-xs' 
-                                                                    : 'border-slate-100 bg-slate-50 hover:bg-slate-100/70 text-brand-blue'
-                                                            }`}
+                                                            className={`p-3.5 rounded-xl border text-center cursor-pointer transition-all ${isSelected
+                                                                ? 'border-brand-orange bg-amber-50/20 text-brand-orange font-bold shadow-xs'
+                                                                : 'border-slate-100 bg-slate-50 hover:bg-slate-100/70 text-brand-blue'
+                                                                }`}
                                                         >
                                                             <div className="text-sm font-mono">{slot.time}</div>
                                                             <div className="text-[9px] uppercase tracking-wider opacity-60 mt-0.5">{slot.label}</div>
@@ -1085,36 +838,36 @@ export default function BookingPage() {
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step3.brandLabel', 'Hãng xe')}
                                             </label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 placeholder={t('booking.step3.brandPlaceholder', 'Ví dụ: Toyota, BMW, Mazda...')}
                                                 value={vehicleBrand}
                                                 onChange={(e) => setVehicleBrand(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step3.modelLabel', 'Dòng xe (Model)')}
                                             </label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 placeholder={t('booking.step3.modelPlaceholder', 'Ví dụ: Camry, 320i, CX-5...')}
                                                 value={vehicleModel}
                                                 onChange={(e) => setVehicleModel(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step3.plateLabel', 'Biển số xe')}
                                             </label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 placeholder={t('booking.step3.platePlaceholder', 'Ví dụ: 30A-123.45 hoặc 51F-999.99')}
                                                 value={vehiclePlate}
                                                 onChange={(e) => setVehiclePlate(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                     </div>
@@ -1142,36 +895,36 @@ export default function BookingPage() {
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step4.nameLabel', 'Họ và tên')}
                                             </label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 placeholder={t('booking.step4.namePlaceholder', 'Nguyễn Văn A')}
                                                 value={contactName}
                                                 onChange={(e) => setContactName(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step4.phoneLabel', 'Số điện thoại')}
                                             </label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 placeholder={t('booking.step4.phonePlaceholder', '0912345678')}
                                                 value={contactPhone}
                                                 onChange={(e) => setContactPhone(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                 {t('booking.step4.emailLabel', 'Địa chỉ Email')}
                                             </label>
-                                            <input 
-                                                type="email" 
+                                            <input
+                                                type="email"
                                                 placeholder={t('booking.step4.emailPlaceholder', 'khachhang@example.com')}
                                                 value={contactEmail}
                                                 onChange={(e) => setContactEmail(e.target.value)}
-                                                className={inputClass} 
+                                                className={inputClass}
                                             />
                                         </div>
                                     </div>
@@ -1183,9 +936,8 @@ export default function BookingPage() {
                         <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
                             <button
                                 onClick={handleBack}
-                                className={`flex items-center gap-2 px-6 py-3 font-bold text-xs rounded-xl border border-gray-200 text-gray-600 transition-all ${
-                                    step === 1 ? 'opacity-40 cursor-not-allowed border-gray-100 text-gray-300' : 'hover:bg-gray-50'
-                                }`}
+                                className={`flex items-center gap-2 px-6 py-3 font-bold text-xs rounded-xl border border-gray-200 text-gray-600 transition-all ${step === 1 ? 'opacity-40 cursor-not-allowed border-gray-100 text-gray-300' : 'hover:bg-gray-50'
+                                    }`}
                             >
                                 <ArrowLeft size={16} /> {t('booking.buttons.back', 'Quay lại')}
                             </button>
@@ -1195,11 +947,11 @@ export default function BookingPage() {
                                 onClick={handleNext}
                                 className="flex items-center gap-2 px-6 py-3 bg-[#00285E] hover:bg-[#00285E]/90 text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
                             >
-                                {isSubmitting 
-                                    ? t('booking.buttons.processing', 'Đang xử lý...') 
-                                    : step === 4 
-                                        ? t('booking.buttons.confirm', 'Xác nhận đặt lịch') 
-                                        : t('booking.buttons.next', 'Tiếp theo')} 
+                                {isSubmitting
+                                    ? t('booking.buttons.processing', 'Đang xử lý...')
+                                    : step === 4
+                                        ? t('booking.buttons.confirm', 'Xác nhận đặt lịch')
+                                        : t('booking.buttons.next', 'Tiếp theo')}
                                 {step < 4 && <ChevronRight size={16} />}
                             </button>
                         </div>
