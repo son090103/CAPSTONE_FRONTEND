@@ -5,9 +5,21 @@ import { useSearchParams } from 'react-router-dom';
 import {
     Calendar, Car, User, Settings,
     Check, ChevronRight, Phone, Clock, Edit2, ArrowLeft,
-    Star
+    Star, Package, Wrench, Droplets, Zap, ShieldCheck,
+    Sparkles, Layers
 } from 'lucide-react';
 import { COLORS } from '../../../components/share/Color';
+import { useFetchClient } from '../../../hook/useFetchClient';
+
+interface ServiceCombo {
+  id: number;
+  combo_name: string;
+  category_id: number;
+  service_ids: number[];
+  discount_percentage: number;
+  is_active: boolean;
+  createdAt: string;
+}
 
 interface ServiceItem {
     id: number;
@@ -28,12 +40,15 @@ export default function BookingPage() {
     const { t } = useTranslation();
     const [step, setStep] = useState(1);
     const [searchParams] = useSearchParams();
+    const { fetchPublic } = useFetchClient();
+    
+    // Booking Type State: 'service' | 'combo' | 'category'
+    const [bookingType, setBookingType] = useState<'service' | 'combo' | 'category'>('service');
     
     // Form States
-    const [selectedServiceId, setSelectedServiceId] = useState<number | null>(() => {
-        const id = searchParams.get('serviceId');
-        return id ? parseInt(id, 10) : null;
-    });
+    const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+    const [selectedComboId, setSelectedComboId] = useState<number | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
     const [selectedSubItems, setSelectedSubItems] = useState<string[]>([]);
     
     const [bookingDate, setBookingDate] = useState('');
@@ -49,6 +64,14 @@ export default function BookingPage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    
+    // Dynamic Data States
+    const [dbServices, setDbServices] = useState<any[]>([]);
+    const [dbCategories, setDbCategories] = useState<any[]>([]);
+    const [dbCombos, setDbCombos] = useState<ServiceCombo[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
     // Generate random booking code once per submission success
     const bookingCode = useMemo(() => Math.floor(100000 + Math.random() * 900000), [isSuccess]);
@@ -60,123 +83,326 @@ export default function BookingPage() {
         { id: 4, label: t('booking.steps.contact', 'Liên hệ'), icon: <User size={20} /> },
     ];
 
-    const services: ServiceItem[] = [
-        {
-            id: 1,
-            title: t('services.list.periodic.title', 'Bảo Dưỡng Định Kỳ'),
-            desc: t('services.list.periodic.desc', 'Kiểm tra tổng quát và thay thế linh kiện hao mòn định kỳ để xe luôn vận hành êm ái.'),
-            price: t('services.list.periodic.price', 'Từ 500.000đ'),
-            numericPrice: 500000,
-            originalPrice: t('services.list.periodic.originalPrice', 'Từ 550.000đ'),
-            discountPercentage: 10,
-            promoText: t('services.list.periodic.promoText', 'Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí'),
-            badge: t('booking.services.popularBadge', 'Phổ biến'),
-            rating: 4.9,
-            reviewCount: 184,
-            details: [
-                t('services.list.periodic.details.0', 'Thay nhớt động cơ chính hãng phù hợp thông số xe.'),
-                t('services.list.periodic.details.1', 'Kiểm tra và làm sạch lọc gió động cơ, lọc gió cabin.'),
-                t('services.list.periodic.details.2', 'Kiểm tra hệ thống phanh, má phanh, đĩa phanh.'),
-                t('services.list.periodic.details.3', 'Kiểm tra bình ắc quy và hệ thống chiếu sáng.'),
-                t('services.list.periodic.details.4', 'Đọc lỗi lỗi hộp đen (OBD) bằng thiết bị chuyên dụng.')
-            ]
-        },
-        {
-            id: 2,
-            title: t('services.list.engine.title', 'Sửa Chữa Động Cơ'),
-            desc: t('services.list.engine.desc', 'Xử lý triệt để các vấn đề phức tạp của động cơ bởi các chuyên gia dày dạn kinh nghiệm.'),
-            price: t('services.list.engine.price', 'Từ 1.200.000đ'),
-            numericPrice: 1200000,
-            originalPrice: t('services.list.engine.originalPrice', 'Từ 1.400.000đ'),
-            discountPercentage: 15,
-            promoText: t('services.list.engine.promoText', 'Giảm 15% gói vệ sinh kim phun buồng đốt đi kèm'),
-            rating: 4.8,
-            reviewCount: 96,
-            details: [
-                t('services.list.engine.details.0', 'Đo áp suất buồng đốt, kiểm tra tỉ số nén động cơ.'),
-                t('services.list.engine.details.1', 'Xử lý hiện tượng rò rỉ dầu máy, hao nước làm mát.'),
-                t('services.list.engine.details.2', 'Cân chỉnh cam, khắc phục tiếng gõ động cơ lạ.'),
-                t('services.list.engine.details.3', 'Đại tu động cơ chuyên nghiệp theo tiêu chuẩn hãng.'),
-                t('services.list.engine.details.4', 'Vệ sinh kim phun, họng hút và buồng đốt bằng máy chuyên dụng.')
-            ]
-        },
-        {
-            id: 3,
-            title: t('services.list.tireBrake.title', 'Dịch Vụ Lốp & Phanh'),
-            desc: t('services.list.tireBrake.desc', 'Đảm bảo an toàn tối đa với dịch vụ kiểm tra lốp, cân bằng động và bảo dưỡng hệ thống phanh.'),
-            price: t('services.list.tireBrake.price', 'Từ 400.000đ'),
-            numericPrice: 400000,
-            originalPrice: t('services.list.tireBrake.originalPrice', 'Từ 500.000đ'),
-            discountPercentage: 20,
-            promoText: t('services.list.tireBrake.promoText', 'Miễn phí cân bằng động khi thay từ 2 lốp Michelin'),
-            rating: 4.8,
-            reviewCount: 112,
-            details: [
-                t('services.list.tireBrake.details.0', 'Cân chỉnh thước lái 3D tiên tiến nhất hiện nay.'),
-                t('services.list.tireBrake.details.1', 'Cân bằng động lốp xe triệt tiêu hiện tượng rung vô lăng.'),
-                t('services.list.tireBrake.details.2', 'Láng đĩa phanh trực tiếp không cần tháo rời.'),
-                t('services.list.tireBrake.details.3', 'Thay mới má phanh chính hãng nhập khẩu.'),
-                t('services.list.tireBrake.details.4', 'Kiểm tra toàn bộ đường ống dẫn dầu và cụm heo phanh.')
-            ]
-        },
-        {
-            id: 4,
-            title: t('services.list.detailing.title', 'Chăm Sóc Nội Thất'),
-            desc: t('services.list.detailing.desc', 'Làm sạch sâu, khử mùi và bảo dưỡng các bề mặt da, nhựa bên trong xe như mới.'),
-            price: t('services.list.detailing.price', 'Từ 800.000đ'),
-            numericPrice: 800000,
-            originalPrice: t('services.list.detailing.originalPrice', 'Từ 900.000đ'),
-            discountPercentage: 12,
-            promoText: t('services.list.detailing.promoText', 'Tặng gói khử mùi cabin Ozon trị giá 200.000đ'),
-            rating: 4.7,
-            reviewCount: 75,
-            details: [
-                t('services.list.detailing.details.0', 'Dọn nội thất toàn diện, hút bụi và giặt thảm sàn.'),
-                t('services.list.detailing.details.1', 'Vệ sinh bề mặt da ghế bằng dung dịch chuyên sâu bảo vệ da.'),
-                t('services.list.detailing.details.2', 'Khử trùng hệ thống điều hòa và khử mùi ozon cabin.'),
-                t('services.list.detailing.details.3', 'Dưỡng bóng táp-lô, táp-pi cửa chống lão hóa tia UV.'),
-                t('services.list.detailing.details.4', 'Làm sạch trần nỉ và cốp sau tỉ mỉ.')
-            ]
-        },
-        {
-            id: 5,
-            title: t('services.list.electronics.title', 'Chẩn Đoán Điện Tử'),
-            desc: t('services.list.electronics.desc', 'Sử dụng máy quét chuyên dụng để phát hiện chính xác mọi lỗi hệ thống điện tử trên xe.'),
-            price: t('services.list.electronics.price', 'Từ 300.000đ'),
-            numericPrice: 300000,
-            originalPrice: t('services.list.electronics.originalPrice', 'Từ 350.000đ'),
-            discountPercentage: 15,
-            promoText: t('services.list.electronics.promoText', 'Miễn phí chẩn đoán lỗi OBD nhanh bằng máy chuyên dụng'),
-            rating: 4.9,
-            reviewCount: 142,
-            details: [
-                t('services.list.electronics.details.0', 'Quét toàn bộ lỗi hệ thống điện thân xe, hộp điều khiển.'),
-                t('services.list.electronics.details.1', 'Chẩn đoán lỗi cảm biến ABS, ESP, túi khí SRS.'),
-                t('services.list.electronics.details.2', 'Kiểm tra tình trạng máy phát điện, máy khởi động.'),
-                t('services.list.electronics.details.3', 'Cập nhật phần mềm hệ thống (ECU flashing) nếu có.'),
-                t('services.list.electronics.details.4', 'Xóa các mã lỗi ảo phát sinh do sụt điện.')
-            ]
-        },
-        {
-            id: 6,
-            title: t('services.list.rescue.title', 'Cứu Hộ 24/7'),
-            desc: t('services.list.rescue.desc', 'Hỗ trợ khẩn cấp mọi lúc, mọi nơi khi xe gặp sự cố bất ngờ trên đường.'),
-            price: t('services.list.rescue.price', 'Liên hệ'),
-            numericPrice: 0,
-            originalPrice: '',
-            promoText: t('services.list.rescue.promoText', 'Hỗ trợ khẩn cấp 24/7 toàn khu vực nội thành'),
-            badge: t('booking.services.emergencyBadge', 'Khẩn cấp'),
-            rating: 5.0,
-            reviewCount: 310,
-            details: [
-                t('services.list.rescue.details.0', 'Hỗ trợ kích nổ ắc quy tại chỗ nhanh chóng.'),
-                t('services.list.rescue.details.1', 'Hỗ trợ thay lốp dự phòng khẩn cấp.'),
-                t('services.list.rescue.details.2', 'Cung cấp nhiên liệu khẩn cấp trên đường.'),
-                t('services.list.rescue.details.3', 'Xe cẩu kéo chuyên dụng đưa về trung tâm gần nhất.'),
-                t('services.list.rescue.details.4', 'Đội ngũ cứu hộ túc trực sẵn sàng 24 giờ mỗi ngày.')
-            ]
+    // Load dynamic categories & services from backend
+    useEffect(() => {
+        const loadDbData = async () => {
+            setIsLoading(true);
+            try {
+                const catRes = await fetchPublic(`${API_BASE_URL}/api/public/service-categories`);
+                const svcRes = await fetchPublic(`${API_BASE_URL}/api/public/service-catalog`);
+                if (catRes && catRes.data) {
+                    setDbCategories(catRes.data);
+                }
+                if (svcRes && svcRes.data) {
+                    setDbServices(svcRes.data);
+                }
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu dịch vụ từ backend:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadDbData();
+    }, []);
+
+    // Load combos from LocalStorage
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem("service_combos");
+            if (stored) {
+                setDbCombos(JSON.parse(stored));
+            } else {
+                setDbCombos([
+                  {
+                    id: 10001,
+                    combo_name: "Combo Bảo dưỡng Định kỳ Cơ bản",
+                    category_id: 1,
+                    service_ids: [1, 2, 3],
+                    discount_percentage: 10,
+                    is_active: true,
+                    createdAt: new Date().toISOString(),
+                  },
+                  {
+                    id: 10002,
+                    combo_name: "Combo Chăm sóc & Làm đẹp Toàn diện",
+                    category_id: 4,
+                    service_ids: [3, 4],
+                    discount_percentage: 15,
+                    is_active: true,
+                    createdAt: new Date().toISOString(),
+                  }
+                ]);
+            }
+        } catch (e) {
+            console.error(e);
         }
+    }, []);
+
+    const getServicePriceValue = (id: number): number => {
+        try {
+            const storedPrices = localStorage.getItem("service_prices");
+            if (storedPrices) {
+                const prices = JSON.parse(storedPrices);
+                if (prices[id] !== undefined) return prices[id];
+            }
+        } catch (e) {}
+
+        const priceMap: Record<number, number> = {
+            1: 500000,
+            2: 1200000,
+            3: 400000,
+            4: 800000,
+            5: 300000,
+            6: 0
+        };
+        return priceMap[id] ?? 300000;
+    };
+
+    const getServiceDiscount = (serviceName: string, categoryName: string): number => {
+        const lowerC = (categoryName || "").toLowerCase();
+        if (lowerC.includes("bảo dưỡng")) return 10;
+        if (lowerC.includes("động cơ") || lowerC.includes("sửa chữa")) return 15;
+        if (lowerC.includes("lốp") || lowerC.includes("phanh")) return 20;
+        if (lowerC.includes("nội thất") || lowerC.includes("chăm sóc")) return 12;
+        if (lowerC.includes("điện") || lowerC.includes("chẩn đoán")) return 15;
+        return 0;
+    };
+
+    const getServicePromoText = (serviceName: string, categoryName: string): string => {
+        const lowerS = serviceName.toLowerCase();
+        if (lowerS.includes("cấp 1")) return "Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí";
+        if (lowerS.includes("cấp 2")) return "Tặng nước rửa kính cao cấp & vệ sinh lọc gió động cơ";
+        if (lowerS.includes("cấp 3")) return "Tặng nước rửa kính cao cấp & cân bằng động bánh xe miễn phí";
+        if (lowerS.includes("kim phun")) return "Giảm 15% gói vệ sinh kim phun buồng đốt đi kèm";
+        if (lowerS.includes("lốp") || lowerS.includes("bánh xe")) return "Miễn phí cân bằng động khi thay từ 2 lốp Michelin";
+        if (lowerS.includes("nội thất")) return "Tặng gói khử mùi cabin Ozon trị giá 200.000đ";
+        if (lowerS.includes("obd") || lowerS.includes("mã lỗi")) return "Miễn phí chẩn đoán lỗi OBD nhanh bằng máy chuyên dụng";
+        if (lowerS.includes("cứu hộ")) return "Hỗ trợ khẩn cấp 24/7 toàn khu vực nội thành";
+        return "";
+    };
+
+    const getServiceDetails = (serviceName: string): string[] => {
+        const lowerS = serviceName.toLowerCase();
+        if (lowerS.includes("cấp 1")) return [
+            "Thay nhớt động cơ chính hãng phù hợp thông số xe.",
+            "Kiểm tra và làm sạch lọc gió động cơ, lọc gió cabin.",
+            "Kiểm tra hệ thống phanh, má phanh, đĩa phanh.",
+            "Kiểm tra bình ắc quy và hệ thống chiếu sáng.",
+            "Đọc lỗi lỗi hộp đen (OBD) bằng thiết bị chuyên dụng."
+        ];
+        if (lowerS.includes("cấp 2")) return [
+            "Thay nhớt & lọc nhớt động cơ chính hãng.",
+            "Kiểm tra, làm sạch lọc gió động cơ & lọc gió điều hòa.",
+            "Tháo bánh xe, vệ sinh và dưỡng hệ thống phanh 4 bánh.",
+            "Đảo lốp và kiểm tra độ mòn của gai lốp.",
+            "Kiểm tra tổng quát gầm xe, các khớp nối, rotuyn."
+        ];
+        if (lowerS.includes("cấp 3")) return [
+            "Thay nhớt, lọc nhớt, thay lọc gió động cơ & điều hòa.",
+            "Thay bugi đánh lửa (nếu cần), vệ sinh bướm ga.",
+            "Vệ sinh phanh 4 bánh chuyên sâu, tra mỡ ắc phanh.",
+            "Kiểm tra cân bằng động lốp xe và cân chỉnh góc đặt bánh xe.",
+            "Kiểm tra toàn bộ hệ thống làm mát, dầu phanh, dầu trợ lực lái."
+        ];
+        if (lowerS.includes("kim phun")) return [
+            "Đo áp suất buồng đốt, kiểm tra tỉ số nén động cơ.",
+            "Xử lý hiện tượng rò rỉ dầu máy, hao nước làm mát.",
+            "Cân chỉnh cam, khắc phục tiếng gõ động cơ lạ.",
+            "Đại tu động cơ chuyên nghiệp theo tiêu chuẩn hãng.",
+            "Vệ sinh kim phun, họng hút và buồng đốt bằng máy chuyên dụng."
+        ];
+        if (lowerS.includes("lốp") || lowerS.includes("bánh xe") || lowerS.includes("phanh")) return [
+            "Cân chỉnh thước lái 3D tiên tiến nhất hiện nay.",
+            "Cân bằng động lốp xe triệt tiêu hiện tượng rung vô lăng.",
+            "Láng đĩa phanh trực tiếp không cần tháo rời.",
+            "Thay mới má phanh chính hãng nhập khẩu.",
+            "Kiểm tra toàn bộ đường ống dẫn dầu và cụm heo phanh."
+        ];
+        if (lowerS.includes("nội thất")) return [
+            "Dọn nội thất toàn diện, hút bụi và giặt thảm sàn.",
+            "Vệ sinh bề mặt da ghế bằng dung dịch chuyên sâu bảo vệ da.",
+            "Khử trùng hệ thống điều hòa và khử mùi ozon cabin.",
+            "Dưỡng bóng táp-lô, táp-pi cửa chống lão hóa tia UV.",
+            "Làm sạch trần nỉ và cốp sau tỉ mỉ."
+        ];
+        if (lowerS.includes("obd") || lowerS.includes("lỗi")) return [
+            "Quét toàn bộ lỗi hệ thống điện thân xe, hộp điều khiển.",
+            "Chẩn đoán lỗi cảm biến ABS, ESP, túi khí SRS.",
+            "Kiểm tra tình trạng máy phát điện, máy khởi động.",
+            "Cập nhật phần mềm hệ thống (ECU flashing) nếu có.",
+            "Xóa các mã lỗi ảo phát sinh do sụt điện."
+        ];
+        if (lowerS.includes("cứu hộ") || lowerS.includes("kích bình")) return [
+            "Hỗ trợ kích nổ ắc quy tại chỗ nhanh chóng.",
+            "Hỗ trợ thay lốp dự phòng khẩn cấp.",
+            "Cung cấp nhiên liệu khẩn cấp trên đường.",
+            "Xe cẩu kéo chuyên dụng đưa về trung tâm dịch vụ.",
+            "Đội ngũ cứu hộ túc trực sẵn sàng 24 giờ mỗi ngày."
+        ];
+        return [
+            "Kiểm tra tổng quát tình trạng hoạt động thực tế.",
+            "Sử dụng phụ tùng và linh kiện chính hãng 100%.",
+            "Bảo hành kỹ thuật dài hạn và tư vấn miễn phí.",
+            "Thực hiện nhanh chóng bởi kỹ thuật viên lành nghề."
+        ];
+    };
+
+    // Fallbacks
+    const fallbackCategories = [
+        { id: 1, category_name: 'Bảo dưỡng định kỳ' },
+        { id: 2, category_name: 'Sửa chữa động cơ' },
+        { id: 3, category_name: 'Dịch vụ lốp & phanh' },
+        { id: 4, category_name: 'Chăm sóc nội thất' },
+        { id: 5, category_name: 'Chẩn đoán điện tử' },
+        { id: 6, category_name: 'Cứu hộ 24/7' }
     ];
+
+    const fallbackServices = [
+        { id: 1, service_name: 'Bảo Dưỡng Định Kỳ Cấp 1', description: 'Kiểm tra tổng quát, thay dầu động cơ, vệ sinh lọc gió, lọc điều hòa.', category_id: 1 },
+        { id: 2, service_name: 'Bảo Dưỡng Định Kỳ Cấp 2', description: 'Bảo dưỡng phanh 4 bánh, đảo lốp, thay nhớt lọc nhớt, vệ sinh họng hút.', category_id: 1 },
+        { id: 3, service_name: 'Sửa Chữa Động Cơ Chuyên Sâu', description: 'Xử lý rung giật, hao nước, yếu máy, rò rỉ dầu nhớt xi lanh.', category_id: 2 },
+        { id: 4, service_name: 'Cân Chỉnh Thước Lái 3D', description: 'Cân chỉnh góc đặt bánh xe bằng máy Hunter hiện đại chống ăn mòn lốp.', category_id: 3 },
+        { id: 5, service_name: 'Dọn Nội Thất Toàn Diện', description: 'Vệ sinh ghế da, giặt trần nỉ, dưỡng bóng taplo tapbi, khử trùng ozon.', category_id: 4 },
+        { id: 6, service_name: 'Cứu Hộ Ắc Quy & Kích Bình', description: 'Hỗ trợ khẩn cấp tại chỗ kích nổ bình ắc quy xe bị hết điện.', category_id: 6 }
+    ];
+
+    const activeCategories = dbCategories.length > 0 ? dbCategories : fallbackCategories;
+    const activeDbServices = dbServices.length > 0 ? dbServices : fallbackServices;
+
+    // Map dbServices to ServiceItem list
+    const mappedServices: ServiceItem[] = useMemo(() => {
+        return activeDbServices.map((s: any) => {
+            const cat = activeCategories.find(c => String(c.id) === String(s.category_id));
+            const categoryName = cat ? cat.category_name : "";
+            const discountPercent = getServiceDiscount(s.service_name, categoryName);
+            const priceValue = getServicePriceValue(s.id);
+            const originalPriceValue = discountPercent > 0 ? Math.round(priceValue / (1 - discountPercent / 100)) : 0;
+            const originalPriceStr = originalPriceValue > 0 ? `Từ ${originalPriceValue.toLocaleString("vi-VN")}đ` : "";
+            
+            // Rating details simulator
+            const ratingVal = 4.7 + ((s.id * 3) % 4) * 0.1;
+            const reviewVal = 50 + (s.id * 17) % 250;
+
+            return {
+                id: s.id,
+                title: s.service_name,
+                desc: s.description || "",
+                price: priceValue > 0 ? `Từ ${priceValue.toLocaleString("vi-VN")}đ` : "Liên hệ",
+                numericPrice: priceValue,
+                originalPrice: originalPriceStr || undefined,
+                discountPercentage: discountPercent > 0 ? discountPercent : undefined,
+                promoText: getServicePromoText(s.service_name, categoryName),
+                rating: parseFloat(ratingVal.toFixed(1)),
+                reviewCount: reviewVal,
+                badge: s.service_name.toLowerCase().includes("cứu hộ") ? "Khẩn cấp" : undefined,
+                details: getServiceDetails(s.service_name)
+            };
+        });
+    }, [activeDbServices, activeCategories]);
+
+    // Pagination states for single services list in BookingPage
+    const [servicePage, setServicePage] = useState(1);
+    const servicesPerPage = 16;
+
+    const totalServicePages = Math.ceil(mappedServices.length / servicesPerPage);
+    const currentServices = useMemo(() => {
+        const indexOfLast = servicePage * servicesPerPage;
+        const indexOfFirst = indexOfLast - servicesPerPage;
+        return mappedServices.slice(indexOfFirst, indexOfLast);
+    }, [mappedServices, servicePage, servicesPerPage]);
+
+    // Parse params on URL
+    useEffect(() => {
+        const initialServiceId = searchParams.get('serviceId');
+        const initialComboId = searchParams.get('comboId');
+        const initialCategoryId = searchParams.get('categoryId');
+
+        if (initialComboId) {
+            setBookingType('combo');
+            setSelectedComboId(parseInt(initialComboId, 10));
+        } else if (initialCategoryId) {
+            setBookingType('category');
+            setSelectedCategoryId(parseInt(initialCategoryId, 10));
+        } else if (initialServiceId) {
+            setBookingType('service');
+            setSelectedServiceIds([parseInt(initialServiceId, 10)]);
+        }
+    }, [searchParams]);
+
+    // Setup active selection tóm tắt
+    const activeSelection = useMemo(() => {
+        if (bookingType === 'service') {
+            if (selectedServiceIds.length === 0) return null;
+            const selected = mappedServices.filter(x => selectedServiceIds.includes(x.id));
+            const totalPrice = selected.reduce((sum, s) => sum + s.numericPrice, 0);
+            const title = selected.length === 1
+                ? selected[0].title
+                : `${selected.length} dịch vụ đã chọn`;
+            return {
+                title,
+                price: totalPrice > 0 ? `Từ ${totalPrice.toLocaleString('vi-VN')}đ` : 'Liên hệ',
+                numericPrice: totalPrice,
+                originalPrice: undefined,
+                discountPercentage: undefined,
+                promoText: selected.length > 1 ? `Bao gồm: ${selected.map(s => s.title).join(', ')}` : selected[0]?.promoText,
+                subItems: selectedSubItems,
+            };
+        } else if (bookingType === 'combo') {
+            const c = dbCombos.find(x => x.id === selectedComboId);
+            if (!c) return null;
+            const serviceIds = c.service_ids || [];
+            const original = serviceIds.reduce((sum, id) => sum + getServicePriceValue(id), 0);
+            const discounted = Math.round(original * (1 - c.discount_percentage / 100));
+            const subNames = serviceIds.map(id => {
+                const s = mappedServices.find(x => x.id === id);
+                return s ? s.title : "Dịch vụ của gara";
+            });
+            return {
+                title: c.combo_name,
+                price: `Từ ${discounted.toLocaleString("vi-VN")}đ`,
+                numericPrice: discounted,
+                originalPrice: `Từ ${original.toLocaleString("vi-VN")}đ`,
+                discountPercentage: c.discount_percentage,
+                promoText: `Tiết kiệm ${c.discount_percentage}% khi đặt theo gói combo`,
+                subItems: subNames,
+            };
+        } else if (bookingType === 'category') {
+            const cat = activeCategories.find(x => String(x.id) === String(selectedCategoryId));
+            if (!cat) return null;
+            const catServices = mappedServices.filter(s => {
+                const rawService = activeDbServices.find(x => x.id === s.id);
+                return rawService && String(rawService.category_id) === String(cat.id);
+            });
+            const original = catServices.reduce((sum, s) => sum + s.numericPrice, 0);
+            const discountPercent = 10;
+            const discounted = Math.round(original * (1 - discountPercent / 100));
+            const subNames = catServices.map(s => s.title);
+            return {
+                title: `Trọn gói ${cat.category_name}`,
+                price: `Từ ${discounted.toLocaleString("vi-VN")}đ`,
+                numericPrice: discounted,
+                originalPrice: `Từ ${original.toLocaleString("vi-VN")}đ`,
+                discountPercentage: discountPercent,
+                promoText: "Ưu đãi đặt trọn gói danh mục - Tiết kiệm 10%",
+                subItems: subNames,
+            };
+        }
+        return null;
+    }, [bookingType, selectedServiceIds, selectedComboId, selectedCategoryId, mappedServices, dbCombos, activeCategories, activeDbServices, selectedSubItems]);
+
+    // Handle subitems customize default fill — merge details of all selected services
+    useEffect(() => {
+        if (bookingType === 'service' && selectedServiceIds.length > 0) {
+            const allDetails = selectedServiceIds.flatMap(id => {
+                const service = mappedServices.find(s => s.id === id);
+                return service?.details ?? [];
+            });
+            // deduplicate
+            setSelectedSubItems([...new Set(allDetails)]);
+        } else {
+            setSelectedSubItems([]);
+        }
+    }, [bookingType, selectedServiceIds, mappedServices]);
 
     const timeSlots = [
         { time: '08:00', label: t('booking.timeSlots.morning', 'Sáng') },
@@ -187,26 +413,13 @@ export default function BookingPage() {
         { time: '16:30', label: t('booking.timeSlots.afternoon', 'Chiều') },
     ];
 
-    const selectedService = services.find(s => s.id === selectedServiceId);
-
-    useEffect(() => {
-        if (selectedServiceId) {
-            const service = services.find(s => s.id === selectedServiceId);
-            if (service && service.details) {
-                setSelectedSubItems(service.details);
-            } else {
-                setSelectedSubItems([]);
-            }
-        } else {
-            setSelectedSubItems([]);
-        }
-    }, [selectedServiceId]);
-
-    // Form validation helpers
     const validateStep = (currentStep: number) => {
         switch (currentStep) {
             case 1:
-                return selectedServiceId !== null;
+                if (bookingType === 'service') return selectedServiceIds.length > 0;
+                if (bookingType === 'combo') return selectedComboId !== null;
+                if (bookingType === 'category') return selectedCategoryId !== null;
+                return false;
             case 2:
                 return bookingDate !== '' && bookingTime !== '';
             case 3:
@@ -240,7 +453,6 @@ export default function BookingPage() {
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
-        // Simulate API network call
         setTimeout(() => {
             setIsSubmitting(false);
             setIsSuccess(true);
@@ -270,14 +482,14 @@ export default function BookingPage() {
                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-left text-xs space-y-3">
                         <div className="flex justify-between">
                             <span className="text-gray-400">{t('booking.summary.serviceLabel', 'Dịch vụ:')}</span>
-                            <span className="font-bold text-brand-blue">{selectedService?.title}</span>
+                            <span className="font-bold text-brand-blue">{activeSelection?.title}</span>
                         </div>
-                        {selectedSubItems.length > 0 && (
+                        {activeSelection?.subItems && activeSelection.subItems.length > 0 && (
                             <div className="pl-3 border-l-2 border-[#F9A11B] py-0.5 space-y-1 my-1">
                                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                    {t('booking.summary.itemsLabel', 'Hạng mục thực hiện:')}
+                                    {bookingType === 'service' ? t('booking.summary.itemsLabel', 'Hạng mục thực hiện:') : 'Dịch vụ đi kèm:'}
                                 </div>
-                                {selectedSubItems.map((item, idx) => (
+                                {activeSelection.subItems.map((item, idx) => (
                                     <div key={idx} className="text-slate-600 font-medium text-[11px] leading-relaxed">
                                         • {item}
                                     </div>
@@ -296,6 +508,10 @@ export default function BookingPage() {
                             <span className="text-gray-400">{t('booking.summary.customerLabel', 'Khách hàng:')}</span>
                             <span className="font-bold text-brand-blue">{contactName}</span>
                         </div>
+                        <div className="flex justify-between border-t border-slate-200/50 pt-2 font-bold text-brand-blue">
+                            <span>Thành tiền:</span>
+                            <span style={{ color: COLORS.orange }}>{activeSelection?.price}</span>
+                        </div>
                     </div>
 
                     <div className="pt-4 flex flex-col gap-2">
@@ -308,7 +524,9 @@ export default function BookingPage() {
                         <button
                             onClick={() => {
                                 setStep(1);
-                                setSelectedServiceId(null);
+                                setSelectedServiceIds([]);
+                                setSelectedComboId(null);
+                                setSelectedCategoryId(null);
                                 setBookingDate('');
                                 setBookingTime('');
                                 setVehicleBrand('');
@@ -384,7 +602,7 @@ export default function BookingPage() {
                     {/* ── MAIN FORM CONTAINER ──────────────────────── */}
                     <div className="lg:col-span-2 space-y-8 text-left">
                         <AnimatePresence mode="wait">
-                            {/* STEP 1: SELECT SERVICE */}
+                            {/* STEP 1: SELECT SERVICE / COMBO / CATEGORY */}
                             {step === 1 && (
                                 <motion.div
                                     key="step1"
@@ -393,110 +611,371 @@ export default function BookingPage() {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="p-6 md:p-10 rounded-3xl bg-white border border-gray-100 shadow-xs text-left"
                                 >
-                                    <div className="flex items-center gap-3 mb-8">
+                                    <div className="flex items-center gap-3 mb-6">
                                         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-blue">
                                             <Settings size={20} />
                                         </div>
-                                        <h2 className="text-xl md:text-2xl font-bold text-brand-blue font-display">{t('booking.step1.title', 'Chọn dịch vụ bảo dưỡng')}</h2>
+                                        <h2 className="text-xl md:text-2xl font-bold text-brand-blue font-display">Chọn hình thức bảo dưỡng</h2>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {services.map((service) => {
-                                            const isSelected = selectedServiceId === service.id;
-                                            return (
-                                                <div
-                                                    key={service.id}
-                                                    onClick={() => setSelectedServiceId(service.id)}
-                                                    className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col group text-left"
-                                                    style={{
-                                                        borderColor: isSelected ? COLORS.orange : '#F1F5F9',
-                                                        backgroundColor: isSelected ? 'rgba(249,161,27,0.03)' : '#FFFFFF',
-                                                        boxShadow: isSelected ? '0 10px 20px rgba(249,161,27,0.04)' : 'none'
-                                                    }}
-                                                >
-                                                    <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end max-w-[70%]">
-                                                        <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-xs shrink-0">
-                                                            <Star size={10} fill="currentColor" className="text-amber-500 shrink-0" />
-                                                            <span>{service.rating}</span>
-                                                            <span className="text-gray-400 font-medium">({service.reviewCount})</span>
-                                                        </div>
-                                                        {service.discountPercentage && (
-                                                            <div className="bg-red-100 text-red-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shadow-xs shrink-0">
-                                                                {t('services.discountLabel', 'Giảm {{percent}}%', { percent: service.discountPercentage })}
-                                                            </div>
-                                                        )}
-                                                        {service.badge && (
-                                                            <div className="text-[9px] font-bold px-2 py-0.5 rounded-lg shrink-0"
-                                                                style={{ backgroundColor: COLORS.orange, color: COLORS.navy }}>
-                                                                {service.badge}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                    {/* Segmented Control Switcher */}
+                                    <div className="flex p-1 bg-slate-100/80 rounded-2xl mb-8 max-w-xl border border-slate-200/40">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setBookingType('service'); setServicePage(1); }}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                                bookingType === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                            }`}
+                                        >
+                                            <Settings size={14} />
+                                            Dịch vụ lẻ
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setBookingType('combo'); setServicePage(1); }}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                                bookingType === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                            }`}
+                                        >
+                                            <Sparkles size={14} />
+                                            Gói Combo
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setBookingType('category'); setServicePage(1); }}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                                bookingType === 'category' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                            }`}
+                                        >
+                                            <Layers size={14} />
+                                            Trọn gói danh mục
+                                        </button>
+                                    </div>
 
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-sm">
-                                                        <Settings size={18} className="text-gray-400" />
-                                                    </div>
-
-                                                    <h3 className="text-base font-bold mb-1 text-brand-blue">{service.title}</h3>
-                                                    <p className="text-xs text-gray-400 mb-2 leading-relaxed flex-grow">
-                                                        {service.desc}
-                                                    </p>
-
-                                                    {service.promoText && (
-                                                        <div className="mb-4 p-2 bg-amber-50/50 rounded-xl border border-amber-100/50 flex items-start gap-1.5 text-[10px] text-amber-700 font-semibold text-left">
-                                                            <span className="shrink-0">🎁</span>
-                                                            <span className="line-clamp-2 leading-tight">{service.promoText}</span>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex justify-between items-end">
-                                                        <div>
-                                                            <div className="text-[9px] font-bold uppercase mb-0.5 text-gray-400">{t('booking.step1.estimatedPrice', 'Giá dự kiến')}</div>
-                                                            <div className="flex items-baseline gap-1.5">
-                                                                {service.originalPrice && (
-                                                                    <span className="text-xs text-gray-400 line-through font-medium">{service.originalPrice}</span>
-                                                                )}
-                                                                <span className="text-base font-bold text-brand-orange">{service.price}</span>
-                                                            </div>
-                                                        </div>
+                                    {/* List Display according to type */}
+                                    {bookingType === 'service' && (
+                                        <>
+                                            {/* Multi-select count hint */}
+                                            {selectedServiceIds.length > 0 && (
+                                                <div className="mb-3 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 flex items-center gap-2">
+                                                    <Check size={12} className="text-brand-blue shrink-0" />
+                                                    <span className="text-[10px] font-bold text-brand-blue">
+                                                        Đã chọn {selectedServiceIds.length} dịch vụ — nhấp vào thẻ để thêm hoặc bỏ
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-fadeIn">
+                                                {currentServices.map((service) => {
+                                                    const isSelected = selectedServiceIds.includes(service.id);
+                                                    return (
                                                         <div
-                                                            className="w-6 h-6 rounded-full border flex items-center justify-center transition-all shrink-0"
+                                                            key={service.id}
+                                                            onClick={() => {
+                                                                setSelectedServiceIds(prev =>
+                                                                    prev.includes(service.id)
+                                                                        ? prev.filter(id => id !== service.id)
+                                                                        : [...prev, service.id]
+                                                                );
+                                                            }}
+                                                            className="relative p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left min-h-[175px]"
                                                             style={{
-                                                                borderColor: isSelected ? COLORS.orange : '#CBD5E1',
-                                                                backgroundColor: isSelected ? COLORS.orange : 'transparent',
-                                                                color: isSelected ? COLORS.navy : 'transparent',
+                                                                borderColor: isSelected ? COLORS.orange : '#F1F5F9',
+                                                                backgroundColor: isSelected ? 'rgba(249,161,27,0.05)' : '#FFFFFF',
+                                                                boxShadow: isSelected ? '0 6px 12px rgba(249,161,27,0.08)' : 'none'
                                                             }}
                                                         >
-                                                            <Check size={12} strokeWidth={4} />
+                                                            <div>
+                                                                <div className="absolute top-2 right-2 flex items-center gap-1 flex-wrap justify-end max-w-[80%]">
+                                                                    <div className="flex items-center gap-0.5 bg-amber-50 border border-amber-100 text-amber-700 px-1 py-0.2 rounded text-[8px] font-bold shadow-xs shrink-0">
+                                                                        <Star size={6.5} fill="currentColor" className="text-amber-500 shrink-0" />
+                                                                        <span>{service.rating}</span>
+                                                                    </div>
+                                                                    {service.discountPercentage && (
+                                                                        <div className="bg-red-100 text-red-600 text-[7.5px] font-black uppercase px-1 py-0.2 rounded shadow-xs shrink-0">
+                                                                            -{service.discountPercentage}%
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-xs">
+                                                                    <Settings size={11} className="text-gray-400" />
+                                                                </div>
+
+                                                                <h3 className="text-[11px] md:text-xs font-bold mb-0.5 text-brand-blue line-clamp-1">{service.title}</h3>
+                                                                <p className="text-[9px] text-slate-400 mb-1 leading-snug line-clamp-2">
+                                                                    {service.desc}
+                                                                </p>
+
+                                                                {service.promoText && (
+                                                                    <div className="mb-2 p-1 bg-amber-50/40 rounded-md border border-amber-100/40 flex items-start gap-1 text-[8px] text-amber-700 font-medium text-left">
+                                                                        <span className="shrink-0">🎁</span>
+                                                                        <span className="line-clamp-2 leading-tight">{service.promoText}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex justify-between items-end mt-1.5 pt-1.5 border-t border-slate-50/70">
+                                                                <div>
+                                                                    <div className="text-[7px] font-black uppercase mb-0.5 text-gray-400">Giá dự kiến</div>
+                                                                    <div className="flex flex-wrap items-baseline gap-1">
+                                                                        {service.originalPrice && (
+                                                                            <span className="text-[8px] text-gray-400 line-through font-medium">{service.originalPrice}</span>
+                                                                        )}
+                                                                        <span className="text-[10px] md:text-xs font-bold text-brand-orange">{service.price}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Checkbox indicator */}
+                                                                <div
+                                                                    className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all shrink-0"
+                                                                    style={{
+                                                                        borderColor: isSelected ? COLORS.orange : '#CBD5E1',
+                                                                        backgroundColor: isSelected ? COLORS.orange : 'transparent',
+                                                                        color: isSelected ? COLORS.navy : 'transparent',
+                                                                        borderRadius: '4px',
+                                                                    }}
+                                                                >
+                                                                    <Check size={8} strokeWidth={4} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Service Pagination Controls */}
+                                            {totalServicePages > 1 && (
+                                                <div className="flex justify-center items-center gap-1.5 mt-8">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setServicePage(prev => Math.max(prev - 1, 1))}
+                                                        disabled={servicePage === 1}
+                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
+                                                            servicePage === 1
+                                                                ? 'text-gray-300 bg-gray-50/50 border border-gray-100 cursor-not-allowed'
+                                                                : 'text-brand-blue bg-white border border-gray-200 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        Trước
+                                                    </button>
+                                                    {Array.from({ length: totalServicePages }).map((_, index) => {
+                                                        const pageNumber = index + 1;
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                key={pageNumber}
+                                                                onClick={() => setServicePage(pageNumber)}
+                                                                className={`w-7 h-7 rounded-xl text-[10px] font-bold transition-all ${
+                                                                    servicePage === pageNumber
+                                                                        ? 'bg-brand-blue text-white shadow-md shadow-blue-900/10'
+                                                                        : 'bg-white text-brand-blue border border-gray-200 hover:bg-gray-50'
+                                                                }`}
+                                                            >
+                                                                {pageNumber}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setServicePage(prev => Math.min(prev + 1, totalServicePages))}
+                                                        disabled={servicePage === totalServicePages}
+                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all ${
+                                                            servicePage === totalServicePages
+                                                                ? 'text-gray-300 bg-gray-50/50 border border-gray-100 cursor-not-allowed'
+                                                                : 'text-brand-blue bg-white border border-gray-200 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        Sau
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {bookingType === 'combo' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                                            {dbCombos.filter(c => c.is_active).map((combo) => {
+                                                const isSelected = selectedComboId === combo.id;
+                                                const original = combo.service_ids.reduce((sum, id) => sum + getServicePriceValue(id), 0);
+                                                const discounted = Math.round(original * (1 - combo.discount_percentage / 100));
+                                                const comboServiceNames = combo.service_ids.map(id => {
+                                                    const s = mappedServices.find(x => x.id === id);
+                                                    return s ? s.title : "Dịch vụ bảo dưỡng";
+                                                });
+
+                                                return (
+                                                    <div
+                                                        key={combo.id}
+                                                        onClick={() => setSelectedComboId(combo.id)}
+                                                        className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group text-left"
+                                                        style={{
+                                                            borderColor: isSelected ? COLORS.orange : '#F1F5F9',
+                                                            backgroundColor: isSelected ? 'rgba(249,161,27,0.03)' : '#FFFFFF',
+                                                            boxShadow: isSelected ? '0 10px 20px rgba(249,161,27,0.04)' : 'none'
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end">
+                                                                <div className="bg-red-100 text-red-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shadow-xs shrink-0">
+                                                                    Giảm {combo.discount_percentage}%
+                                                                </div>
+                                                                <div className="text-[9px] font-bold px-2 py-0.5 rounded-lg shrink-0 bg-brand-orange text-brand-blue">
+                                                                    Combo
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-sm">
+                                                                <Sparkles size={18} className="text-gray-400" />
+                                                            </div>
+
+                                                            <h3 className="text-base font-bold mb-1 text-brand-blue">{combo.combo_name}</h3>
+                                                            
+                                                            <div className="my-3 space-y-1.5 pl-2 border-l-2 border-amber-400/50">
+                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-display">Dịch vụ đi kèm:</span>
+                                                                {comboServiceNames.map((name, idx) => (
+                                                                    <div key={idx} className="text-[11px] text-slate-500 leading-snug flex items-center gap-1">
+                                                                        <span className="text-[#F9A11B] shrink-0">•</span>
+                                                                        <span>{name}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-50">
+                                                            <div>
+                                                                <div className="text-[9px] font-bold uppercase mb-0.5 text-gray-400">Giá combo ưu đãi</div>
+                                                                <div className="flex items-baseline gap-1.5">
+                                                                    <span className="text-xs text-gray-400 line-through font-medium">Từ {original.toLocaleString("vi-VN")}đ</span>
+                                                                    <span className="text-base font-bold text-brand-orange">Từ {discounted.toLocaleString("vi-VN")}đ</span>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                className="w-6 h-6 rounded-full border flex items-center justify-center transition-all shrink-0"
+                                                                style={{
+                                                                    borderColor: isSelected ? COLORS.orange : '#CBD5E1',
+                                                                    backgroundColor: isSelected ? COLORS.orange : 'transparent',
+                                                                    color: isSelected ? COLORS.navy : 'transparent',
+                                                                }}
+                                                            >
+                                                                <Check size={12} strokeWidth={4} />
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
 
-                                    {selectedService && selectedService.details && (
+                                    {bookingType === 'category' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                                            {activeCategories.map((cat) => {
+                                                const isSelected = selectedCategoryId === cat.id;
+                                                const catServices = mappedServices.filter(s => {
+                                                    const rawService = activeDbServices.find(x => x.id === s.id);
+                                                    return rawService && String(rawService.category_id) === String(cat.id);
+                                                });
+                                                
+                                                if (catServices.length === 0) return null;
+
+                                                const original = catServices.reduce((sum, s) => sum + s.numericPrice, 0);
+                                                const discountPercent = 10;
+                                                const discounted = Math.round(original * (1 - discountPercent / 100));
+
+                                                return (
+                                                    <div
+                                                        key={cat.id}
+                                                        onClick={() => setSelectedCategoryId(cat.id)}
+                                                        className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group text-left"
+                                                        style={{
+                                                            borderColor: isSelected ? COLORS.orange : '#F1F5F9',
+                                                            backgroundColor: isSelected ? 'rgba(249,161,27,0.03)' : '#FFFFFF',
+                                                            boxShadow: isSelected ? '0 10px 20px rgba(249,161,27,0.04)' : 'none'
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <div className="absolute top-4 right-4 flex items-center gap-1.5 flex-wrap justify-end">
+                                                                <div className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shadow-xs shrink-0">
+                                                                    Tiết kiệm {discountPercent}%
+                                                                </div>
+                                                                <div className="text-[9px] font-bold px-2 py-0.5 rounded-lg shrink-0 bg-[#00285E] text-white">
+                                                                    Trọn gói
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 shadow-sm">
+                                                                <Layers size={18} className="text-gray-400" />
+                                                            </div>
+
+                                                            <h3 className="text-base font-bold mb-1 text-brand-blue">Trọn gói {cat.category_name}</h3>
+                                                            
+                                                            <div className="my-3 space-y-1.5 pl-2 border-l-2 border-emerald-400/50">
+                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block font-display">Gồm {catServices.length} dịch vụ:</span>
+                                                                {catServices.map((s, idx) => (
+                                                                    <div key={idx} className="text-[11px] text-slate-500 leading-snug flex items-center gap-1">
+                                                                        <span className="text-emerald-600 shrink-0">•</span>
+                                                                        <span>{s.title}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-between items-end mt-4 pt-4 border-t border-slate-50">
+                                                            <div>
+                                                                <div className="text-[9px] font-bold uppercase mb-0.5 text-gray-400">Giá trọn gói ưu đãi</div>
+                                                                <div className="flex items-baseline gap-1.5">
+                                                                    <span className="text-xs text-gray-400 line-through font-medium">Từ {original.toLocaleString("vi-VN")}đ</span>
+                                                                    <span className="text-base font-bold text-brand-orange">Từ {discounted.toLocaleString("vi-VN")}đ</span>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                className="w-6 h-6 rounded-full border flex items-center justify-center transition-all shrink-0"
+                                                                style={{
+                                                                    borderColor: isSelected ? COLORS.orange : '#CBD5E1',
+                                                                    backgroundColor: isSelected ? COLORS.orange : 'transparent',
+                                                                    color: isSelected ? COLORS.navy : 'transparent',
+                                                                }}
+                                                            >
+                                                                <Check size={12} strokeWidth={4} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {bookingType === 'service' && selectedServiceIds.length > 0 && activeSelection && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className="mt-8 pt-8 border-t border-gray-100 text-left"
                                         >
-                                            <h4 className="text-xs font-bold text-[#00285E] mb-2 uppercase tracking-wider">
-                                                {t('booking.step1.customizeTasks', 'Tùy chỉnh hạng mục công việc')}
-                                            </h4>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h4 className="text-xs font-bold text-[#00285E] uppercase tracking-wider">
+                                                    {t('booking.step1.customizeTasks', 'Tùy chỉnh hạng mục công việc')}
+                                                </h4>
+                                                <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-lg">
+                                                    {selectedSubItems.length} hạng mục
+                                                </span>
+                                            </div>
                                             <p className="text-[11px] text-gray-400 mb-4">
                                                 {t('booking.step1.customizeTasksDesc', 'Chọn hoặc bỏ chọn các hạng mục cụ thể bạn mong muốn thực hiện trong gói dịch vụ.')}
                                             </p>
-                                            <div className="space-y-2.5">
-                                                {selectedService.details.map((detail, index) => {
+                                            <div className="space-y-2">
+                                                {/* Merge & dedupe details across all selected services */}
+                                                {[...new Set(
+                                                    selectedServiceIds.flatMap(id => {
+                                                        const s = mappedServices.find(x => x.id === id);
+                                                        return s?.details ?? [];
+                                                    })
+                                                )].map((detail, index) => {
                                                     const isChecked = selectedSubItems.includes(detail);
                                                     return (
                                                         <label
                                                             key={index}
-                                                            className="flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none hover:bg-slate-50/50"
+                                                            className="flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none hover:bg-slate-50/50"
                                                             style={{
                                                                 borderColor: isChecked ? 'rgba(249,161,27,0.3)' : '#F1F5F9',
-                                                                backgroundColor: isChecked ? 'rgba(249,161,27,0.01)' : 'transparent',
+                                                                backgroundColor: isChecked ? 'rgba(249,161,27,0.02)' : 'transparent',
                                                             }}
                                                         >
                                                             <input
@@ -515,7 +994,7 @@ export default function BookingPage() {
                                                                 }}
                                                                 className="mt-0.5 accent-[#F9A11B] rounded cursor-pointer shrink-0"
                                                             />
-                                                            <span className="text-xs md:text-sm text-slate-700 leading-relaxed">
+                                                            <span className="text-xs text-slate-700 leading-relaxed">
                                                                 {detail}
                                                             </span>
                                                         </label>
@@ -544,7 +1023,6 @@ export default function BookingPage() {
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {/* Datepicker input */}
                                         <div className="space-y-3">
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 px-1 text-left">
                                                 {t('booking.step2.dateLabel', 'Chọn ngày hẹn')}
@@ -558,7 +1036,6 @@ export default function BookingPage() {
                                             />
                                         </div>
 
-                                        {/* Time picker list */}
                                         <div className="space-y-3">
                                             <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 px-1 text-left">
                                                 {t('booking.step2.timeLabel', 'Chọn khung giờ')}
@@ -702,7 +1179,7 @@ export default function BookingPage() {
                             )}
                         </AnimatePresence>
 
-                        {/* Navigation controls below the form */}
+                        {/* Navigation controls */}
                         <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
                             <button
                                 onClick={handleBack}
@@ -732,7 +1209,6 @@ export default function BookingPage() {
                     <aside className="text-left">
                         <div className="p-8 rounded-3xl shadow-xl text-white sticky top-24 overflow-hidden"
                             style={{ backgroundColor: '#00285E' }}>
-                            {/* Backdrop Subtle Gradient */}
                             <div className="absolute inset-0 bg-gradient-to-br from-[#00285E] via-[#00285E] to-[#001C43] z-0" />
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl z-0" />
 
@@ -741,29 +1217,31 @@ export default function BookingPage() {
                             </h3>
 
                             <div className="space-y-6 relative z-10 text-left">
-                                {/* Dịch vụ */}
+                                {/* Selected Booking Entity */}
                                 <div className="flex gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
-                                        <Settings size={18} style={{ color: COLORS.orange }} />
+                                        {bookingType === 'service' ? <Settings size={18} style={{ color: COLORS.orange }} /> : bookingType === 'combo' ? <Sparkles size={18} style={{ color: COLORS.orange }} /> : <Layers size={18} style={{ color: COLORS.orange }} />}
                                     </div>
                                     <div className="flex-grow">
-                                        <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">{t('booking.sidebar.serviceLabel', 'Dịch vụ đã chọn')}</div>
+                                        <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
+                                            {bookingType === 'service' ? 'Dịch vụ lẻ' : bookingType === 'combo' ? 'Gói Combo' : 'Trọn gói danh mục'}
+                                        </div>
                                         <div className="flex justify-between items-center mt-1">
                                             <span className="font-bold text-xs md:text-sm">
-                                                {selectedService ? selectedService.title : t('booking.sidebar.notSelected', 'Chưa chọn')}
+                                                {activeSelection ? activeSelection.title : t('booking.sidebar.notSelected', 'Chưa chọn')}
                                             </span>
-                                            {selectedService && step > 1 && (
+                                            {activeSelection && step > 1 && (
                                                 <button onClick={() => setStep(1)} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-brand-orange border-none bg-transparent cursor-pointer">
                                                     <Edit2 size={13} />
                                                 </button>
                                             )}
                                         </div>
-                                        {selectedService && selectedSubItems.length > 0 && (
+                                        {activeSelection && activeSelection.subItems && activeSelection.subItems.length > 0 && (
                                             <div className="mt-2.5 pl-2 border-l border-[#F9A11B]/40 space-y-1">
                                                 <div className="text-[8px] text-white/30 font-bold uppercase tracking-wider mb-0.5">
-                                                    {t('booking.sidebar.itemsLabel', 'Hạng mục đã chọn')}
+                                                    {bookingType === 'service' ? 'Hạng mục đã chọn' : 'Dịch vụ đi kèm'}
                                                 </div>
-                                                {selectedSubItems.map((item, idx) => (
+                                                {activeSelection.subItems.map((item, idx) => (
                                                     <div key={idx} className="text-[10px] text-slate-300 leading-snug flex items-start gap-1">
                                                         <span className="text-[#F9A11B] shrink-0">•</span>
                                                         <span>{item}</span>
@@ -774,7 +1252,7 @@ export default function BookingPage() {
                                     </div>
                                 </div>
 
-                                {/* Thời gian */}
+                                {/* Appointment Time */}
                                 <div className="flex gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
                                         <Calendar size={18} style={{ color: COLORS.orange }} />
@@ -794,7 +1272,7 @@ export default function BookingPage() {
                                     </div>
                                 </div>
 
-                                {/* Phương tiện */}
+                                {/* Vehicle information */}
                                 <div className="flex gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
                                         <Car size={18} style={{ color: COLORS.orange }} />
@@ -815,33 +1293,33 @@ export default function BookingPage() {
                                 </div>
                             </div>
 
-                            {/* Tổng tiền */}
+                            {/* Total calculations */}
                             <div className="mt-8 pt-6 border-t border-white/10 space-y-4 relative z-10">
-                                {selectedService && selectedService.originalPrice && (
+                                {activeSelection && activeSelection.originalPrice && (
                                     <div className="flex justify-between text-xs text-white/60">
-                                        <span>{t('services.originalPriceLabel', 'Giá gốc:')}</span>
-                                        <span className="font-mono text-white/50 line-through">{selectedService.originalPrice}</span>
+                                        <span>Giá gốc:</span>
+                                        <span className="font-mono text-white/50 line-through">{activeSelection.originalPrice}</span>
                                     </div>
                                 )}
-                                {selectedService && selectedService.discountPercentage && (
+                                {activeSelection && activeSelection.discountPercentage && (
                                     <div className="flex justify-between text-xs text-red-400 font-bold">
                                         <span>{t('services.promoBadge', 'Khuyến mãi')}</span>
-                                        <span>-{selectedService.discountPercentage}%</span>
+                                        <span>-{activeSelection.discountPercentage}%</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between text-xs text-white/60">
                                     <span>{t('booking.sidebar.servicePrice', 'Giá dịch vụ')}</span>
-                                    <span className="font-mono text-white">{selectedService ? selectedService.price : '0đ'}</span>
+                                    <span className="font-mono text-white">{activeSelection ? activeSelection.price : '0đ'}</span>
                                 </div>
                                 <div className="flex justify-between text-xs text-white/60">
                                     <span>{t('booking.sidebar.installationFee', 'Công lắp đặt / kiểm tra')}</span>
                                     <span className="font-mono text-white">{t('booking.sidebar.free', 'Miễn phí')}</span>
                                 </div>
 
-                                {selectedService && selectedService.promoText && (
+                                {activeSelection && activeSelection.promoText && (
                                     <div className="p-2.5 bg-white/5 rounded-xl border border-white/5 text-[10px] text-[#F9A11B] font-semibold leading-relaxed flex items-start gap-1.5">
                                         <span className="shrink-0 mt-0.5">🎁</span>
-                                        <span>{selectedService.promoText}</span>
+                                        <span>{activeSelection.promoText}</span>
                                     </div>
                                 )}
 
@@ -849,7 +1327,7 @@ export default function BookingPage() {
                                     <div>
                                         <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">{t('booking.sidebar.total', 'Tổng cộng')}</div>
                                         <div className="text-2xl md:text-3xl font-bold font-display" style={{ color: COLORS.orange }}>
-                                            {selectedService ? selectedService.price : '0đ'}
+                                            {activeSelection ? activeSelection.price : '0đ'}
                                         </div>
                                     </div>
                                     <div className="text-[9px] text-white/20 italic mb-1">{t('booking.sidebar.estimatedNote', '* Giá tạm tính')}</div>

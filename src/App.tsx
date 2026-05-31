@@ -24,6 +24,7 @@ const AdminResources = lazy(() => import("./pages/admin/resources/AdminResources
 const AdminServiceCatalog = lazy(() => import("./pages/admin/services/AdminServiceCatalog"));
 const AdminStaffManagement = lazy(() => import("./pages/admin/staff/AdminStaffManagement"));
 const AdminSpareParts = lazy(() => import("./pages/admin/parts/AdminSpareParts"));
+const AdminFinanceReport = lazy(() => import("./pages/admin/finance/AdminFinanceReport"));
 
 // Premium loading fallback styled to match AGM Intelligent branding
 const LoadingScreen = () => (
@@ -67,6 +68,7 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="services" element={<AdminServiceCatalog />} />
           <Route path="staff" element={<AdminStaffManagement />} />
+          <Route path="finance" element={<AdminFinanceReport />} />
         </Route>
       </Routes>
       {!isAdminPath && (
