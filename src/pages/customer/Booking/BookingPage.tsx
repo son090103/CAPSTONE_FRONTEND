@@ -5,7 +5,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     Calendar, Car, User, Settings,
     Check, ChevronRight, Phone, Clock, Edit2, ArrowLeft,
-    Star, Package, Wrench, Droplets, Zap, ShieldCheck,
     Sparkles, Layers
 } from 'lucide-react';
 import { COLORS } from '../../../components/share/Color';
@@ -92,7 +91,7 @@ export default function BookingPage() {
     const [dbServices, setDbServices] = useState<any[]>([]);
     const [dbCategories, setDbCategories] = useState<any[]>([]);
     const [dbCombos, setDbCombos] = useState<ServiceCombo[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [_, setIsLoading] = useState(true);
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -181,7 +180,7 @@ export default function BookingPage() {
         return priceMap[id] ?? 300000;
     };
 
-    const getServiceDiscount = (serviceName: string, categoryName: string): number => {
+    const getServiceDiscount = (_serviceName: string, categoryName: string): number => {
         const lowerC = (categoryName || "").toLowerCase();
         if (lowerC.includes("bảo dưỡng")) return 10;
         if (lowerC.includes("động cơ") || lowerC.includes("sửa chữa")) return 15;
@@ -191,7 +190,7 @@ export default function BookingPage() {
         return 0;
     };
 
-    const getServicePromoText = (serviceName: string, categoryName: string): string => {
+    const getServicePromoText = (serviceName: string, _categoryName: string): string => {
         const lowerS = serviceName.toLowerCase();
         if (lowerS.includes("cấp 1")) return "Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí";
         if (lowerS.includes("cấp 2")) return "Tặng nước rửa kính cao cấp & vệ sinh lọc gió động cơ";

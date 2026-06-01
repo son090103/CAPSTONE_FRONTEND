@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 
 // Lazy-loaded components
 const Header = lazy(() => import("./pages/customer/Header"));
@@ -17,14 +17,15 @@ const OtpVerification = lazy(() => import("./pages/customer/Home/verify-otp"));
 const VerifyPhone = lazy(() => import("./pages/customer/Home/verify-phone"));
 
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
-const AdminDashboard = lazy(() => import("./pages/admin/dashboard/AdminDashboard"));
 const AdminSettings = lazy(() => import("./pages/admin/settings/AdminSettings"));
 const AdminServicesCategories = lazy(() => import("./pages/admin/services/AdminServicesCategories"));
 const AdminResources = lazy(() => import("./pages/admin/resources/AdminResources"));
 const AdminServiceCatalog = lazy(() => import("./pages/admin/services/AdminServiceCatalog"));
 const AdminStaffManagement = lazy(() => import("./pages/admin/staff/AdminStaffManagement"));
 const AdminSpareParts = lazy(() => import("./pages/admin/parts/AdminSpareParts"));
-const AdminFinanceReport = lazy(() => import("./pages/admin/finance/AdminFinanceReport"));
+const AdminWarrantyPolicies = lazy(() => import("./pages/admin/warranty/AdminWarrantyPolicies"));
+const AdminStatistics = lazy(() => import("./pages/admin/dashboard/AdminStatistics"));
+const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminCustomerManagement"));
 
 // Premium loading fallback styled to match AGM Intelligent branding
 const LoadingScreen = () => (
@@ -61,14 +62,16 @@ function App() {
           <Route path="verify-phone" element={<VerifyPhone />} />
         </Route>
         <Route path="/admin" element={<AdminLayout />}>
-          <Route path="" element={<AdminDashboard />} />
+          <Route path="" element={<Navigate to="statistics" replace />} />
           <Route path="spare-part" element={<AdminSpareParts />} />
           <Route path="services-category" element={<AdminServicesCategories />} />
           <Route path="resources" element={<AdminResources />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="services" element={<AdminServiceCatalog />} />
           <Route path="staff" element={<AdminStaffManagement />} />
-          <Route path="finance" element={<AdminFinanceReport />} />
+          <Route path="warranty" element={<AdminWarrantyPolicies />} />
+          <Route path="statistics" element={<AdminStatistics />} />
+          <Route path="customers" element={<AdminCustomerManagement />} />
         </Route>
       </Routes>
       {!isAdminPath && (

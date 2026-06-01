@@ -60,7 +60,7 @@ export default function Services() {
     const [combos, setCombos] = useState<ServiceCombo[]>([]);
     const [dbServices, setDbServices] = useState<any[]>([]);
     const [dbCategories, setDbCategories] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [_, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const itemsPerPage = 8;
@@ -151,7 +151,7 @@ export default function Services() {
         return { totalOriginal, discounted };
     };
 
-    const getServiceDiscount = (serviceName: string, categoryName: string): number => {
+    const getServiceDiscount = (_serviceName: string, categoryName: string): number => {
         const lowerC = (categoryName || "").toLowerCase();
         if (lowerC.includes("bảo dưỡng")) return 10;
         if (lowerC.includes("động cơ") || lowerC.includes("sửa chữa")) return 15;
@@ -183,7 +183,7 @@ export default function Services() {
         return '/images/Precision Maintenance (1).png';
     };
 
-    const getServicePromoText = (serviceName: string, categoryName: string): string => {
+    const getServicePromoText = (serviceName: string, _categoryName: string): string => {
         const lowerS = serviceName.toLowerCase();
         if (lowerS.includes("cấp 1")) return "Tặng nước rửa kính cao cấp & kiểm tra lốp miễn phí";
         if (lowerS.includes("cấp 2")) return "Tặng nước rửa kính cao cấp & vệ sinh lọc gió động cơ";

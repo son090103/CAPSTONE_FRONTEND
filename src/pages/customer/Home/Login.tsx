@@ -123,7 +123,7 @@ export default function Login() {
     const navigate = useNavigate();
     const { fetchPublic } = useFetchClient();
     const dispatch = useDispatch()
-    const { t, i18n } = useTranslation();
+    const { i18n } = useTranslation();
     const isVi = i18n.language === 'vi';
 
     const [phone, setPhone] = useState('');
@@ -218,7 +218,7 @@ export default function Login() {
                 navigate('/');
             }
             if (userData.role === "ADMIN") {
-                navigate('/admin');
+                navigate('/admin/statistics');
             }
         } catch (err: any) {
             setApiError(err.message || (isVi ? 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.' : 'Login failed. Please check your credentials.'));

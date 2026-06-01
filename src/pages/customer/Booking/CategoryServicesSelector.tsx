@@ -1,4 +1,3 @@
-import React from 'react';
 import { Check, Layers } from 'lucide-react';
 import type { ServiceItem } from './BookingPage';
 

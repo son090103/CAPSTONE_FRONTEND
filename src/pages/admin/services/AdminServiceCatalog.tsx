@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import {
   Package,
   TrendingUp,
@@ -24,16 +24,7 @@ import { type Category, type ServiceCatalog } from "../../../model/dto/serviceCa
 import { useFetchClient } from '../../../hook/useFetchClient';
 import { SERVICE_CATALOG_API_ENDPOINTS } from '../../../constants/admin/serviceCatalogApiEndPoint';
 import { SERVICE_CATEGORY_API_ENDPOINTS } from '../../../constants/admin/serviceCategoriesApiEndPoint';
-
-interface ServiceCombo {
-  id: number;
-  combo_name: string;
-  category_id: number;
-  service_ids: number[];
-  discount_percentage: number;
-  is_active: boolean;
-  createdAt: string;
-}
+import { type ServiceCombo, getServiceCombos, saveServiceCombos, ComboFormModal } from "./AdminServiceCombo";
 
 // LocalStorage helpers for prices and combos persistence
 const getServicePrices = (): Record<number, number> => {
@@ -55,34 +46,39 @@ const saveServicePrice = (id: number, price: number) => {
   }
 };
 
-const getServiceCombos = (): ServiceCombo[] => {
+const getServiceImage = (id: number): string => {
   try {
-    const stored = localStorage.getItem("service_combos");
-    return stored ? JSON.parse(stored) : [];
+    const stored = localStorage.getItem("service_images");
+    const images = stored ? JSON.parse(stored) : {};
+    return images[id] || "/images/Service-Image.png";
   } catch (e) {
-    return [];
+    return "/images/Service-Image.png";
   }
 };
 
-const saveServiceCombos = (combos: ServiceCombo[]) => {
+const saveServiceImage = (id: number, dataUrl: string) => {
   try {
-    localStorage.setItem("service_combos", JSON.stringify(combos));
+    const stored = localStorage.getItem("service_images");
+    const images = stored ? JSON.parse(stored) : {};
+    images[id] = dataUrl;
+    localStorage.setItem("service_images", JSON.stringify(images));
   } catch (e) {
     console.error(e);
   }
 };
+// Service combos are managed via AdminServiceCombo.tsx helpers
 
 export default function AdminServiceManagement() {
   const { showToast } = useOutletContext<{
     showToast: (text: string, type?: "success" | "info" | "warning") => void;
   }>();
   const { fetchPrivate } = useFetchClient();
-  
+
   // State variables
   const [services, setServices] = useState<ServiceCatalog[]>([]);
   const [categoryList, setCategoryList] = useState<Category[]>([]);
   const [combos, setCombos] = useState<ServiceCombo[]>([]);
-  
+
   const [activeTab, setActiveTab] = useState<"services" | "combos" | "categories">("services");
   const [searchQueryLocal, setSearchQueryLocal] = useState("");
   const [comboSearchQuery, setComboSearchQuery] = useState("");
@@ -94,12 +90,12 @@ export default function AdminServiceManagement() {
   const [categoryPage, setCategoryPage] = useState(1);
   const [totalCategories, setTotalCategories] = useState(0);
   const categoryLimit = 8;
-  
+
   // Service Modals State
   const [editingService, setEditingService] = useState<ServiceCatalog | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  
+
   // Combo Modals State
   const [editingCombo, setEditingCombo] = useState<ServiceCombo | null>(null);
   const [isComboModalOpen, setIsComboModalOpen] = useState(false);
@@ -110,14 +106,14 @@ export default function AdminServiceManagement() {
 
   const handleGetServiceCatalog = async () => {
     try {
-        const result = await fetchPrivate<ServiceCatalog[]>(
-            SERVICE_CATALOG_API_ENDPOINTS.SERVICE_CATALOG, 
-            'GET'
-        );
-        setServices(result.data || []);
+      const result = await fetchPrivate<ServiceCatalog[]>(
+        SERVICE_CATALOG_API_ENDPOINTS.SERVICE_CATALOG,
+        'GET'
+      );
+      setServices(result.data || []);
     } catch (error) {
-        console.error('Lỗi lấy danh sách dịch vụ:', error);
-        showToast('Không thể tải danh sách dịch vụ', 'warning');
+      console.error('Lỗi lấy danh sách dịch vụ:', error);
+      showToast('Không thể tải danh sách dịch vụ', 'warning');
     }
   };
 
@@ -163,7 +159,7 @@ export default function AdminServiceManagement() {
       services.forEach((s) => {
         const name = s.service_name;
         let expectedPrice = currentPrices[s.id];
-        
+
         // Map exact matching names to their correct prices matching the screenshot
         if (name.includes("cấp 1")) expectedPrice = 500000;
         else if (name.includes("cấp 2")) expectedPrice = 800000;
@@ -182,7 +178,7 @@ export default function AdminServiceManagement() {
         else if (name.includes("kích bình")) expectedPrice = 200000;
         else if (name.includes("lốp dự phòng")) expectedPrice = 250000;
         else if (name.includes("cẩu kéo xe")) expectedPrice = 1200000;
-        
+
         if (expectedPrice !== undefined && currentPrices[s.id] !== expectedPrice) {
           currentPrices[s.id] = expectedPrice;
           pricesUpdated = true;
@@ -200,7 +196,7 @@ export default function AdminServiceManagement() {
         const ids = services.map((s) => s.id);
         const firstCat = categoryList[0]?.id || 1;
         const secondCat = categoryList[1]?.id || categoryList[0]?.id || 1;
-        
+
         const mockCombos: ServiceCombo[] = [
           {
             id: 10001,
@@ -367,15 +363,15 @@ export default function AdminServiceManagement() {
             {activeTab === "services"
               ? "Quản lý Dịch vụ"
               : activeTab === "combos"
-              ? "Quản lý Gói Combo"
-              : "Quản lý Danh mục Dịch vụ"}
+                ? "Quản lý Gói Combo"
+                : "Quản lý Danh mục Dịch vụ"}
           </h1>
           <p className="text-slate-500 text-sm">
             {activeTab === "services"
               ? "Tối ưu hóa các gói dịch vụ và bảo dưỡng của gara."
               : activeTab === "combos"
-              ? "Thiết lập các gói combo tích hợp ưu đãi hấp dẫn cho khách hàng."
-              : "Quản lý và tổ chức các nhóm phân loại dịch vụ chính của gara."}
+                ? "Thiết lập các gói combo tích hợp ưu đãi hấp dẫn cho khách hàng."
+                : "Quản lý và tổ chức các nhóm phân loại dịch vụ chính của gara."}
           </p>
         </div>
 
@@ -394,7 +390,7 @@ export default function AdminServiceManagement() {
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#F9A11B] text-[#00285E] rounded text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all transform hover:translate-y-[-1px]"
               >
                 <FileSpreadsheet size={16} />
-                <span>Import Excel</span>
+                <span>Nhập danh sách</span>
               </button>
             </>
           ) : activeTab === "combos" ? (
@@ -402,7 +398,7 @@ export default function AdminServiceManagement() {
               onClick={handleOpenCreateCombo}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#00285E] text-white rounded text-sm font-bold shadow-md shadow-[#00285E]/20 hover:bg-[#062047] transition-all transform hover:translate-y-[-1px]"
             >
-              <span>Tạo Gói Dịch Vụ</span>
+              <span>Tạo Combo dịch vụ</span>
             </button>
           ) : (
             <button
@@ -530,33 +526,30 @@ export default function AdminServiceManagement() {
       <div className="flex border-b border-slate-200/60">
         <button
           onClick={() => setActiveTab("services")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
-            activeTab === "services"
-              ? "border-[#00285E] text-[#00285E]"
-              : "border-transparent text-slate-400 hover:text-slate-600"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${activeTab === "services"
+            ? "border-[#00285E] text-[#00285E]"
+            : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
         >
           Dịch vụ đơn lẻ
         </button>
         <button
           onClick={() => setActiveTab("combos")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
-            activeTab === "combos"
-              ? "border-[#00285E] text-[#00285E]"
-              : "border-transparent text-slate-400 hover:text-slate-600"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${activeTab === "combos"
+            ? "border-[#00285E] text-[#00285E]"
+            : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
         >
-          Gói Combo Dịch vụ
+          Gói Combo dịch vụ
         </button>
         <button
           onClick={() => setActiveTab("categories")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${
-            activeTab === "categories"
-              ? "border-[#00285E] text-[#00285E]"
-              : "border-transparent text-slate-400 hover:text-slate-600"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-all ${activeTab === "categories"
+            ? "border-[#00285E] text-[#00285E]"
+            : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
         >
-          Danh mục Phân loại
+          Danh mục phân loại
         </button>
       </div>
 
@@ -566,10 +559,10 @@ export default function AdminServiceManagement() {
         <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-bold text-slate-800 tracking-tight">
             {activeTab === "services"
-              ? "Danh mục Dịch vụ"
+              ? "Danh mục dịch vụ"
               : activeTab === "combos"
-              ? "Danh sách Gói Combo"
-              : "Danh sách Danh mục dịch vụ"}
+                ? "Danh sách gói Combo"
+                : "Danh sách danh mục dịch vụ"}
           </h2>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
@@ -580,15 +573,15 @@ export default function AdminServiceManagement() {
                   activeTab === "services"
                     ? "Tìm kiếm dịch vụ..."
                     : activeTab === "combos"
-                    ? "Tìm kiếm combo..."
-                    : "Tìm kiếm danh mục..."
+                      ? "Tìm kiếm combo..."
+                      : "Tìm kiếm danh mục..."
                 }
                 value={
                   activeTab === "services"
                     ? searchQueryLocal
                     : activeTab === "combos"
-                    ? comboSearchQuery
-                    : categorySearchQuery
+                      ? comboSearchQuery
+                      : categorySearchQuery
                 }
                 onChange={(e) => {
                   if (activeTab === "services") {
@@ -643,9 +636,16 @@ export default function AdminServiceManagement() {
                       className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors group"
                     >
                       <td className="py-4 px-6">
-                        <span className="font-bold text-[#00285E] text-sm block">
-                          {s.service_name}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getServiceImage(s.id)}
+                            alt={s.service_name}
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-200/80 shrink-0 bg-slate-50"
+                          />
+                          <span className="font-bold text-[#00285E] text-sm block">
+                            {s.service_name}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="py-4 px-4">
@@ -654,7 +654,7 @@ export default function AdminServiceManagement() {
                         </span>
                       </td>
                       <td className="py-4 px-4 text-slate-600 text-sm">
-                        {s.description || "—"} 
+                        {s.description || "—"}
                       </td>
 
                       <td className="py-4 px-4 text-slate-900 font-bold text-sm">
@@ -666,11 +666,10 @@ export default function AdminServiceManagement() {
 
                       <td className="py-4 px-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            s.is_active
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-slate-100 text-slate-500 border border-slate-200"
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${s.is_active
+                            ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                            : "bg-slate-100 text-slate-500 border border-slate-200"
+                            }`}
                         >
                           {s.is_active ? "Hoạt động" : "Tạm dừng"}
                         </span>
@@ -736,7 +735,7 @@ export default function AdminServiceManagement() {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-slate-600 text-xs max-w-xs truncate" title={getComboServicesNames(c.service_ids)}>
-                          {getComboServicesNames(c.service_ids) || "—"} 
+                          {getComboServicesNames(c.service_ids) || "—"}
                         </td>
 
                         <td className="py-4 px-4 text-emerald-600 font-bold text-sm">
@@ -753,11 +752,10 @@ export default function AdminServiceManagement() {
 
                         <td className="py-4 px-4">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                              c.is_active
-                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                : "bg-slate-100 text-slate-500 border border-slate-200"
-                            }`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${c.is_active
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                              }`}
                           >
                             {c.is_active ? "Hoạt động" : "Tạm dừng"}
                           </span>
@@ -832,11 +830,10 @@ export default function AdminServiceManagement() {
                       <td className="py-4 px-4">
                         <button
                           onClick={() => handleToggleCategoryActive(cat)}
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer hover:opacity-85 active:scale-95 transition-all ${
-                            cat.is_active
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                              : 'bg-slate-100 text-slate-500 border border-slate-200'
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer hover:opacity-85 active:scale-95 transition-all ${cat.is_active
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}
                         >
                           {cat.is_active ? 'Hoạt động' : 'Tạm dừng'}
                         </button>
@@ -963,17 +960,25 @@ interface ServiceFormModalProps {
 function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: ServiceFormModalProps) {
   const isEdit = !!initial;
   const { fetchPrivate } = useFetchClient();
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState(initial?.service_name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState<number>(initial?.category_id ?? 0);
   const [durationMinutes, setDurationMinutes] = useState<number>(initial?.estimated_duration ?? 30);
   const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
-  
+
+  const [imageUrl, setImageUrl] = useState<string>(() => {
+    if (initial?.id) {
+      return getServiceImage(initial.id);
+    }
+    return "/images/Service-Image.png";
+  });
+
   // Set price state and load it from persistence if editing
   const initialPrice = initial ? (getServicePrices()[initial.id] ?? 300000) : 300000;
   const [price, setPrice] = useState<number>(initialPrice);
-  
+
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -998,11 +1003,22 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
     return true;
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateServiceCatalog = async () => {
     if (!validateForm()) return;
     try {
       const response = await fetchPrivate<any>(
-        SERVICE_CATALOG_API_ENDPOINTS.SERVICE_CATALOG, 
+        SERVICE_CATALOG_API_ENDPOINTS.SERVICE_CATALOG,
         'POST',
         {
           category_id: categoryId,
@@ -1012,10 +1028,13 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
           is_active: isActive
         }
       );
-      
+
       const newService = response.data;
       if (newService && newService.id) {
         saveServicePrice(newService.id, price);
+        if (imageUrl !== "/images/Service-Image.png") {
+          saveServiceImage(newService.id, imageUrl);
+        }
       }
       setSuccessMsg("Tạo dịch vụ thành công!");
       onRefresh();
@@ -1024,17 +1043,17 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
       console.error("Lỗi tạo dịch vụ:", error);
       setErrorMsg(error?.message || "Thêm dịch vụ thất bại, vui lòng thử lại");
     }
-  }; 
-  
+  };
+
   const handleUpdateServiceCatalog = async () => {
     if (!validateForm()) return;
     try {
       await fetchPrivate(
         `${SERVICE_CATALOG_API_ENDPOINTS.SERVICE_CATALOG}/${initial?.id}`,
         "PATCH",
-        { 
+        {
           category_id: categoryId,
-          service_name: name, 
+          service_name: name,
           description: description,
           estimated_duration: durationMinutes,
           is_active: isActive
@@ -1042,6 +1061,9 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
       );
       if (initial?.id) {
         saveServicePrice(initial.id, price);
+        if (imageUrl !== "/images/Service-Image.png") {
+          saveServiceImage(initial.id, imageUrl);
+        }
       }
       setSuccessMsg("Cập nhật thông tin dịch vụ thành công!");
       onRefresh();
@@ -1050,7 +1072,7 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
       console.error("Lỗi cập nhật dịch vụ:", error);
       setErrorMsg(error?.message || "Cập nhật dịch vụ thất bại, vui lòng thử lại");
     }
-  }; 
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1097,11 +1119,28 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
               </div>
             </div>
 
-            <div className="relative aspect-square rounded-md overflow-hidden shadow-2xl border border-white/10 group flex-1">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="relative aspect-square rounded-md overflow-hidden shadow-2xl border border-white/10 group flex-1 cursor-pointer bg-slate-100"
+              title="Nhấp để thay thế hình ảnh"
+            >
               <img
-                src="/images/Service-Image.png"
+                src={imageUrl}
                 alt="Garage service"
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-[#00285E]/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 transition-all duration-300">
+                <Upload className="text-[#F9A11B]" size={28} />
+                <span className="text-white text-xs font-bold uppercase tracking-wider text-center px-2">
+                  Thay thế hình ảnh
+                </span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                className="hidden"
               />
             </div>
           </div>
@@ -1194,14 +1233,14 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
                 </label>
               </div>
             </div>
-            
+
             {errorMsg && (
               <div className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded px-3 py-2 flex items-center gap-1.5">
                 <AlertTriangle size={14} />
                 <span>{errorMsg}</span>
               </div>
             )}
-            
+
             {successMsg && (
               <div className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded px-3 py-2 flex items-center gap-1.5">
                 <CheckCircle2 size={14} />
@@ -1219,7 +1258,7 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
           >
             Hủy
           </button>
-          <button          
+          <button
             onClick={isEdit ? handleUpdateServiceCatalog : handleCreateServiceCatalog}
             className="px-6 py-2.5 bg-[#F9A11B] text-[#00285E] rounded text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all"
           >
@@ -1230,253 +1269,7 @@ function ServiceFormModal({ initial, categoryList, onClose, onRefresh }: Service
     </div>
   );
 }
-
-// ── COMBO FORM MODAL ─────────────────────────────────────────────────────────
-interface ComboFormModalProps {
-  initial: ServiceCombo | null;
-  services: ServiceCatalog[];
-  categories: Category[];
-  onClose: () => void;
-  onSave: (combo: ServiceCombo) => void;
-}
-
-function ComboFormModal({ initial, services, categories, onClose, onSave }: ComboFormModalProps) {
-  const [name, setName] = useState(initial?.combo_name ?? "");
-  const [categoryId, setCategoryId] = useState<number>(initial?.category_id ?? 0);
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(initial?.service_ids ?? []);
-  const [discount, setDiscount] = useState<number>(initial?.discount_percentage ?? 10);
-  const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
-  
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  const servicePrices = getServicePrices();
-
-  // Dynamic calculations
-  const totalOriginal = selectedServiceIds.reduce((sum, id) => {
-    return sum + (servicePrices[id] ?? 300000);
-  }, 0);
-  const discountedPrice = totalOriginal * (1 - discount / 100);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      setErrorMsg("Tên gói combo không được để trống");
-      return;
-    }
-    if (categoryId === 0) {
-      setErrorMsg("Vui lòng chọn danh mục cho combo");
-      return;
-    }
-    if (selectedServiceIds.length === 0) {
-      setErrorMsg("Gói combo phải chứa ít nhất một dịch vụ");
-      return;
-    }
-    if (discount < 0 || discount > 100 || isNaN(discount)) {
-      setErrorMsg("Phần trăm chiết khấu phải từ 0% đến 100%");
-      return;
-    }
-    
-    // Check duplication
-    const existing = getServiceCombos();
-    const isDuplicate = existing.some(
-      c => c.combo_name.trim().toLowerCase() === name.trim().toLowerCase() && c.id !== initial?.id
-    );
-    if (isDuplicate) {
-      setErrorMsg("Tên gói combo đã tồn tại trong hệ thống");
-      return;
-    }
-
-    const savedCombo: ServiceCombo = {
-      id: initial?.id ?? Date.now(),
-      combo_name: name.trim(),
-      category_id: categoryId,
-      service_ids: selectedServiceIds,
-      discount_percentage: discount,
-      is_active: isActive,
-      createdAt: initial?.createdAt ?? new Date().toISOString(),
-    };
-
-    setSuccessMsg(initial ? "Cập nhật gói dịch vụ thành công!" : "Tạo gói dịch vụ thành công!");
-    setErrorMsg("");
-    setTimeout(() => {
-      onSave(savedCombo);
-    }, 800);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative bg-white rounded shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden z-10"
-      >
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight">
-              {initial ? "Chỉnh sửa gói Combo" : "Tạo gói Combo dịch vụ mới"}
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Cấu hình các dịch vụ đi kèm và thiết lập chiết khấu ưu đãi.
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
-          {/* Left instructions block */}
-          <div className="md:col-span-2 bg-[#EDF3FF] p-6 flex flex-col gap-4 border-r border-slate-100">
-            <div className="flex items-center gap-2 text-[#00285E]">
-              <div className="w-9 h-9 rounded bg-[#00285E] flex items-center justify-center shrink-0">
-                <Boxes size={16} className="text-[#F9A11B]" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm">Gói dịch vụ Combo</h3>
-                <p className="text-[11px] text-slate-500">Tiết kiệm hơn cho khách hàng.</p>
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-xs p-4 rounded-xl border border-slate-200/40 text-xs space-y-3 flex-1">
-              <span className="font-bold text-slate-700 uppercase block tracking-wider">Thông tin biểu phí</span>
-              <div className="space-y-2 font-semibold">
-                <div className="flex justify-between text-slate-500">
-                  <span>Tổng giá trị gốc:</span>
-                  <span className="text-slate-800">{totalOriginal.toLocaleString("vi-VN")} đ</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Chiết khấu áp dụng:</span>
-                  <span className="text-emerald-600">-{discount}%</span>
-                </div>
-                <div className="border-t border-slate-200/60 pt-2 flex justify-between text-sm">
-                  <span className="text-[#00285E]">Giá bán Combo:</span>
-                  <span className="text-[#00285E] font-black">{discountedPrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right form block */}
-          <div className="md:col-span-3 p-6 space-y-4 max-h-[450px] overflow-y-auto">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Tên gói Combo *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Vd: Combo chăm sóc xe toàn diện mùa mưa"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                  Phân loại Combo *
-                </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
-                >
-                  <option value={0} disabled>-- Chọn danh mục --</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.category_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                  Chiết khấu (%) *
-                </label>
-                <input
-                  type="number"
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Chọn dịch vụ đi kèm * (Ít nhất 1 dịch vụ)
-              </label>
-              <div className="border border-slate-200 rounded-lg max-h-48 overflow-y-auto p-3 space-y-2 bg-slate-50/50">
-                {services.filter(s => s.is_active).map(s => {
-                  const isChecked = selectedServiceIds.includes(s.id);
-                  const sPrice = servicePrices[s.id] ?? 300000;
-                  return (
-                    <label key={s.id} className="flex items-center gap-3 p-2 rounded hover:bg-white cursor-pointer transition-colors text-xs font-semibold text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          if (isChecked) {
-                            setSelectedServiceIds(selectedServiceIds.filter(id => id !== s.id));
-                          } else {
-                            setSelectedServiceIds([...selectedServiceIds, s.id]);
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20"
-                      />
-                      <div className="flex-1 flex justify-between">
-                        <span>{s.service_name}</span>
-                        <span className="text-slate-400 font-bold">{sPrice.toLocaleString("vi-VN")} đ</span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20"
-                />
-                <span className="text-sm font-semibold text-slate-700">Kích hoạt gói Combo</span>
-              </label>
-            </div>
-
-            {errorMsg && (
-              <div className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded px-3 py-2 flex items-center gap-1.5">
-                <AlertTriangle size={14} />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-            
-            {successMsg && (
-              <div className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded px-3 py-2 flex items-center gap-1.5">
-                <CheckCircle2 size={14} />
-                <span>{successMsg}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
-          <button onClick={onClose} className="px-5 py-2.5 bg-white border border-slate-200 rounded text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-            Hủy
-          </button>
-          <button onClick={handleSave} className="px-6 py-2.5 bg-[#F9A11B] text-[#00285E] rounded text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all">
-            {initial ? "Lưu thay đổi" : "Tạo gói combo"}
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
+// ComboFormModal extracted to AdminServiceCombo.tsx
 
 // ── CATEGORY FORM MODAL ──────────────────────────────────────────────────────
 interface CategoryFormModalProps {
@@ -1489,7 +1282,7 @@ interface CategoryFormModalProps {
 function CategoryFormModal({ initial, onClose, onRefresh, showToast }: CategoryFormModalProps) {
   const isEdit = !!initial;
   const { fetchPrivate } = useFetchClient();
-  
+
   const [categoryName, setCategoryName] = useState(initial?.category_name ?? "");
   const [categoryIsActive, setCategoryIsActive] = useState<boolean>(initial?.is_active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1571,9 +1364,8 @@ function CategoryFormModal({ initial, onClose, onRefresh, showToast }: CategoryF
               placeholder="Ví dụ: Bảo dưỡng định kỳ, Sửa chữa động cơ..."
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
-              className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${
-                errors.name ? 'border-rose-500' : 'border-slate-200'
-              }`}
+              className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 ${errors.name ? 'border-rose-500' : 'border-slate-200'
+                }`}
             />
             {errors.name && (
               <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1596,16 +1388,14 @@ function CategoryFormModal({ initial, onClose, onRefresh, showToast }: CategoryF
               onClick={() => setCategoryIsActive(!categoryIsActive)}
               role="switch"
               aria-checked={categoryIsActive}
-              className={`relative w-14 h-8 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                categoryIsActive ? 'bg-emerald-500 focus:ring-emerald-500/30' : 'bg-slate-300 focus:ring-slate-400/30'
-              }`}
+              className={`relative w-14 h-8 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${categoryIsActive ? 'bg-emerald-500 focus:ring-emerald-500/30' : 'bg-slate-300 focus:ring-slate-400/30'
+                }`}
             >
               <motion.div
                 layout
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center text-[10px] font-bold ${
-                  categoryIsActive ? 'right-1 text-emerald-600' : 'left-1 text-slate-400'
-                }`}
+                className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center text-[10px] font-bold ${categoryIsActive ? 'right-1 text-emerald-600' : 'left-1 text-slate-400'
+                  }`}
               >
                 {categoryIsActive ? '✓' : '✕'}
               </motion.div>
@@ -1668,7 +1458,7 @@ function ImportExcelModal({ categories, onClose, onImported }: ImportExcelModalP
       return;
     }
     setFile(selected);
-    
+
     // Auto-map based on available categories
     const firstCat = categories[0] || { id: 1, category_name: "Bảo dưỡng định kỳ" };
     const secondCat = categories[1] || categories[0] || { id: 1, category_name: "Sửa chữa chung" };
@@ -1818,11 +1608,10 @@ function ImportExcelModal({ categories, onClose, onImported }: ImportExcelModalP
             }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
-            className={`relative rounded border-2 border-dashed transition-all ${
-              isDragging
-                ? "border-[#F9A11B] bg-amber-50/50"
-                : "border-slate-300 bg-slate-50/50 hover:border-slate-400"
-            }`}
+            className={`relative rounded border-2 border-dashed transition-all ${isDragging
+              ? "border-[#F9A11B] bg-amber-50/50"
+              : "border-slate-300 bg-slate-50/50 hover:border-slate-400"
+              }`}
           >
             <input
               type="file"
@@ -1922,12 +1711,12 @@ function ImportExcelModal({ categories, onClose, onImported }: ImportExcelModalP
             {isUploading ? (
               <>
                 <span className="w-4 h-4 border-2 border-[#00285E]/30 border-t-[#00285E] rounded-full animate-spin" />
-                <span>Đang import dữ liệu...</span>
+                <span>Đang nhập dữ liệu...</span>
               </>
             ) : (
               <>
                 <Upload size={16} />
-                <span>Xác nhận Import</span>
+                <span>Xác nhận nhập</span>
               </>
             )}
           </button>

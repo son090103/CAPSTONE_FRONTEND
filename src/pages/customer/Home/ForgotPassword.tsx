@@ -262,7 +262,7 @@ type Step = 'input_phone' | 'input_otp' | 'reset_password' | 'success';
 
 // ── MAIN COMPONENT ────────────────────────────────────────────
 export default function ForgotPassword() {
-    const { t, i18n } = useTranslation();
+    const { i18n } = useTranslation();
     const isVi = i18n.language === 'vi';
     const [step, setStep] = useState<Step>('input_phone');
     const [phone, setPhone] = useState('');
