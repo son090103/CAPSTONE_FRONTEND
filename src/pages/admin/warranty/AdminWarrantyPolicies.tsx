@@ -6,89 +6,38 @@ import {
   Filter,
   Plus,
   Pencil,
-  Trash2,
   X,
   AlertTriangle,
-  Car,
+  FileText,
+  Clock,
+  Milestone,
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { useFetchClient } from '../../../hook/useFetchClient';
+import { WARRANTY_POLICIES_API_ENDPOINTS } from '../../../constants/admin/warrantyPoliciesApiEndpoint';
 
 interface WarrantyPolicy {
   id: number;
-  name: string;
-  vehicleMake: string;
-  vehicleModel: string;
-  sparePart: string;
-  warrantyType: 'TIME' | 'DISTANCE' | 'BOTH' | 'NONE';
-  durationMonths: number;
-  kmLimit: number;
-  isActive: boolean;
+  policy_code: string;
+  policy_name: string;
+  warranty_type: 'TIME' | 'DISTANCE' | 'BOTH' | 'NONE';
+  duration_months: number | null;
+  distance_km: number | null;
+  description: string | null;
+  is_active: boolean;
   createdAt: string;
+  updatedAt: string;
 }
-
-const MOCK_VEHICLE_DATA: Record<string, string[]> = {
-  Toyota: ['Vios', 'Camry', 'Fortuner', 'Innova'],
-  Honda: ['City', 'Civic', 'CR-V'],
-  Mazda: ['Mazda 3', 'Mazda 6', 'CX-5'],
-  Hyundai: ['Accent', 'Elantra', 'Santa Fe'],
-  Kia: ['Morning', 'Cerato', 'Seltos'],
-};
-
-const MOCK_SPARE_PARTS = [
-  'Bộ lọc dầu Toyota Vios',
-  'Má phanh trước Honda City',
-  'Dầu động cơ tổng hợp 5W30',
-  'Lọc gió điều hòa',
-  'Lốp xe Michelin Pilot Sport 4',
-  'Bugi NGK Iridium',
-  'Ắc quy GS 12V 45Ah',
-];
-
-const INITIAL_POLICIES: WarrantyPolicy[] = [
-  {
-    id: 1,
-    name: 'Chính sách bảo hành Bộ lọc dầu Vios',
-    vehicleMake: 'Toyota',
-    vehicleModel: 'Vios',
-    sparePart: 'Bộ lọc dầu Toyota Vios',
-    warrantyType: 'TIME',
-    durationMonths: 3,
-    kmLimit: 0,
-    isActive: true,
-    createdAt: new Date('2026-01-15').toISOString(),
-  },
-  {
-    id: 2,
-    name: 'Chính sách bảo hành Má phanh Honda City',
-    vehicleMake: 'Honda',
-    vehicleModel: 'City',
-    sparePart: 'Má phanh trước Honda City',
-    warrantyType: 'BOTH',
-    durationMonths: 6,
-    kmLimit: 10000,
-    isActive: true,
-    createdAt: new Date('2026-02-20').toISOString(),
-  },
-  {
-    id: 3,
-    name: 'Chính sách bảo hành lốp Michelin CX-5',
-    vehicleMake: 'Mazda',
-    vehicleModel: 'CX-5',
-    sparePart: 'Lốp xe Michelin Pilot Sport 4',
-    warrantyType: 'DISTANCE',
-    durationMonths: 0,
-    kmLimit: 20000,
-    isActive: true,
-    createdAt: new Date('2026-03-05').toISOString(),
-  },
-];
 
 export default function AdminWarrantyPolicies() {
   const { showToast } = useOutletContext<{
     showToast: (text: string, type?: 'success' | 'info' | 'warning') => void;
   }>();
 
+  const { fetchPrivate } = useFetchClient();
+
   const [policies, setPolicies] = useState<WarrantyPolicy[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'TIME' | 'DISTANCE' | 'BOTH' | 'NONE'>('ALL');
@@ -97,25 +46,26 @@ export default function AdminWarrantyPolicies() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<WarrantyPolicy | null>(null);
 
-  // Load policies from localStorage or initialize
-  useEffect(() => {
-    const stored = localStorage.getItem('warranty_policies');
-    if (stored) {
-      try {
-        setPolicies(JSON.parse(stored));
-      } catch (e) {
-        setPolicies(INITIAL_POLICIES);
+  // Load policies from Backend API
+  const loadPolicies = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchPrivate(WARRANTY_POLICIES_API_ENDPOINTS.LIST_WARRANTY_POLICIES);
+      if (response && response.success) {
+        setPolicies(response.data);
+      } else {
+        setPolicies([]);
       }
-    } else {
-      setPolicies(INITIAL_POLICIES);
-      localStorage.setItem('warranty_policies', JSON.stringify(INITIAL_POLICIES));
+    } catch (error: any) {
+      showToast(error.message || 'Lỗi khi tải danh sách chính sách bảo hành', 'warning');
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
-
-  const savePolicies = (newPolicies: WarrantyPolicy[]) => {
-    setPolicies(newPolicies);
-    localStorage.setItem('warranty_policies', JSON.stringify(newPolicies));
   };
+
+  useEffect(() => {
+    loadPolicies();
+  }, []);
 
   const handleOpenCreate = () => {
     setEditingPolicy(null);
@@ -127,50 +77,77 @@ export default function AdminWarrantyPolicies() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (policy: WarrantyPolicy) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa chính sách bảo hành "${policy.name}"?`)) {
-      const updated = policies.filter((p) => p.id !== policy.id);
-      savePolicies(updated);
-      showToast(`Đã xóa chính sách "${policy.name}" thành công.`, 'success');
+  const handleSavePolicy = async (data: Omit<WarrantyPolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingPolicy) {
+        const response = await fetchPrivate(
+          WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(editingPolicy.id),
+          'PUT',
+          data
+        );
+        if (response && response.success) {
+          showToast('Cập nhật chính sách bảo hành thành công.', 'success');
+          loadPolicies();
+          setIsModalOpen(false);
+          setEditingPolicy(null);
+        }
+      } else {
+        const response = await fetchPrivate(
+          WARRANTY_POLICIES_API_ENDPOINTS.CREATE_WARRANTY_POLICY,
+          'POST',
+          data
+        );
+        if (response && response.success) {
+          showToast('Chính sách bảo hành đã được tạo thành công.', 'success');
+          loadPolicies();
+          setIsModalOpen(false);
+          setEditingPolicy(null);
+        }
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Lỗi lưu thông tin chính sách bảo hành', 'warning');
     }
   };
 
-  const handleSavePolicy = (data: Omit<WarrantyPolicy, 'id' | 'createdAt'>) => {
-    let updated: WarrantyPolicy[];
-    if (editingPolicy) {
-      updated = policies.map((p) =>
-        p.id === editingPolicy.id
-          ? { ...editingPolicy, ...data }
-          : p
+  const handleToggleStatus = async (policy: WarrantyPolicy) => {
+    try {
+      const updatedStatus = !policy.is_active;
+      const response = await fetchPrivate(
+        WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(policy.id),
+        'PUT',
+        {
+          policy_code: policy.policy_code,
+          policy_name: policy.policy_name,
+          warranty_type: policy.warranty_type,
+          duration_months: policy.duration_months,
+          distance_km: policy.distance_km,
+          description: policy.description,
+          is_active: updatedStatus,
+        }
       );
-      showToast('Cập nhật chính sách bảo hành thành công.', 'success');
-    } else {
-      const newPolicy: WarrantyPolicy = {
-        id: Date.now(),
-        createdAt: new Date().toISOString(),
-        ...data,
-      };
-      updated = [...policies, newPolicy];
-      showToast('Chính sách bảo hành đã được tạo thành công.', 'success');
+      if (response && response.success) {
+        showToast(`Đã ${updatedStatus ? 'kích hoạt' : 'tạm dừng'} chính sách bảo hành thành công.`, 'success');
+        loadPolicies();
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Lỗi thay đổi trạng thái chính sách', 'warning');
     }
-    savePolicies(updated);
-    setIsModalOpen(false);
-    setEditingPolicy(null);
   };
 
   // Filter list
   const filteredPolicies = useMemo(() => {
     return policies.filter((p) => {
       const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sparePart.toLowerCase().includes(searchQuery.toLowerCase());
+        p.policy_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.policy_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesStatus =
         statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && p.isActive) ||
-        (statusFilter === 'INACTIVE' && !p.isActive);
+        (statusFilter === 'ACTIVE' && p.is_active) ||
+        (statusFilter === 'INACTIVE' && !p.is_active);
 
-      const matchesType = typeFilter === 'ALL' || p.warrantyType === typeFilter;
+      const matchesType = typeFilter === 'ALL' || p.warranty_type === typeFilter;
 
       return matchesSearch && matchesStatus && matchesType;
     });
@@ -179,9 +156,9 @@ export default function AdminWarrantyPolicies() {
   const getWarrantyTypeLabel = (type: string) => {
     switch (type) {
       case 'TIME':
-        return 'Thời gian';
+        return 'Theo Thời gian';
       case 'DISTANCE':
-        return 'Số KM';
+        return 'Theo Số KM';
       case 'BOTH':
         return 'Thời gian & Số KM';
       case 'NONE':
@@ -192,11 +169,11 @@ export default function AdminWarrantyPolicies() {
   };
 
   const getWarrantyConditions = (policy: WarrantyPolicy) => {
-    if (policy.warrantyType === 'NONE') return 'Không áp dụng bảo hành';
-    const timeText = policy.durationMonths > 0 ? `${policy.durationMonths} tháng` : '';
-    const kmText = policy.kmLimit > 0 ? `${policy.kmLimit.toLocaleString('vi-VN')} KM` : '';
+    if (policy.warranty_type === 'NONE') return 'Không áp dụng bảo hành';
+    const timeText = policy.duration_months && policy.duration_months > 0 ? `${policy.duration_months} tháng` : '';
+    const kmText = policy.distance_km && policy.distance_km > 0 ? `${policy.distance_km.toLocaleString('vi-VN')} KM` : '';
     
-    if (policy.warrantyType === 'BOTH') {
+    if (policy.warranty_type === 'BOTH') {
       return `${timeText} hoặc ${kmText} (tùy ĐK nào đến trước)`;
     }
     return timeText || kmText || '—';
@@ -212,7 +189,7 @@ export default function AdminWarrantyPolicies() {
             Quản lý Chính sách Bảo hành
           </h1>
           <p className="text-slate-500 text-sm">
-            Tạo và thiết lập các chính sách bảo hành tự động áp dụng cho phụ tùng và dòng xe tương ứng.
+            Tạo và thiết lập các chính sách bảo hành áp dụng cho các phụ tùng hoặc dịch vụ trong gara.
           </p>
         </div>
 
@@ -232,10 +209,10 @@ export default function AdminWarrantyPolicies() {
           <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm theo tên hoặc phụ tùng..."
+            placeholder="Tìm theo tên, mã hoặc điều khoản..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold"
           />
         </div>
 
@@ -248,7 +225,7 @@ export default function AdminWarrantyPolicies() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as any)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 cursor-pointer"
           >
             <option value="ALL">Tất cả loại bảo hành</option>
             <option value="TIME">Theo Thời gian</option>
@@ -260,7 +237,7 @@ export default function AdminWarrantyPolicies() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Hoạt động</option>
@@ -275,17 +252,23 @@ export default function AdminWarrantyPolicies() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-y border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
+                <th className="py-4.5 px-6">Mã chính sách</th>
                 <th className="py-4.5 px-6">Tên chính sách</th>
-                <th className="py-4.5 px-4">Phụ tùng</th>
-                <th className="py-4.5 px-4">Dòng xe áp dụng</th>
                 <th className="py-4.5 px-4">Loại bảo hành</th>
                 <th className="py-4.5 px-4">Điều kiện bảo hành</th>
+                <th className="py-4.5 px-6">Điều khoản loại trừ / ghi chú</th>
                 <th className="py-4.5 px-4 text-center">Trạng thái</th>
                 <th className="py-4.5 px-6 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {filteredPolicies.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
+                    Đang tải dữ liệu chính sách bảo hành...
+                  </td>
+                </tr>
+              ) : filteredPolicies.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
                     Không tìm thấy chính sách bảo hành nào phù hợp...
@@ -297,29 +280,24 @@ export default function AdminWarrantyPolicies() {
                     key={policy.id}
                     className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors group"
                   >
+                    <td className="py-4 px-6 font-bold text-[#00285E] text-xs whitespace-nowrap">
+                      <span className="bg-slate-100 text-[#00285E] border border-slate-200 px-2 py-1 rounded inline-block whitespace-nowrap">
+                        {policy.policy_code}
+                      </span>
+                    </td>
+
                     <td className="py-4 px-6">
-                      <span className="font-bold text-[#00285E] text-sm block">
-                        {policy.name}
+                      <span className="font-bold text-slate-800 text-sm block">
+                        {policy.policy_name}
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Khởi tạo: {new Date(policy.createdAt).toLocaleDateString('vi-VN')}
+                        Cập nhật: {new Date(policy.updatedAt).toLocaleDateString('vi-VN')}
                       </span>
                     </td>
                     
-                    <td className="py-4 px-4 text-slate-700 text-xs font-semibold">
-                      {policy.sparePart}
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-700 font-bold bg-slate-100 rounded-lg px-2.5 py-1 w-fit border border-slate-200/60">
-                        <Car size={13} className="text-slate-500" />
-                        <span>{policy.vehicleMake} {policy.vehicleModel}</span>
-                      </div>
-                    </td>
-
                     <td className="py-4 px-4">
                       <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-50 text-blue-600 border border-blue-100">
-                        {getWarrantyTypeLabel(policy.warrantyType)}
+                        {getWarrantyTypeLabel(policy.warranty_type)}
                       </span>
                     </td>
 
@@ -327,33 +305,31 @@ export default function AdminWarrantyPolicies() {
                       {getWarrantyConditions(policy)}
                     </td>
 
+                    <td className="py-4 px-6 text-xs text-slate-500 max-w-xs truncate" title={policy.description || ''}>
+                      {policy.description || '—'}
+                    </td>
+
                     <td className="py-4 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          policy.isActive
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      <button
+                        onClick={() => handleToggleStatus(policy)}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+                          policy.is_active
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                         }`}
                       >
-                        {policy.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                      </span>
+                        {policy.is_active ? 'Hoạt động' : 'Tạm dừng'}
+                      </button>
                     </td>
 
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleOpenEdit(policy)}
-                          className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors"
+                          className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(policy)}
-                          className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -388,98 +364,69 @@ interface WarrantyFormModalProps {
   initial: WarrantyPolicy | null;
   policies: WarrantyPolicy[];
   onClose: () => void;
-  onSave: (data: Omit<WarrantyPolicy, 'id' | 'createdAt'>) => void;
+  onSave: (data: Omit<WarrantyPolicy, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
 function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormModalProps) {
   const isEdit = !!initial;
 
-  const [name, setName] = useState(initial?.name ?? '');
-  const [vehicleMake, setVehicleMake] = useState(initial?.vehicleMake ?? '');
-  const [vehicleModel, setVehicleModel] = useState(initial?.vehicleModel ?? '');
-  const [sparePart, setSparePart] = useState(initial?.sparePart ?? '');
-  const [warrantyType, setWarrantyType] = useState<'TIME' | 'DISTANCE' | 'BOTH' | 'NONE'>(initial?.warrantyType ?? 'TIME');
-  const [durationMonths, setDurationMonths] = useState<number>(initial?.durationMonths ?? 12);
-  const [kmLimit, setKmLimit] = useState<number>(initial?.kmLimit ?? 10000);
-  const [isActive, setIsActive] = useState<boolean>(initial?.isActive ?? true);
+  const [policyCode, setPolicyCode] = useState(initial?.policy_code ?? '');
+  const [policyName, setPolicyName] = useState(initial?.policy_name ?? '');
+  const [warrantyType, setWarrantyType] = useState<'TIME' | 'DISTANCE' | 'BOTH' | 'NONE'>(initial?.warranty_type ?? 'TIME');
+  const [durationMonths, setDurationMonths] = useState<number | ''>(initial?.duration_months ?? 12);
+  const [distanceKm, setDistanceKm] = useState<number | ''>(initial?.distance_km ?? 10000);
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
 
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Dynamically filter models based on selected make
-  const availableModels = useMemo(() => {
-    if (!vehicleMake) return [];
-    return MOCK_VEHICLE_DATA[vehicleMake] || [];
-  }, [vehicleMake]);
-
-  // Reset model if make changes and model is no longer valid
-  useEffect(() => {
-    if (vehicleMake && !MOCK_VEHICLE_DATA[vehicleMake]?.includes(vehicleModel)) {
-      setVehicleModel('');
-    }
-  }, [vehicleMake]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validations
-    if (!name.trim()) {
+    if (!policyCode.trim()) {
+      setErrorMsg('Vui lòng nhập mã chính sách bảo hành.');
+      return;
+    }
+    if (!policyName.trim()) {
       setErrorMsg('Vui lòng nhập tên chính sách bảo hành.');
-      return;
-    }
-    if (!vehicleMake) {
-      setErrorMsg('Vui lòng chọn hãng xe áp dụng.');
-      return;
-    }
-    if (!vehicleModel) {
-      setErrorMsg('Vui lòng chọn dòng xe áp dụng.');
-      return;
-    }
-    if (!sparePart) {
-      setErrorMsg('Vui lòng chọn phụ tùng liên kết.');
       return;
     }
 
     if (warrantyType === 'TIME' || warrantyType === 'BOTH') {
-      if (durationMonths <= 0 || isNaN(durationMonths)) {
+      if (!durationMonths || durationMonths <= 0 || isNaN(durationMonths)) {
         setErrorMsg('Thời hạn bảo hành (Tháng) phải lớn hơn 0.');
         return;
       }
     }
 
     if (warrantyType === 'DISTANCE' || warrantyType === 'BOTH') {
-      if (kmLimit <= 0 || isNaN(kmLimit)) {
+      if (!distanceKm || distanceKm <= 0 || isNaN(distanceKm)) {
         setErrorMsg('Giới hạn quãng đường bảo hành (KM) phải lớn hơn 0.');
         return;
       }
     }
 
-    // Check duplicate check: "Duplicate warranty policies are not allowed for the same combination of Spare Part, Vehicle Make, and Vehicle Model."
+    // Check duplicate check
     const isDuplicate = policies.some(
-      (p) =>
-        p.sparePart === sparePart &&
-        p.vehicleMake === vehicleMake &&
-        p.vehicleModel === vehicleModel &&
-        p.id !== initial?.id
+      (p) => p.policy_code.toLowerCase() === policyCode.trim().toLowerCase() && p.id !== initial?.id
     );
 
     if (isDuplicate) {
-      setErrorMsg(
-        `Chính sách bảo hành cho sự kết hợp giữa phụ tùng "${sparePart}", hãng xe "${vehicleMake}", dòng xe "${vehicleModel}" đã tồn tại trên hệ thống.`
-      );
+      setErrorMsg(`Mã chính sách bảo hành "${policyCode}" đã tồn tại trên hệ thống.`);
       return;
     }
 
     // Clear error and save
     setErrorMsg('');
     onSave({
-      name: name.trim(),
-      vehicleMake,
-      vehicleModel,
-      sparePart,
-      warrantyType,
-      durationMonths: (warrantyType === 'TIME' || warrantyType === 'BOTH') ? durationMonths : 0,
-      kmLimit: (warrantyType === 'DISTANCE' || warrantyType === 'BOTH') ? kmLimit : 0,
-      isActive,
+      policy_code: policyCode.trim().toUpperCase(),
+      policy_name: policyName.trim(),
+      warranty_type: warrantyType,
+      duration_months: (warrantyType === 'TIME' || warrantyType === 'BOTH') ? Number(durationMonths) : null,
+      distance_km: (warrantyType === 'DISTANCE' || warrantyType === 'BOTH') ? Number(distanceKm) : null,
+      description: description.trim() || null,
+      is_active: isActive,
     });
   };
 
@@ -502,12 +449,12 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               {isEdit ? 'Cập nhật chính sách bảo hành' : 'Tạo chính sách bảo hành mới'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Thiết lập quy tắc bảo hành theo thời gian và số KM áp dụng cho dòng xe cụ thể.
+              Thiết lập quy tắc bảo hành theo thời gian và số KM lưu trữ đồng bộ dưới Database.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -515,76 +462,36 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-          {/* Policy Name */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-              Tên chính sách bảo hành *
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Vd: Bảo hành lỗi kỹ thuật 6 tháng cho Má Phanh Honda City"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
-            />
-          </div>
-
-          {/* Vehicle Make & Model */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Policy Code */}
+            <div className="md:col-span-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Hãng xe áp dụng *
+                Mã chính sách *
               </label>
-              <select
-                value={vehicleMake}
-                onChange={(e) => setVehicleMake(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700"
-              >
-                <option value="">-- Chọn hãng xe --</option>
-                {Object.keys(MOCK_VEHICLE_DATA).map((make) => (
-                  <option key={make} value={make}>
-                    {make}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={policyCode}
+                onChange={(e) => setPolicyCode(e.target.value)}
+                disabled={isEdit}
+                placeholder="Vd: WP-12M-20K"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-bold text-slate-800 disabled:opacity-60"
+              />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Dòng xe áp dụng *
-              </label>
-              <select
-                value={vehicleModel}
-                onChange={(e) => setVehicleModel(e.target.value)}
-                disabled={!vehicleMake}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700 disabled:opacity-50"
-              >
-                <option value="">-- Chọn dòng xe --</option>
-                {availableModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          {/* Linked Spare Part */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-              Phụ tùng liên kết *
-            </label>
-            <select
-              value={sparePart}
-              onChange={(e) => setSparePart(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700"
-            >
-              <option value="">-- Chọn loại phụ tùng --</option>
-              {MOCK_SPARE_PARTS.map((part) => (
-                <option key={part} value={part}>
-                  {part}
-                </option>
-              ))}
-            </select>
+            {/* Policy Name */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                Tên chính sách bảo hành *
+              </label>
+              <input
+                type="text"
+                value={policyName}
+                onChange={(e) => setPolicyName(e.target.value)}
+                placeholder="Vd: Bảo hành Tiêu chuẩn 12 Tháng / 20.000km"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
+              />
+            </div>
           </div>
 
           {/* Warranty Type & Details */}
@@ -596,7 +503,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               <select
                 value={warrantyType}
                 onChange={(e) => setWarrantyType(e.target.value as any)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700 cursor-pointer"
               >
                 <option value="TIME">Theo Thời gian</option>
                 <option value="DISTANCE">Theo Số KM</option>
@@ -607,35 +514,58 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
 
             {/* Warranty Period (months) */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Thời hạn (Tháng)
-              </label>
+              <div className="flex items-center gap-1 mb-1.5">
+                <Clock size={13} className="text-slate-400" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Thời hạn (Tháng)
+                </label>
+              </div>
               <input
                 type="number"
                 value={durationMonths}
-                onChange={(e) => setDurationMonths(Number(e.target.value))}
+                onChange={(e) => setDurationMonths(e.target.value === '' ? '' : Number(e.target.value))}
                 disabled={warrantyType === 'DISTANCE' || warrantyType === 'NONE'}
                 min={1}
-                placeholder="Vd: 6"
+                placeholder="Vd: 12"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 disabled:opacity-40"
               />
             </div>
 
             {/* Warranty KM Limit */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Giới hạn (KM)
-              </label>
+              <div className="flex items-center gap-1 mb-1.5">
+                <Milestone size={13} className="text-slate-400" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Giới hạn (KM)
+                </label>
+              </div>
               <input
                 type="number"
-                value={kmLimit}
-                onChange={(e) => setKmLimit(Number(e.target.value))}
+                value={distanceKm}
+                onChange={(e) => setDistanceKm(e.target.value === '' ? '' : Number(e.target.value))}
                 disabled={warrantyType === 'TIME' || warrantyType === 'NONE'}
                 min={1}
-                placeholder="Vd: 10000"
+                placeholder="Vd: 20000"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 disabled:opacity-40"
               />
             </div>
+          </div>
+
+          {/* Description (Textarea) */}
+          <div>
+            <div className="flex items-center gap-1 mb-1.5">
+              <FileText size={13} className="text-slate-400" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Điều khoản từ chối bảo hành / Ghi chú thêm
+              </label>
+            </div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Vd: Không bảo hành do các sự cố ngập nước, hỏa hoạn, tự ý can thiệp phần cứng hoặc tai nạn giao thông."
+              rows={3}
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 resize-none"
+            />
           </div>
 
           {/* Active checkbox */}
@@ -645,7 +575,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               id="isActive"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="w-4.5 h-4.5 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20"
+              className="w-4.5 h-4.5 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20 cursor-pointer"
             />
             <label htmlFor="isActive" className="text-sm font-semibold text-slate-700 cursor-pointer">
               Kích hoạt chính sách này
@@ -666,14 +596,14 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Hủy
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 bg-[#F9A11B] text-[#00285E] rounded-xl text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all"
+            className="px-6 py-2.5 bg-[#F9A11B] text-[#00285E] rounded-xl text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all cursor-pointer"
           >
             {isEdit ? 'Lưu thay đổi' : 'Tạo chính sách'}
           </button>
