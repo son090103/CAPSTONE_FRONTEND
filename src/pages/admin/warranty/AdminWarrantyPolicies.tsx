@@ -20,9 +20,8 @@ interface WarrantyPolicy {
   id: number;
   policy_code: string;
   policy_name: string;
-  warranty_type: 'TIME' | 'DISTANCE' | 'BOTH' | 'NONE';
-  duration_months: number | null;
-  distance_km: number | null;
+  image_cover_url: string | null;
+  pdf_document_url: string | null;
   description: string | null;
   is_active: boolean;
   createdAt: string;
@@ -34,14 +33,13 @@ export default function AdminWarrantyPolicies() {
     showToast: (text: string, type?: 'success' | 'info' | 'warning') => void;
   }>();
 
-  const { fetchPrivate } = useFetchClient();
+  const { fetchPrivate, fetchPrivateForm } = useFetchClient();
 
   const [policies, setPolicies] = useState<WarrantyPolicy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'TIME' | 'DISTANCE' | 'BOTH' | 'NONE'>('ALL');
-  
+
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<WarrantyPolicy | null>(null);
@@ -77,13 +75,13 @@ export default function AdminWarrantyPolicies() {
     setIsModalOpen(true);
   };
 
-  const handleSavePolicy = async (data: Omit<WarrantyPolicy, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSavePolicy = async (formData: FormData) => {
     try {
       if (editingPolicy) {
-        const response = await fetchPrivate(
+        const response = await fetchPrivateForm(
           WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(editingPolicy.id),
           'PUT',
-          data
+          formData
         );
         if (response && response.success) {
           showToast('Cập nhật chính sách bảo hành thành công.', 'success');
@@ -92,10 +90,10 @@ export default function AdminWarrantyPolicies() {
           setEditingPolicy(null);
         }
       } else {
-        const response = await fetchPrivate(
+        const response = await fetchPrivateForm(
           WARRANTY_POLICIES_API_ENDPOINTS.CREATE_WARRANTY_POLICY,
           'POST',
-          data
+          formData
         );
         if (response && response.success) {
           showToast('Chính sách bảo hành đã được tạo thành công.', 'success');
@@ -118,9 +116,8 @@ export default function AdminWarrantyPolicies() {
         {
           policy_code: policy.policy_code,
           policy_name: policy.policy_name,
-          warranty_type: policy.warranty_type,
-          duration_months: policy.duration_months,
-          distance_km: policy.distance_km,
+          image_cover_url: policy.image_cover_url,
+          pdf_document_url: policy.pdf_document_url,
           description: policy.description,
           is_active: updatedStatus,
         }
@@ -141,43 +138,15 @@ export default function AdminWarrantyPolicies() {
         p.policy_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.policy_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+
       const matchesStatus =
         statusFilter === 'ALL' ||
         (statusFilter === 'ACTIVE' && p.is_active) ||
         (statusFilter === 'INACTIVE' && !p.is_active);
 
-      const matchesType = typeFilter === 'ALL' || p.warranty_type === typeFilter;
-
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus;
     });
-  }, [policies, searchQuery, statusFilter, typeFilter]);
-
-  const getWarrantyTypeLabel = (type: string) => {
-    switch (type) {
-      case 'TIME':
-        return 'Theo Thời gian';
-      case 'DISTANCE':
-        return 'Theo Số KM';
-      case 'BOTH':
-        return 'Thời gian & Số KM';
-      case 'NONE':
-        return 'Không bảo hành';
-      default:
-        return type;
-    }
-  };
-
-  const getWarrantyConditions = (policy: WarrantyPolicy) => {
-    if (policy.warranty_type === 'NONE') return 'Không áp dụng bảo hành';
-    const timeText = policy.duration_months && policy.duration_months > 0 ? `${policy.duration_months} tháng` : '';
-    const kmText = policy.distance_km && policy.distance_km > 0 ? `${policy.distance_km.toLocaleString('vi-VN')} KM` : '';
-    
-    if (policy.warranty_type === 'BOTH') {
-      return `${timeText} hoặc ${kmText} (tùy ĐK nào đến trước)`;
-    }
-    return timeText || kmText || '—';
-  };
+  }, [policies, searchQuery, statusFilter]);
 
   return (
     <div className="flex-1 p-4 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
@@ -221,18 +190,6 @@ export default function AdminWarrantyPolicies() {
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">
             <Filter size={14} /> Lọc:
           </div>
-          
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as any)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 cursor-pointer"
-          >
-            <option value="ALL">Tất cả loại bảo hành</option>
-            <option value="TIME">Theo Thời gian</option>
-            <option value="DISTANCE">Theo Số KM</option>
-            <option value="BOTH">Cả hai</option>
-            <option value="NONE">Không bảo hành</option>
-          </select>
 
           <select
             value={statusFilter}
@@ -254,9 +211,9 @@ export default function AdminWarrantyPolicies() {
               <tr className="border-y border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
                 <th className="py-4.5 px-6">Mã chính sách</th>
                 <th className="py-4.5 px-6">Tên chính sách</th>
-                <th className="py-4.5 px-4">Loại bảo hành</th>
-                <th className="py-4.5 px-4">Điều kiện bảo hành</th>
-                <th className="py-4.5 px-6">Điều khoản loại trừ / ghi chú</th>
+                <th className="py-4.5 px-4">Ảnh</th>
+                <th className="py-4.5 px-4">Tài liệu PDF</th>
+                <th className="py-4.5 px-6">Tóm tắt điều kiện / ghi chú</th>
                 <th className="py-4.5 px-4 text-center">Trạng thái</th>
                 <th className="py-4.5 px-6 text-right">Thao tác</th>
               </tr>
@@ -294,15 +251,33 @@ export default function AdminWarrantyPolicies() {
                         Cập nhật: {new Date(policy.updatedAt).toLocaleDateString('vi-VN')}
                       </span>
                     </td>
-                    
+
                     <td className="py-4 px-4">
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-50 text-blue-600 border border-blue-100">
-                        {getWarrantyTypeLabel(policy.warranty_type)}
-                      </span>
+                      {policy.image_cover_url ? (
+                        <img
+                          src={policy.image_cover_url}
+                          alt="Cover"
+                          className="w-12 h-12 object-cover rounded-lg border border-slate-200 shadow-xs"
+                        />
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">Chưa cập nhật</span>
+                      )}
                     </td>
 
-                    <td className="py-4 px-4 text-slate-600 text-xs font-bold">
-                      {getWarrantyConditions(policy)}
+                    <td className="py-4 px-4">
+                      {policy.pdf_document_url ? (
+                        <a
+                          href={policy.pdf_document_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-[#00285E] hover:underline font-bold bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg"
+                        >
+                          <FileText size={14} className="text-amber-600" />
+                          <span>Tải PDF</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">Chưa cập nhật</span>
+                      )}
                     </td>
 
                     <td className="py-4 px-6 text-xs text-slate-500 max-w-xs truncate" title={policy.description || ''}>
@@ -312,11 +287,10 @@ export default function AdminWarrantyPolicies() {
                     <td className="py-4 px-4 text-center">
                       <button
                         onClick={() => handleToggleStatus(policy)}
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                          policy.is_active
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${policy.is_active
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                          }`}
                       >
                         {policy.is_active ? 'Hoạt động' : 'Tạm dừng'}
                       </button>
@@ -364,7 +338,7 @@ interface WarrantyFormModalProps {
   initial: WarrantyPolicy | null;
   policies: WarrantyPolicy[];
   onClose: () => void;
-  onSave: (data: Omit<WarrantyPolicy, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (formData: FormData) => void;
 }
 
 function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormModalProps) {
@@ -372,19 +346,13 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
 
   const [policyCode, setPolicyCode] = useState(initial?.policy_code ?? '');
   const [policyName, setPolicyName] = useState(initial?.policy_name ?? '');
-  const [warrantyType, setWarrantyType] = useState<'TIME' | 'DISTANCE' | 'BOTH' | 'NONE'>(initial?.warranty_type ?? 'TIME');
-  const [durationMonths, setDurationMonths] = useState<number | ''>(
-    initial?.duration_months !== null && initial?.duration_months !== undefined
-      ? initial.duration_months
-      : ''
-  );
-  const [distanceKm, setDistanceKm] = useState<number | ''>(
-    initial?.distance_km !== null && initial?.distance_km !== undefined
-      ? initial.distance_km
-      : ''
-  );
+  const [imageCoverUrl, setImageCoverUrl] = useState(initial?.image_cover_url ?? '');
+  const [pdfDocumentUrl, setPdfDocumentUrl] = useState(initial?.pdf_document_url ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
+
+  const [imageCoverFile, setImageCoverFile] = useState<File | null>(null);
+  const [pdfDocumentFile, setPdfDocumentFile] = useState<File | null>(null);
 
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -401,20 +369,6 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
       return;
     }
 
-    if (warrantyType === 'TIME' || warrantyType === 'BOTH') {
-      if (durationMonths !== '' && (durationMonths <= 0 || isNaN(durationMonths))) {
-        setErrorMsg('Thời hạn bảo hành (Tháng) phải lớn hơn 0.');
-        return;
-      }
-    }
-
-    if (warrantyType === 'DISTANCE' || warrantyType === 'BOTH') {
-      if (distanceKm !== '' && (distanceKm <= 0 || isNaN(distanceKm))) {
-        setErrorMsg('Giới hạn quãng đường bảo hành (KM) phải lớn hơn 0.');
-        return;
-      }
-    }
-
     // Check duplicate check
     const isDuplicate = policies.some(
       (p) => p.policy_code.toLowerCase() === policyCode.trim().toLowerCase() && p.id !== initial?.id
@@ -427,22 +381,33 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
 
     // Clear error and save
     setErrorMsg('');
-    onSave({
-      policy_code: policyCode.trim().toUpperCase(),
-      policy_name: policyName.trim(),
-      warranty_type: warrantyType,
-      duration_months: durationMonths !== '' ? Number(durationMonths) : null,
-      distance_km: distanceKm !== '' ? Number(distanceKm) : null,
-      description: description.trim() || null,
-      is_active: isActive,
-    });
+
+    const formData = new FormData();
+    formData.append('policy_code', policyCode.trim().toUpperCase());
+    formData.append('policy_name', policyName.trim());
+    formData.append('description', description.trim() || '');
+    formData.append('is_active', String(isActive));
+
+    if (imageCoverFile) {
+      formData.append('image_cover', imageCoverFile);
+    } else {
+      formData.append('image_cover_url', imageCoverUrl || '');
+    }
+
+    if (pdfDocumentFile) {
+      formData.append('pdf_document', pdfDocumentFile);
+    } else {
+      formData.append('pdf_document_url', pdfDocumentUrl || '');
+    }
+
+    onSave(formData);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      
+
       {/* Modal box */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -457,7 +422,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               {isEdit ? 'Cập nhật chính sách bảo hành' : 'Tạo chính sách bảo hành mới'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Thiết lập quy tắc bảo hành theo thời gian và số KM lưu trữ đồng bộ dưới Database.
+              Thiết lập quy tắc hiển thị, ảnh banner và link điều khoản chi tiết dạng PDF.
             </p>
           </div>
           <button
@@ -470,7 +435,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Policy Code */}
             <div className="md:col-span-1">
@@ -482,7 +447,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
                 value={policyCode}
                 onChange={(e) => setPolicyCode(e.target.value)}
                 disabled={isEdit}
-                placeholder="Vd: WP-12M-20K"
+                placeholder="Vd: WP-GENERAL-2026"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-bold text-slate-800 disabled:opacity-60"
               />
             </div>
@@ -496,66 +461,106 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
                 type="text"
                 value={policyName}
                 onChange={(e) => setPolicyName(e.target.value)}
-                placeholder="Vd: Bảo hành Tiêu chuẩn 12 Tháng / 20.000km"
+                placeholder="Vd: Chính sách bảo hành chung Gara 2026"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800"
               />
             </div>
           </div>
 
-          {/* Warranty Type & Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 pt-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                Loại bảo hành *
+          {/* Media Inputs (Image Cover & PDF Link) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-slate-100 pt-5">
+            {/* Image Cover File Upload */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Ảnh Banner / Ảnh bìa chính sách
               </label>
-              <select
-                value={warrantyType}
-                onChange={(e) => setWarrantyType(e.target.value as any)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700 cursor-pointer"
-              >
-                <option value="TIME">Theo Thời gian</option>
-                <option value="DISTANCE">Theo Số KM</option>
-                <option value="BOTH">Thời gian & KM</option>
-                <option value="NONE">Không bảo hành</option>
-              </select>
+
+              <div className="flex items-center gap-4">
+                {/* Preview Thumbnail */}
+                <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex-shrink-0 flex items-center justify-center">
+                  {imageCoverFile ? (
+                    <img
+                      src={URL.createObjectURL(imageCoverFile)}
+                      alt="New preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : imageCoverUrl ? (
+                    <img
+                      src={imageCoverUrl}
+                      alt="Current banner"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-slate-400 text-[10px] text-center px-1">Chưa có ảnh</span>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <label className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 cursor-pointer transition-all">
+                    <span>Chọn tệp ảnh</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setImageCoverFile(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  {imageCoverFile && (
+                    <p className="text-[10px] text-emerald-600 font-bold mt-1.5 truncate max-w-[200px]">
+                      ✓ {imageCoverFile.name}
+                    </p>
+                  )}
+                  {!imageCoverFile && imageCoverUrl && (
+                    <p className="text-[10px] text-slate-400 font-medium mt-1.5 truncate max-w-[200px]">
+                      Dùng ảnh hiện có
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Warranty Period (months) */}
-            <div>
-              <div className="flex items-center gap-1 mb-1.5">
-                <Clock size={13} className="text-slate-400" />
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Thời hạn (Tháng)
-                </label>
-              </div>
-              <input
-                type="number"
-                value={durationMonths}
-                onChange={(e) => setDurationMonths(e.target.value === '' ? '' : Number(e.target.value))}
-                disabled={warrantyType === 'DISTANCE' || warrantyType === 'NONE'}
-                min={1}
-                placeholder="Vd: 12"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 disabled:opacity-40"
-              />
-            </div>
+            {/* PDF File Upload */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Tài liệu PDF điều khoản pháp lý chi tiết
+              </label>
 
-            {/* Warranty KM Limit */}
-            <div>
-              <div className="flex items-center gap-1 mb-1.5">
-                <Milestone size={13} className="text-slate-400" />
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Giới hạn (KM)
-                </label>
+              <div className="flex items-center gap-4">
+                {/* PDF Icon Status */}
+                <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex-shrink-0 flex items-center justify-center">
+                  <FileText className={pdfDocumentFile || pdfDocumentUrl ? "text-amber-500 animate-pulse" : "text-slate-300"} size={28} />
+                </div>
+
+                <div className="flex-1">
+                  <label className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 cursor-pointer transition-all">
+                    <span>Chọn tệp PDF</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setPdfDocumentFile(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  {pdfDocumentFile && (
+                    <p className="text-[10px] text-emerald-600 font-bold mt-1.5 truncate max-w-[200px]">
+                      ✓ {pdfDocumentFile.name}
+                    </p>
+                  )}
+                  {!pdfDocumentFile && pdfDocumentUrl && (
+                    <p className="text-[10px] text-slate-400 font-medium mt-1.5 truncate max-w-[200px]">
+                      Dùng tài liệu hiện có
+                    </p>
+                  )}
+                </div>
               </div>
-              <input
-                type="number"
-                value={distanceKm}
-                onChange={(e) => setDistanceKm(e.target.value === '' ? '' : Number(e.target.value))}
-                disabled={warrantyType === 'TIME' || warrantyType === 'NONE'}
-                min={1}
-                placeholder="Vd: 20000"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 disabled:opacity-40"
-              />
             </div>
           </div>
 
@@ -564,13 +569,13 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
             <div className="flex items-center gap-1 mb-1.5">
               <FileText size={13} className="text-slate-400" />
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Điều khoản từ chối bảo hành / Ghi chú thêm
+                Tóm tắt điều kiện (Khách đọc lướt trên điện thoại)
               </label>
             </div>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Vd: Không bảo hành do các sự cố ngập nước, hỏa hoạn, tự ý can thiệp phần cứng hoặc tai nạn giao thông."
+              placeholder="Vd: Bảo hành lỗi kỹ thuật của gara trong vòng 12 tháng, không bảo hành do va đập hay ngập nước."
               rows={3}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-800 resize-none"
             />
@@ -586,7 +591,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               className="w-4.5 h-4.5 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20 cursor-pointer"
             />
             <label htmlFor="isActive" className="text-sm font-semibold text-slate-700 cursor-pointer">
-              Kích hoạt chính sách này
+              Kích hoạt chính sách này (Hiển thị trên App)
             </label>
           </div>
 
