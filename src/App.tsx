@@ -27,6 +27,14 @@ const AdminWarrantyPolicies = lazy(() => import("./pages/admin/warranty/AdminWar
 const AdminStatistics = lazy(() => import("./pages/admin/dashboard/AdminStatistics"));
 const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminCustomerManagement"));
 
+// Technician Page Imports
+const TechnicianLayout = lazy(() => import("./pages/technician/TechnicianLayout"));
+const TechnicianServiceOrderList = lazy(() => import("./pages/technician/service-orders/TechnicianServiceOrderList"));
+const TechnicianServiceOrderDetail = lazy(() => import("./pages/technician/service-orders/TechnicianServiceOrderDetail"));
+const TechnicianAssignments = lazy(() => import("./pages/technician/assignments/TechnicianAssignments"));
+const TechnicianRequestParts = lazy(() => import("./pages/technician/parts-request/TechnicianRequestParts"));
+const TechnicianUpdateProgress = lazy(() => import("./pages/technician/progress/TechnicianUpdateProgress"));
+
 // Premium loading fallback styled to match AGM Intelligent branding
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-slate-50/50 backdrop-blur-xs flex flex-col items-center justify-center z-50">
@@ -44,7 +52,7 @@ const LoadingScreen = () => (
 
 function App() {
   const location = useLocation();
-  const isAdminPath = location.pathname.startsWith("/admin");
+  const isDashboardPath = location.pathname.startsWith("/admin") || location.pathname.startsWith("/technician");
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
@@ -73,8 +81,20 @@ function App() {
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="customers" element={<AdminCustomerManagement />} />
         </Route>
+
+        {/* Technician Dashboard */}
+        <Route path="/technician" element={<TechnicianLayout />}>
+          <Route path="" element={<Navigate to="service-orders" replace />} />
+          <Route path="service-orders" element={<TechnicianServiceOrderList />} />
+          <Route path="service-orders/:id" element={<TechnicianServiceOrderDetail />} />
+          <Route path="assignments" element={<TechnicianAssignments />} />
+          <Route path="parts-request" element={<TechnicianRequestParts />} />
+          <Route path="parts-request/:id" element={<TechnicianRequestParts />} />
+          <Route path="progress" element={<TechnicianUpdateProgress />} />
+          <Route path="progress/:id" element={<TechnicianUpdateProgress />} />
+        </Route>
       </Routes>
-      {!isAdminPath && (
+      {!isDashboardPath && (
         <div className="hidden md:block">
           <Footer />
         </div>
