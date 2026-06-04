@@ -27,6 +27,11 @@ const AdminWarrantyPolicies = lazy(() => import("./pages/admin/warranty/AdminWar
 const AdminStatistics = lazy(() => import("./pages/admin/dashboard/AdminStatistics"));
 const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminCustomerManagement"));
 
+// Quality Controller Page Imports
+const QualityControllerLayout = lazy(() => import("./pages/quality-control/QualityControllerLayout"));
+const QualityControllerServiceOrderList = lazy(() => import("./pages/quality-control/service-orders/QualityControllerServiceOrderList"));
+const QualityControllerServiceOrderDetail = lazy(() => import("./pages/quality-control/service-orders/QualityControllerServiceOrderDetail"));
+
 // Premium loading fallback styled to match AGM Intelligent branding
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-slate-50/50 backdrop-blur-xs flex flex-col items-center justify-center z-50">
@@ -44,7 +49,7 @@ const LoadingScreen = () => (
 
 function App() {
   const location = useLocation();
-  const isAdminPath = location.pathname.startsWith("/admin");
+  const isDashboardPath = location.pathname.startsWith("/admin") || location.pathname.startsWith("/quality-control");
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
@@ -73,8 +78,15 @@ function App() {
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="customers" element={<AdminCustomerManagement />} />
         </Route>
+
+        {/* Quality Controller Dashboard */}
+        <Route path="/quality-control" element={<QualityControllerLayout />}>
+          <Route path="" element={<Navigate to="service-orders" replace />} />
+          <Route path="service-orders" element={<QualityControllerServiceOrderList />} />
+          <Route path="service-orders/:id" element={<QualityControllerServiceOrderDetail />} />
+        </Route>
       </Routes>
-      {!isAdminPath && (
+      {!isDashboardPath && (
         <div className="hidden md:block">
           <Footer />
         </div>
