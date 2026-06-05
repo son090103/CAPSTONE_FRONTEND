@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -12,90 +12,13 @@ import {
   XCircle,
   AlertTriangle,
   DollarSign,
+  FileText,
+  Eye,
+  HelpCircle,
 } from 'lucide-react';
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { SO_STATUS_CONFIG } from './ReceptionServiceOrderList';
-
-// ========== MOCK DATABASE (sẽ thay bằng API call) ==========
-const MOCK_SERVICE_ORDERS: Record<string, any> = {
-  'SO-001': {
-    id: 'SO-001',
-    appointmentId: 'APT-001',
-    customerId: 'C001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901 234 567',
-    customerEmail: 'an.nguyen@email.com',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2.5Q',
-    vehicleYear: 2020,
-    vehicleMileage: 45000,
-    services: [
-      { id: 'SV001', name: 'Bảo dưỡng định kỳ cấp 1', price: 500000, category: 'Bảo dưỡng' },
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-    ],
-    status: 'in_progress',
-    notes: 'Khách yêu cầu kiểm tra kỹ giảm xóc trước bên trái do có tiếng kêu lọc cọc.',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T09:30:00',
-  },
-  'SO-002': {
-    id: 'SO-002',
-    customerId: 'C002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0912 345 678',
-    customerEmail: 'binh.tran@email.com',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Honda City RS',
-    vehicleYear: 2022,
-    vehicleMileage: 22000,
-    services: [
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-      { id: 'SV005', name: 'Vệ sinh kim phun điện tử', price: 1200000, category: 'Động cơ' },
-    ],
-    status: 'completed',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-02T10:15:00',
-  },
-  'SO-003': {
-    id: 'SO-003',
-    customerId: 'C009',
-    customerName: 'Phạm Minh Hùng',
-    customerPhone: '0909 888 777',
-    customerEmail: 'hung.pham@email.com',
-    vehiclePlate: '51G-888.88',
-    vehicleModel: 'Mercedes-Benz C200',
-    vehicleYear: 2019,
-    vehicleMileage: 15000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV004', name: 'Cân chỉnh thước lái 3D', price: 600000, category: 'Sửa chữa gầm' },
-    ],
-    status: 'waiting_approval',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T11:00:00',
-  },
-  'SO-004': {
-    id: 'SO-004',
-    customerId: 'C010',
-    customerName: 'Lê Văn Nam',
-    customerPhone: '0977 123 456',
-    customerEmail: 'nam.le@email.com',
-    vehiclePlate: '30A-999.99',
-    vehicleModel: 'Mazda 3 Premium',
-    vehicleYear: 2018,
-    vehicleMileage: 32000,
-    services: [
-      { id: 'SV007', name: 'Thay má phanh trước', price: 800000, category: 'Phanh' },
-    ],
-    status: 'cancelled',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T08:00:00',
-    cancelledAt: '2026-06-02T08:15:00',
-    cancelledBy: 'Trần Thị Thuỷ (Lễ tân)',
-    cancelReason: 'Khách hàng thay đổi quyết định, không sửa nữa trước khi tháo lắp.',
-    incurredCost: 0,
-  },
-};
+import { getServiceOrderById, updateServiceOrder, getQuotes } from '../quotes/mockQuotesStore';
 
 export default function ReceptionServiceOrderDetail() {
   const navigate = useNavigate();
@@ -105,10 +28,24 @@ export default function ReceptionServiceOrderDetail() {
   }>();
 
   // Load Order (Stateful mock for cancellation simulation)
-  const [order, setOrder] = useState<any>(id ? MOCK_SERVICE_ORDERS[id] : null);
+  const [order, setOrder] = useState<any>(null);
+  const [linkedQuote, setLinkedQuote] = useState<any>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [incurredCost, setIncurredCost] = useState('150000'); // 150k default if in progress
+
+  useEffect(() => {
+    if (id) {
+      const so = getServiceOrderById(id);
+      setOrder(so);
+      if (so) {
+        // Find linked quote
+        const quotes = getQuotes();
+        const q = quotes.find((x) => x.serviceOrderId === so.id);
+        setLinkedQuote(q);
+      }
+    }
+  }, [id]);
 
   if (!order) {
     return (
@@ -159,6 +96,7 @@ export default function ReceptionServiceOrderDetail() {
     };
 
     setOrder(updatedOrder);
+    updateServiceOrder(order.id, updatedOrder);
     setShowCancelModal(false);
     showToast(`Hủy hóa đơn dịch vụ ${order.id} thành công!`, 'success');
   };
@@ -237,6 +175,29 @@ export default function ReceptionServiceOrderDetail() {
           </div>
         </div>
       )}
+      {/* PENDING QUOTE APPROVAL WARNING CARD */}
+      {order.status === 'waiting_approval' && linkedQuote && (
+        <div className="bg-pink-50/60 border border-pink-200 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-pink-100/80 text-pink-600 flex items-center justify-center shrink-0 border border-pink-200 animate-pulse">
+              <HelpCircle size={20} />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-sm font-bold text-slate-800">Đang chờ phê duyệt báo giá ({linkedQuote.id})</p>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                Báo giá trị giá <strong className="text-pink-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(linkedQuote.totalAmount)}</strong> đã được gửi. Cần sự phê duyệt của khách hàng hoặc Lễ tân.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate(`/reception/quotes/${linkedQuote.id}`)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-pink-600 text-white hover:bg-pink-700 font-bold transition-all text-xs shadow-md shadow-pink-600/10 whitespace-nowrap"
+          >
+            <Eye size={14} />
+            <span>Xem chi tiết Báo giá</span>
+          </button>
+        </div>
+      )}
 
       {/* DETAIL GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -251,6 +212,26 @@ export default function ReceptionServiceOrderDetail() {
             {order.appointmentId && <InfoRow label="Liên kết Lịch hẹn" value={order.appointmentId} highlight />}
             <InfoRow label="Người tạo tiếp nhận" value={order.createdBy} />
             <InfoRow label="Thời điểm tiếp nhận" value={new Date(order.createdAt).toLocaleString('vi-VN')} />
+            {linkedQuote && (
+              <div className="flex items-center justify-between py-1 border-t border-slate-100 pt-2.5 mt-1.5">
+                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                  <FileText size={14} className="text-slate-400" />
+                  Báo giá liên kết
+                </span>
+                <button
+                  onClick={() => navigate(`/reception/quotes/${linkedQuote.id}`)}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                    linkedQuote.status === 'approved'
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                      : linkedQuote.status === 'rejected'
+                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                      : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  {linkedQuote.id} ({linkedQuote.status === 'approved' ? 'Đã duyệt' : linkedQuote.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'})
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

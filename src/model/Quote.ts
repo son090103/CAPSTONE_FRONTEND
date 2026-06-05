@@ -17,11 +17,14 @@ export interface QuoteModel {
   approvedBy?: string;
   approvedDate?: string;
   createdAt: string;
+  comboId?: string;
+  comboName?: string;
 }
 
 export interface QuoteServiceItem {
   name: string;
   laborCost: number;
+  selected?: boolean;
 }
 
 export interface QuotePartItem {
@@ -30,4 +33,5 @@ export interface QuotePartItem {
   unit: string;
   unitPrice: number;
   total: number;
+  selected?: boolean;
 }

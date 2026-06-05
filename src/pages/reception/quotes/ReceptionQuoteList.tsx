@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Search,
@@ -12,84 +12,17 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { QuoteModel } from '../../../model/Quote';
-
-// Mock Quotes Database
-const mockQuotes: QuoteModel[] = [
-  {
-    id: 'Q-001',
-    serviceOrderId: 'SO-001',
-    customerId: 'CUST-001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901234567',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2020',
-    services: [
-      { name: 'Bảo dưỡng định kỳ cấp 1', laborCost: 500000 },
-      { name: 'Thay dầu động cơ Castrol', laborCost: 150000 },
-    ],
-    parts: [
-      { name: 'Dầu Castrol Magnatec 5W-30', quantity: 4, unit: 'Lít', unitPrice: 162500, total: 650000 },
-      { name: 'Lọc gió điều hòa', quantity: 1, unit: 'Cái', unitPrice: 200000, total: 200000 },
-      { name: 'Lọc dầu nhớt', quantity: 1, unit: 'Cái', unitPrice: 120000, total: 120000 },
-    ],
-    laborCost: 650000,
-    partsCost: 970000,
-    totalAmount: 1620000,
-    status: 'pending',
-    createdAt: '2026-06-02T08:30:00Z',
-  },
-  {
-    id: 'Q-002',
-    serviceOrderId: 'SO-002',
-    customerId: 'CUST-002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0987654321',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Mazda 3 2021',
-    services: [
-      { name: 'Kiểm tra & Thay thế giảm xóc trước', laborCost: 1000000 },
-    ],
-    parts: [
-      { name: 'Phuộc nhún trước (cặp)', quantity: 1, unit: 'Bộ', unitPrice: 3500000, total: 3500000 },
-    ],
-    laborCost: 1000000,
-    partsCost: 3500000,
-    totalAmount: 4500000,
-    status: 'approved',
-    approvedBy: 'Khách hàng duyệt online',
-    approvedDate: '2026-06-01T14:20:00Z',
-    createdAt: '2026-06-01T10:00:00Z',
-  },
-  {
-    id: 'Q-003',
-    serviceOrderId: 'SO-003',
-    customerId: 'CUST-003',
-    customerName: 'Lê Hoàng Long',
-    customerPhone: '0912345678',
-    vehiclePlate: '51F-987.65',
-    vehicleModel: 'Honda CR-V 2018',
-    services: [
-      { name: 'Cân chỉnh thước lái 3D', laborCost: 600000 },
-      { name: 'Vệ sinh kim phun điện tử', laborCost: 400000 },
-    ],
-    parts: [
-      { name: 'Dung dịch vệ sinh kim phun Liqui Moly', quantity: 1, unit: 'Chai', unitPrice: 350000, total: 350000 },
-    ],
-    laborCost: 1000000,
-    partsCost: 350000,
-    totalAmount: 1350000,
-    status: 'rejected',
-    rejectionReason: 'Khách hàng cảm thấy chi phí nhân công vệ sinh kim phun hơi cao và muốn dời sang kỳ sau.',
-    createdAt: '2026-05-30T09:00:00Z',
-  },
-];
+import { getQuotes } from './mockQuotesStore';
 
 export default function ReceptionQuoteList() {
   const navigate = useNavigate();
-  const [quotes] = useState<QuoteModel[]>(mockQuotes);
+  const [quotes, setQuotes] = useState<QuoteModel[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  useEffect(() => {
+    setQuotes(getQuotes());
+  }, []);
   // Filtered quotes list
   const filteredQuotes = quotes.filter((q) => {
     const matchesSearch =

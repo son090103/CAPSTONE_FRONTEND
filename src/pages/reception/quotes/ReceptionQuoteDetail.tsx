@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Printer,
@@ -11,88 +11,37 @@ import {
   FileCheck,
   Ban,
   MessageSquareWarning,
+  FileText,
 } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import type { QuoteModel } from '../../../model/Quote';
-
-// Mock DB lookup
-const mockQuotesDB: Record<string, QuoteModel> = {
-  'Q-001': {
-    id: 'Q-001',
-    serviceOrderId: 'SO-001',
-    customerId: 'CUST-001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901234567',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2020',
-    services: [
-      { name: 'Bảo dưỡng định kỳ cấp 1', laborCost: 500000 },
-      { name: 'Thay dầu động cơ Castrol', laborCost: 150000 },
-    ],
-    parts: [
-      { name: 'Dầu Castrol Magnatec 5W-30', quantity: 4, unit: 'Lít', unitPrice: 162500, total: 650000 },
-      { name: 'Lọc gió điều hòa', quantity: 1, unit: 'Cái', unitPrice: 200000, total: 200000 },
-      { name: 'Lọc dầu nhớt', quantity: 1, unit: 'Cái', unitPrice: 120000, total: 120000 },
-    ],
-    laborCost: 650000,
-    partsCost: 970000,
-    totalAmount: 1620000,
-    status: 'pending',
-    createdAt: '2026-06-02T08:30:00Z',
-  },
-  'Q-002': {
-    id: 'Q-002',
-    serviceOrderId: 'SO-002',
-    customerId: 'CUST-002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0987654321',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Mazda 3 2021',
-    services: [
-      { name: 'Kiểm tra & Thay thế giảm xóc trước', laborCost: 1000000 },
-    ],
-    parts: [
-      { name: 'Phuộc nhún trước (cặp)', quantity: 1, unit: 'Bộ', unitPrice: 3500000, total: 3500000 },
-    ],
-    laborCost: 1000000,
-    partsCost: 3500000,
-    totalAmount: 4500000,
-    status: 'approved',
-    approvedBy: 'Khách hàng duyệt online',
-    approvedDate: '2026-06-01T14:20:00Z',
-    createdAt: '2026-06-01T10:00:00Z',
-  },
-  'Q-003': {
-    id: 'Q-003',
-    serviceOrderId: 'SO-003',
-    customerId: 'CUST-003',
-    customerName: 'Lê Hoàng Long',
-    customerPhone: '0912345678',
-    vehiclePlate: '51F-987.65',
-    vehicleModel: 'Honda CR-V 2018',
-    services: [
-      { name: 'Cân chỉnh thước lái 3D', laborCost: 600000 },
-      { name: 'Vệ sinh kim phun điện tử', laborCost: 400000 },
-    ],
-    parts: [
-      { name: 'Dung dịch vệ sinh kim phun Liqui Moly', quantity: 1, unit: 'Chai', unitPrice: 350000, total: 350000 },
-    ],
-    laborCost: 1000000,
-    partsCost: 350000,
-    totalAmount: 1350000,
-    status: 'rejected',
-    rejectionReason: 'Khách hàng cảm thấy chi phí nhân công vệ sinh kim phun hơi cao và muốn dời sang kỳ sau.',
-    createdAt: '2026-05-30T09:00:00Z',
-  },
-};
+import { getQuoteById, updateQuote } from './mockQuotesStore';
 
 export default function ReceptionQuoteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useOutletContext<{
+    showToast: (text: string, type?: 'success' | 'info' | 'warning') => void;
+  }>();
 
-  const [quote, setQuote] = useState<QuoteModel | undefined>(id ? mockQuotesDB[id] : undefined);
+  const [quote, setQuote] = useState<QuoteModel | undefined>(undefined);
+  const [services, setServices] = useState<any[]>([]);
+  const [parts, setParts] = useState<any[]>([]);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showApproveConfirmModal, setShowApproveConfirmModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      const q = getQuoteById(id);
+      setQuote(q);
+      if (q) {
+        setServices(q.services.map(s => ({ ...s, selected: s.selected !== false })));
+        setParts(q.parts.map(p => ({ ...p, selected: p.selected !== false })));
+      }
+    }
+  }, [id]);
 
   if (!quote) {
     return (
@@ -109,23 +58,48 @@ export default function ReceptionQuoteDetail() {
     );
   }
 
-  const handleApprove = () => {
-    if (confirm('Xác nhận duyệt báo giá này?')) {
-      const updatedQuote: QuoteModel = {
-        ...quote,
-        status: 'approved',
-        approvedBy: 'Lễ tân tiếp nhận',
-        approvedDate: new Date().toISOString(),
-      };
-      setQuote(updatedQuote);
-      // Simulating db save
-      mockQuotesDB[quote.id] = updatedQuote;
-    }
+  const toggleService = (idx: number) => {
+    if (quote.status !== 'pending') return;
+    setServices(prev =>
+      prev.map((s, i) => (i === idx ? { ...s, selected: !s.selected } : s))
+    );
+  };
+
+  const togglePart = (idx: number) => {
+    if (quote.status !== 'pending') return;
+    setParts(prev =>
+      prev.map((p, i) => (i === idx ? { ...p, selected: !p.selected } : p))
+    );
+  };
+
+  const currentLaborCost = services.reduce((sum, s) => sum + (s.selected !== false ? s.laborCost : 0), 0);
+  const currentPartsCost = parts.reduce((sum, p) => sum + (p.selected !== false ? p.total : 0), 0);
+  const currentTotalAmount = currentLaborCost + currentPartsCost;
+
+  const hasSelectedItems = services.some(s => s.selected !== false) || parts.some(p => p.selected !== false);
+
+  const confirmApprove = () => {
+    if (!quote || !hasSelectedItems) return;
+    const updatedQuote: QuoteModel = {
+      ...quote,
+      services: services.map(s => ({ name: s.name, laborCost: s.laborCost, selected: s.selected })),
+      parts: parts.map(p => ({ name: p.name, quantity: p.quantity, unit: p.unit, unitPrice: p.unitPrice, total: p.total, selected: p.selected })),
+      laborCost: currentLaborCost,
+      partsCost: currentPartsCost,
+      totalAmount: currentTotalAmount,
+      status: 'approved',
+      approvedBy: 'Lễ tân tiếp nhận',
+      approvedDate: new Date().toISOString(),
+    };
+    setQuote(updatedQuote);
+    updateQuote(quote.id, updatedQuote);
+    setShowApproveConfirmModal(false);
+    showToast('Phê duyệt báo giá thành công!', 'success');
   };
 
   const handleRejectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectReason.trim()) return;
+    if (!rejectReason.trim() || !quote) return;
 
     const updatedQuote: QuoteModel = {
       ...quote,
@@ -133,9 +107,10 @@ export default function ReceptionQuoteDetail() {
       rejectionReason: rejectReason,
     };
     setQuote(updatedQuote);
-    mockQuotesDB[quote.id] = updatedQuote;
+    updateQuote(quote.id, updatedQuote);
     setShowRejectModal(false);
     setRejectReason('');
+    showToast('Từ chối báo giá thành công!', 'warning');
   };
 
   const getStatusBadge = (status: QuoteModel['status']) => {
@@ -177,7 +152,7 @@ export default function ReceptionQuoteDetail() {
         </button>
 
         <button
-          onClick={() => alert(`Đang in báo giá ${quote.id}...`)}
+          onClick={() => setShowPrintModal(true)}
           className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-bold transition-all text-xs"
         >
           <Printer size={14} />
@@ -190,9 +165,26 @@ export default function ReceptionQuoteDetail() {
         {/* Info Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-              Dự toán sửa chữa • SO: {quote.serviceOrderId}
-            </span>
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <span>Dự toán sửa chữa</span>
+              <span>•</span>
+              <button
+                onClick={() => navigate(`/reception/service-orders/${quote.serviceOrderId}`)}
+                className="text-[#00285E] hover:underline flex items-center gap-0.5 normal-case font-extrabold"
+                title="Xem chi tiết Hóa đơn dịch vụ"
+              >
+                <FileText size={10} />
+                <span>SO: {quote.serviceOrderId}</span>
+              </button>
+              {quote.comboName && (
+                <>
+                  <span>•</span>
+                  <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[9px] font-extrabold border border-amber-200 normal-case">
+                    Combo: {quote.comboName}
+                  </span>
+                </>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-extrabold text-[#00285E] tracking-tight">Chi tiết Báo giá {quote.id}</h1>
               {getStatusBadge(quote.status)}
@@ -257,9 +249,27 @@ export default function ReceptionQuoteDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                {quote.services.map((item, idx) => (
+                {services.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
-                    <td className="px-5 py-3.5 font-bold text-slate-800">{item.name}</td>
+                    <td className="px-5 py-3.5 flex items-center gap-3">
+                      {quote.status === 'pending' ? (
+                        <input
+                          type="checkbox"
+                          checked={item.selected !== false}
+                          onChange={() => toggleService(idx)}
+                          className="accent-[#00285E] rounded cursor-pointer w-4 h-4"
+                        />
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                          item.selected !== false
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                            : 'bg-slate-50 text-slate-400 border border-slate-200'
+                        }`}>
+                          {item.selected !== false ? 'Đồng ý' : 'Bỏ qua'}
+                        </span>
+                      )}
+                      <span className="font-bold text-slate-800">{item.name}</span>
+                    </td>
                     <td className="px-5 py-3.5 text-right text-slate-900">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.laborCost)}
                     </td>
@@ -286,16 +296,34 @@ export default function ReceptionQuoteDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                {quote.parts.length === 0 ? (
+                {parts.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-4 text-center text-slate-400 font-bold">
                       Không có phụ tùng thay thế.
                     </td>
                   </tr>
                 ) : (
-                  quote.parts.map((item, idx) => (
+                  parts.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="px-5 py-3.5 font-bold text-slate-800">{item.name}</td>
+                      <td className="px-5 py-3.5 flex items-center gap-3">
+                        {quote.status === 'pending' ? (
+                          <input
+                            type="checkbox"
+                            checked={item.selected !== false}
+                            onChange={() => togglePart(idx)}
+                            className="accent-[#00285E] rounded cursor-pointer w-4 h-4"
+                          />
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                            item.selected !== false
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200'
+                          }`}>
+                            {item.selected !== false ? 'Đồng ý' : 'Bỏ qua'}
+                          </span>
+                        )}
+                        <span className="font-bold text-slate-800">{item.name}</span>
+                      </td>
                       <td className="px-5 py-3.5 text-center">
                         {item.quantity} {item.unit}
                       </td>
@@ -318,16 +346,16 @@ export default function ReceptionQuoteDetail() {
           <div className="w-full sm:w-80 space-y-3.5 text-sm font-semibold text-slate-600">
             <div className="flex justify-between">
               <span className="text-slate-400">Chi phí nhân công (I)</span>
-              <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(quote.laborCost)}</span>
+              <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentLaborCost)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Chi phí phụ tùng (II)</span>
-              <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(quote.partsCost)}</span>
+              <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentPartsCost)}</span>
             </div>
             <div className="flex justify-between items-center pt-3.5 border-t border-dashed border-slate-200">
               <span className="text-slate-850 font-bold text-base">Tổng giá dự toán</span>
               <span className="text-2xl font-black text-[#00285E]">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(quote.totalAmount)}
+                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentTotalAmount)}
               </span>
             </div>
           </div>
@@ -359,7 +387,7 @@ export default function ReceptionQuoteDetail() {
               <span>Từ chối báo giá</span>
             </button>
             <button
-              onClick={handleApprove}
+              onClick={() => setShowApproveConfirmModal(true)}
               className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#00285E] text-white hover:bg-[#00285E]/90 font-bold transition-all text-sm shadow-md"
             >
               <FileCheck size={16} />
@@ -465,6 +493,212 @@ export default function ReceptionQuoteDetail() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Custom Approve Confirmation Modal */}
+      {showApproveConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs" onClick={() => setShowApproveConfirmModal(false)}></div>
+          <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md space-y-5">
+            <div className="space-y-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-100">
+                <FileCheck size={24} />
+              </div>
+              <h3 className="font-bold text-slate-800 text-lg">Phê duyệt Báo giá {quote.id}</h3>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed px-2">
+                Xác nhận duyệt báo giá này cho xe <strong className="text-slate-750">{quote.vehiclePlate}</strong> với{' '}
+                <strong className="text-emerald-600 font-bold">{services.filter(s => s.selected !== false).length} dịch vụ</strong> và{' '}
+                <strong className="text-emerald-600 font-bold">{parts.filter(p => p.selected !== false).length} phụ tùng/vật tư</strong> được chọn.
+              </p>
+              
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs text-left font-semibold text-slate-650">
+                <div className="flex justify-between">
+                  <span>Chi phí nhân công:</span>
+                  <span className="text-slate-800 font-bold">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentLaborCost)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Chi phí phụ tùng:</span>
+                  <span className="text-slate-800 font-bold">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentPartsCost)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 text-sm font-bold">
+                  <span className="text-slate-850">Tổng thanh toán duyệt:</span>
+                  <span className="text-[#00285E] font-black">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentTotalAmount)}</span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400 font-medium leading-relaxed px-2">
+                Hệ thống sẽ tự động cập nhật trạng thái hóa đơn dịch vụ tương ứng sang <strong className="text-emerald-600">Đang sửa chữa</strong> và loại bỏ các hạng mục không được phê duyệt.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setShowApproveConfirmModal(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors text-xs"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmApprove}
+                className="flex-1 px-5 py-2.5 rounded-xl bg-[#00285E] hover:bg-[#00285E]/90 text-white font-bold transition-all text-xs shadow-md shadow-blue-900/10"
+              >
+                Xác nhận duyệt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simulation Print Preview Modal */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs animate-fade-in" onClick={() => setShowPrintModal(false)}></div>
+          <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 w-full max-w-3xl space-y-6 my-8 z-10 max-h-[90vh] overflow-y-auto">
+            
+            {/* Printable area */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-6 text-slate-800 print:border-0 print:p-0">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b-2 border-slate-850 pb-4">
+                <div>
+                  <h2 className="text-lg font-black uppercase text-[#00285E] tracking-wider">AGM INTELLIGENT GARA</h2>
+                  <p className="text-[10px] text-slate-400 font-medium">Địa chỉ: 123 Đường Số 1, Phường Tân Phong, Quận 7, TP. HCM</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Hotline: 1900 6789 - Website: agmgarage.vn</p>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-lg font-bold text-slate-800">PHIẾU BÁO GIÁ</h2>
+                  <p className="text-xs font-bold text-slate-650">Số: {quote.id}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Ngày: {new Date(quote.createdAt).toLocaleDateString('vi-VN')}</p>
+                </div>
+              </div>
+
+              {/* Client and Car info */}
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1">
+                  <p><span className="text-slate-450 font-semibold">Khách hàng:</span> <strong className="text-slate-800">{quote.customerName}</strong></p>
+                  <p><span className="text-slate-450 font-semibold">Điện thoại:</span> <span className="font-bold text-slate-800">{quote.customerPhone}</span></p>
+                </div>
+                <div className="space-y-1">
+                  <p><span className="text-slate-450 font-semibold">Biển số xe:</span> <strong className="text-slate-850">{quote.vehiclePlate}</strong></p>
+                  <p><span className="text-slate-450 font-semibold">Dòng xe:</span> <span className="font-bold text-slate-800">{quote.vehicleModel}</span></p>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="space-y-4">
+                {/* Services */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-black uppercase text-[#00285E]">I. Nội dung Công việc & dịch vụ kỹ thuật</p>
+                  <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase text-[9px]">
+                        <th className="px-3 py-2 border-r border-slate-200">Nội dung</th>
+                        <th className="px-3 py-2 text-right">Chi phí nhân công</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {services.filter(s => s.selected !== false).length === 0 ? (
+                        <tr>
+                          <td colSpan={2} className="px-3 py-4 text-center text-slate-450 italic font-semibold">
+                            Không có công việc dịch vụ nào được phê duyệt.
+                          </td>
+                        </tr>
+                      ) : (
+                        services.filter(s => s.selected !== false).map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 border-r border-slate-200 font-bold text-slate-800">{item.name}</td>
+                            <td className="px-3 py-2 text-right text-slate-900">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.laborCost)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Parts */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-black uppercase text-[#00285E]">II. Phụ tùng / Vật tư thay thế</p>
+                  <table className="w-full text-left border-collapse text-[11px] border border-slate-200">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase text-[9px]">
+                        <th className="px-3 py-2 border-r border-slate-200">Tên phụ tùng</th>
+                        <th className="px-3 py-2 border-r border-slate-200 text-center">SL</th>
+                        <th className="px-3 py-2 border-r border-slate-200 text-center">ĐVT</th>
+                        <th className="px-3 py-2 border-r border-slate-200 text-right">Đơn giá</th>
+                        <th className="px-3 py-2 text-right">Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {parts.filter(p => p.selected !== false).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-4 text-center text-slate-450 italic font-semibold">
+                            Không có phụ tùng thay thế nào được phê duyệt.
+                          </td>
+                        </tr>
+                      ) : (
+                        parts.filter(p => p.selected !== false).map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 border-r border-slate-200 font-bold text-slate-800">{item.name}</td>
+                            <td className="px-3 py-2 border-r border-slate-200 text-center">{item.quantity}</td>
+                            <td className="px-3 py-2 border-r border-slate-200 text-center">{item.unit}</td>
+                            <td className="px-3 py-2 border-r border-slate-200 text-right">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.unitPrice)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-900 font-bold">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.total)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer Totals */}
+              <div className="flex justify-end border-t border-slate-200 pt-4">
+                <table className="w-64 text-xs font-semibold">
+                  <tbody>
+                    <tr>
+                      <td className="py-1 text-slate-400">Chi phí nhân công:</td>
+                      <td className="py-1 text-right text-slate-800">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentLaborCost)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 text-slate-400">Chi phí phụ tùng:</td>
+                      <td className="py-1 text-right text-slate-800">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentPartsCost)}</td>
+                    </tr>
+                    <tr className="border-t border-slate-200">
+                      <td className="py-2 text-sm font-bold text-slate-800">Tổng cộng thanh toán:</td>
+                      <td className="py-2 text-right text-sm font-black text-[#00285E]">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentTotalAmount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors text-xs"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={() => {
+                  window.print();
+                  showToast('Đang tiến hành in báo giá...', 'success');
+                  setShowPrintModal(false);
+                }}
+                className="px-6 py-2.5 rounded-xl bg-[#00285E] hover:bg-[#00285E]/90 text-white font-bold transition-all text-xs shadow-md shadow-blue-900/10"
+              >
+                Xác nhận in bản cứng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

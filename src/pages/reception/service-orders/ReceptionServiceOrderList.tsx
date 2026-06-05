@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ClipboardPlus,
   Search,
@@ -16,8 +16,9 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getServiceOrders } from '../quotes/mockQuotesStore';
 
-// ========== MOCK SERVICE ORDERS DATABASE ==========
+// ========== SERVICE ORDER MODEL ==========
 export interface ServiceOrderModel {
   id: string;
   appointmentId?: string;
@@ -38,93 +39,6 @@ export interface ServiceOrderModel {
   incurredCost?: number;
 }
 
-const MOCK_SERVICE_ORDERS: ServiceOrderModel[] = [
-  {
-    id: 'SO-001',
-    appointmentId: 'APT-001',
-    customerId: 'C001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901 234 567',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2.5Q',
-    vehicleMileage: 45000,
-    services: [
-      { id: 'SV001', name: 'Bảo dưỡng định kỳ cấp 1', price: 500000, category: 'Bảo dưỡng' },
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-    ],
-    status: 'in_progress',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T09:30:00',
-  },
-  {
-    id: 'SO-002',
-    customerId: 'C002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0912 345 678',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Honda City RS',
-    vehicleMileage: 22000,
-    services: [
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-      { id: 'SV005', name: 'Vệ sinh kim phun điện tử', price: 1200000, category: 'Động cơ' },
-    ],
-    status: 'completed',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-02T10:15:00',
-  },
-  {
-    id: 'SO-003',
-    customerId: 'C009',
-    customerName: 'Phạm Minh Hùng',
-    customerPhone: '0909 888 777',
-    vehiclePlate: '51G-888.88',
-    vehicleModel: 'Mercedes-Benz C200',
-    vehicleMileage: 15000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV004', name: 'Cân chỉnh thước lái 3D', price: 600000, category: 'Sửa chữa gầm' },
-    ],
-    status: 'waiting_approval',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T11:00:00',
-  },
-  {
-    id: 'SO-004',
-    customerId: 'C010',
-    customerName: 'Lê Văn Nam',
-    customerPhone: '0977 123 456',
-    vehiclePlate: '30A-999.99',
-    vehicleModel: 'Mazda 3 Premium',
-    vehicleMileage: 32000,
-    services: [
-      { id: 'SV007', name: 'Thay má phanh trước', price: 800000, category: 'Phanh' },
-    ],
-    status: 'cancelled',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T08:00:00',
-    cancelledAt: '2026-06-02T08:15:00',
-    cancelledBy: 'Trần Thị Thuỷ (Lễ tân)',
-    cancelReason: 'Khách hàng thay đổi quyết định, không sửa nữa trước khi tháo lắp.',
-    incurredCost: 0,
-  },
-  {
-    id: 'SO-005',
-    customerId: 'C011',
-    customerName: 'Đặng Hoàng Nam',
-    customerPhone: '0988 555 444',
-    vehiclePlate: '51K-555.55',
-    vehicleModel: 'Hyundai SantaFe',
-    vehicleMileage: 60000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV010', name: 'Sơn phục hồi vết xước', price: 1500000, category: 'Thân vỏ' },
-    ],
-    status: 'waiting_parts',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-01T14:00:00',
-  },
-];
-
 export const SO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: 'Bản nháp', color: '#6B7280', bg: '#F3F4F6', icon: Clock },
   assigned: { label: 'Đã giao việc', color: '#6366F1', bg: '#EEF2FF', icon: Users },
@@ -141,13 +55,18 @@ const ITEMS_PER_PAGE = 5;
 export default function ReceptionServiceOrderList() {
   const navigate = useNavigate();
 
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrderModel[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
+  useEffect(() => {
+    setServiceOrders(getServiceOrders());
+  }, []);
+
   // Filtered data
   const filteredOrders = useMemo(() => {
-    return MOCK_SERVICE_ORDERS.filter((so) => {
+    return serviceOrders.filter((so) => {
       const matchSearch =
         searchTerm === '' ||
         so.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -159,7 +78,7 @@ export default function ReceptionServiceOrderList() {
 
       return matchSearch && matchStatus;
     });
-  }, [searchTerm, statusFilter]);
+  }, [serviceOrders, searchTerm, statusFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -170,11 +89,11 @@ export default function ReceptionServiceOrderList() {
 
   // KPI counts
   const kpiCounts = useMemo(() => ({
-    total: MOCK_SERVICE_ORDERS.length,
-    inProgress: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'in_progress' || o.status === 'waiting_parts').length,
-    waitingApproval: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'waiting_approval').length,
-    completed: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'completed').length,
-  }), []);
+    total: serviceOrders.length,
+    inProgress: serviceOrders.filter((o) => o.status === 'in_progress' || o.status === 'waiting_parts').length,
+    waitingApproval: serviceOrders.filter((o) => o.status === 'waiting_approval').length,
+    completed: serviceOrders.filter((o) => o.status === 'completed').length,
+  }), [serviceOrders]);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
