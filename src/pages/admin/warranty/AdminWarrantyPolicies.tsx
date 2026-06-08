@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ShieldCheck,
   Search,
@@ -9,12 +9,10 @@ import {
   X,
   AlertTriangle,
   FileText,
-  Clock,
-  Milestone,
-} from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
-import { useFetchClient } from '../../../hook/useFetchClient';
-import { WARRANTY_POLICIES_API_ENDPOINTS } from '../../../constants/admin/warrantyPoliciesApiEndpoint';
+} from "lucide-react";
+import { useOutletContext } from "react-router-dom";
+import { useFetchClient } from "../../../hook/useFetchClient";
+import { WARRANTY_POLICIES_API_ENDPOINTS } from "../../../constants/admin/warrantyPoliciesApiEndpoint";
 
 interface WarrantyPolicy {
   id: number;
@@ -30,32 +28,41 @@ interface WarrantyPolicy {
 
 export default function AdminWarrantyPolicies() {
   const { showToast } = useOutletContext<{
-    showToast: (text: string, type?: 'success' | 'info' | 'warning') => void;
+    showToast: (text: string, type?: "success" | "info" | "warning") => void;
   }>();
 
   const { fetchPrivate, fetchPrivateForm } = useFetchClient();
 
   const [policies, setPolicies] = useState<WarrantyPolicy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "ACTIVE" | "INACTIVE"
+  >("ALL");
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState<WarrantyPolicy | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<WarrantyPolicy | null>(
+    null
+  );
 
   // Load policies from Backend API
   const loadPolicies = async () => {
     setIsLoading(true);
     try {
-      const response = await fetchPrivate(WARRANTY_POLICIES_API_ENDPOINTS.LIST_WARRANTY_POLICIES);
+      const response = await fetchPrivate(
+        WARRANTY_POLICIES_API_ENDPOINTS.LIST_WARRANTY_POLICIES
+      );
       if (response && response.success) {
         setPolicies(response.data);
       } else {
         setPolicies([]);
       }
     } catch (error: any) {
-      showToast(error.message || 'Lỗi khi tải danh sách chính sách bảo hành', 'warning');
+      showToast(
+        error.message || "Lỗi khi tải danh sách chính sách bảo hành",
+        "warning"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -79,12 +86,14 @@ export default function AdminWarrantyPolicies() {
     try {
       if (editingPolicy) {
         const response = await fetchPrivateForm(
-          WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(editingPolicy.id),
-          'PUT',
+          WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(
+            editingPolicy.id
+          ),
+          "PUT",
           formData
         );
         if (response && response.success) {
-          showToast('Cập nhật chính sách bảo hành thành công.', 'success');
+          showToast("Cập nhật chính sách bảo hành thành công.", "success");
           loadPolicies();
           setIsModalOpen(false);
           setEditingPolicy(null);
@@ -92,18 +101,21 @@ export default function AdminWarrantyPolicies() {
       } else {
         const response = await fetchPrivateForm(
           WARRANTY_POLICIES_API_ENDPOINTS.CREATE_WARRANTY_POLICY,
-          'POST',
+          "POST",
           formData
         );
         if (response && response.success) {
-          showToast('Chính sách bảo hành đã được tạo thành công.', 'success');
+          showToast("Chính sách bảo hành đã được tạo thành công.", "success");
           loadPolicies();
           setIsModalOpen(false);
           setEditingPolicy(null);
         }
       }
     } catch (error: any) {
-      showToast(error.message || 'Lỗi lưu thông tin chính sách bảo hành', 'warning');
+      showToast(
+        error.message || "Lỗi lưu thông tin chính sách bảo hành",
+        "warning"
+      );
     }
   };
 
@@ -112,7 +124,7 @@ export default function AdminWarrantyPolicies() {
       const updatedStatus = !policy.is_active;
       const response = await fetchPrivate(
         WARRANTY_POLICIES_API_ENDPOINTS.UPDATE_WARRANTY_POLICY(policy.id),
-        'PUT',
+        "PUT",
         {
           policy_code: policy.policy_code,
           policy_name: policy.policy_name,
@@ -123,11 +135,19 @@ export default function AdminWarrantyPolicies() {
         }
       );
       if (response && response.success) {
-        showToast(`Đã ${updatedStatus ? 'kích hoạt' : 'tạm dừng'} chính sách bảo hành thành công.`, 'success');
+        showToast(
+          `Đã ${
+            updatedStatus ? "kích hoạt" : "tạm dừng"
+          } chính sách bảo hành thành công.`,
+          "success"
+        );
         loadPolicies();
       }
     } catch (error: any) {
-      showToast(error.message || 'Lỗi thay đổi trạng thái chính sách', 'warning');
+      showToast(
+        error.message || "Lỗi thay đổi trạng thái chính sách",
+        "warning"
+      );
     }
   };
 
@@ -137,12 +157,13 @@ export default function AdminWarrantyPolicies() {
       const matchesSearch =
         p.policy_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.policy_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+        (p.description &&
+          p.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && p.is_active) ||
-        (statusFilter === 'INACTIVE' && !p.is_active);
+        statusFilter === "ALL" ||
+        (statusFilter === "ACTIVE" && p.is_active) ||
+        (statusFilter === "INACTIVE" && !p.is_active);
 
       return matchesSearch && matchesStatus;
     });
@@ -158,7 +179,8 @@ export default function AdminWarrantyPolicies() {
             Quản lý Chính sách Bảo hành
           </h1>
           <p className="text-slate-500 text-sm">
-            Tạo và thiết lập các chính sách bảo hành áp dụng cho các phụ tùng hoặc dịch vụ trong gara.
+            Tạo và thiết lập các chính sách bảo hành áp dụng cho các phụ tùng
+            hoặc dịch vụ trong gara.
           </p>
         </div>
 
@@ -175,7 +197,10 @@ export default function AdminWarrantyPolicies() {
       <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Search */}
         <div className="relative w-full md:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+          />
           <input
             type="text"
             placeholder="Tìm theo tên, mã hoặc điều khoản..."
@@ -221,13 +246,19 @@ export default function AdminWarrantyPolicies() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
+                  <td
+                    colSpan={7}
+                    className="py-12 text-center text-slate-400 text-sm"
+                  >
                     Đang tải dữ liệu chính sách bảo hành...
                   </td>
                 </tr>
               ) : filteredPolicies.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
+                  <td
+                    colSpan={7}
+                    className="py-12 text-center text-slate-400 text-sm"
+                  >
                     Không tìm thấy chính sách bảo hành nào phù hợp...
                   </td>
                 </tr>
@@ -248,7 +279,8 @@ export default function AdminWarrantyPolicies() {
                         {policy.policy_name}
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Cập nhật: {new Date(policy.updatedAt).toLocaleDateString('vi-VN')}
+                        Cập nhật:{" "}
+                        {new Date(policy.updatedAt).toLocaleDateString("vi-VN")}
                       </span>
                     </td>
 
@@ -260,7 +292,9 @@ export default function AdminWarrantyPolicies() {
                           className="w-12 h-12 object-cover rounded-lg border border-slate-200 shadow-xs"
                         />
                       ) : (
-                        <span className="text-slate-400 text-xs italic">Chưa cập nhật</span>
+                        <span className="text-slate-400 text-xs italic">
+                          Chưa cập nhật
+                        </span>
                       )}
                     </td>
 
@@ -276,23 +310,29 @@ export default function AdminWarrantyPolicies() {
                           <span>Tải PDF</span>
                         </a>
                       ) : (
-                        <span className="text-slate-400 text-xs italic">Chưa cập nhật</span>
+                        <span className="text-slate-400 text-xs italic">
+                          Chưa cập nhật
+                        </span>
                       )}
                     </td>
 
-                    <td className="py-4 px-6 text-xs text-slate-500 max-w-xs truncate" title={policy.description || ''}>
-                      {policy.description || '—'}
+                    <td
+                      className="py-4 px-6 text-xs text-slate-500 max-w-xs truncate"
+                      title={policy.description || ""}
+                    >
+                      {policy.description || "—"}
                     </td>
 
                     <td className="py-4 px-4 text-center">
                       <button
                         onClick={() => handleToggleStatus(policy)}
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${policy.is_active
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
-                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
-                          }`}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+                          policy.is_active
+                            ? "bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100"
+                            : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200"
+                        }`}
                       >
-                        {policy.is_active ? 'Hoạt động' : 'Tạm dừng'}
+                        {policy.is_active ? "Hoạt động" : "Tạm dừng"}
                       </button>
                     </td>
 
@@ -341,63 +381,76 @@ interface WarrantyFormModalProps {
   onSave: (formData: FormData) => void;
 }
 
-function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormModalProps) {
+function WarrantyFormModal({
+  initial,
+  policies,
+  onClose,
+  onSave,
+}: WarrantyFormModalProps) {
   const isEdit = !!initial;
 
-  const [policyCode, setPolicyCode] = useState(initial?.policy_code ?? '');
-  const [policyName, setPolicyName] = useState(initial?.policy_name ?? '');
-  const [imageCoverUrl, setImageCoverUrl] = useState(initial?.image_cover_url ?? '');
-  const [pdfDocumentUrl, setPdfDocumentUrl] = useState(initial?.pdf_document_url ?? '');
-  const [description, setDescription] = useState(initial?.description ?? '');
+  const [policyCode, setPolicyCode] = useState(initial?.policy_code ?? "");
+  const [policyName, setPolicyName] = useState(initial?.policy_name ?? "");
+  const [imageCoverUrl, setImageCoverUrl] = useState(
+    initial?.image_cover_url ?? ""
+  );
+  const [pdfDocumentUrl, setPdfDocumentUrl] = useState(
+    initial?.pdf_document_url ?? ""
+  );
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
 
   const [imageCoverFile, setImageCoverFile] = useState<File | null>(null);
   const [pdfDocumentFile, setPdfDocumentFile] = useState<File | null>(null);
 
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validations
     if (!policyCode.trim()) {
-      setErrorMsg('Vui lòng nhập mã chính sách bảo hành.');
+      setErrorMsg("Vui lòng nhập mã chính sách bảo hành.");
       return;
     }
     if (!policyName.trim()) {
-      setErrorMsg('Vui lòng nhập tên chính sách bảo hành.');
+      setErrorMsg("Vui lòng nhập tên chính sách bảo hành.");
       return;
     }
 
     // Check duplicate check
     const isDuplicate = policies.some(
-      (p) => p.policy_code.toLowerCase() === policyCode.trim().toLowerCase() && p.id !== initial?.id
+      (p) =>
+        p.policy_code.toLowerCase() === policyCode.trim().toLowerCase() &&
+        p.id !== initial?.id
     );
 
     if (isDuplicate) {
-      setErrorMsg(`Mã chính sách bảo hành "${policyCode}" đã tồn tại trên hệ thống.`);
+      setErrorMsg(
+        `Mã chính sách bảo hành "${policyCode}" đã tồn tại trên hệ thống.`
+      );
       return;
     }
 
     // Clear error and save
-    setErrorMsg('');
+    setErrorMsg("");
 
     const formData = new FormData();
-    formData.append('policy_code', policyCode.trim().toUpperCase());
-    formData.append('policy_name', policyName.trim());
-    formData.append('description', description.trim() || '');
-    formData.append('is_active', String(isActive));
+    formData.append("policy_code", policyCode.trim().toUpperCase());
+    formData.append("policy_name", policyName.trim());
+    formData.append("description", description.trim() || "");
+    formData.append("is_active", String(isActive));
 
     if (imageCoverFile) {
-      formData.append('image_cover', imageCoverFile);
+      formData.append("image_cover", imageCoverFile);
     } else {
-      formData.append('image_cover_url', imageCoverUrl || '');
+      formData.append("image_cover_url", imageCoverUrl || "");
     }
 
     if (pdfDocumentFile) {
-      formData.append('pdf_document', pdfDocumentFile);
+      formData.append("pdf_document", pdfDocumentFile);
     } else {
-      formData.append('pdf_document_url', pdfDocumentUrl || '');
+      formData.append("pdf_document_url", pdfDocumentUrl || "");
     }
 
     onSave(formData);
@@ -406,7 +459,10 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       {/* Modal box */}
       <motion.div
@@ -419,10 +475,13 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div>
             <h2 className="text-lg font-bold text-[#00285E] tracking-tight">
-              {isEdit ? 'Cập nhật chính sách bảo hành' : 'Tạo chính sách bảo hành mới'}
+              {isEdit
+                ? "Cập nhật chính sách bảo hành"
+                : "Tạo chính sách bảo hành mới"}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Thiết lập quy tắc hiển thị, ảnh banner và link điều khoản chi tiết dạng PDF.
+              Thiết lập quy tắc hiển thị, ảnh banner và link điều khoản chi tiết
+              dạng PDF.
             </p>
           </div>
           <button
@@ -434,8 +493,10 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-4 max-h-[500px] overflow-y-auto"
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Policy Code */}
             <div className="md:col-span-1">
@@ -491,7 +552,9 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-slate-400 text-[10px] text-center px-1">Chưa có ảnh</span>
+                    <span className="text-slate-400 text-[10px] text-center px-1">
+                      Chưa có ảnh
+                    </span>
                   )}
                 </div>
 
@@ -532,7 +595,14 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               <div className="flex items-center gap-4">
                 {/* PDF Icon Status */}
                 <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex-shrink-0 flex items-center justify-center">
-                  <FileText className={pdfDocumentFile || pdfDocumentUrl ? "text-amber-500 animate-pulse" : "text-slate-300"} size={28} />
+                  <FileText
+                    className={
+                      pdfDocumentFile || pdfDocumentUrl
+                        ? "text-amber-500 animate-pulse"
+                        : "text-slate-300"
+                    }
+                    size={28}
+                  />
                 </div>
 
                 <div className="flex-1">
@@ -590,7 +660,10 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
               onChange={(e) => setIsActive(e.target.checked)}
               className="w-4.5 h-4.5 rounded border-slate-300 text-[#00285E] focus:ring-[#00285E]/20 cursor-pointer"
             />
-            <label htmlFor="isActive" className="text-sm font-semibold text-slate-700 cursor-pointer">
+            <label
+              htmlFor="isActive"
+              className="text-sm font-semibold text-slate-700 cursor-pointer"
+            >
               Kích hoạt chính sách này (Hiển thị trên App)
             </label>
           </div>
@@ -618,7 +691,7 @@ function WarrantyFormModal({ initial, policies, onClose, onSave }: WarrantyFormM
             onClick={handleSubmit}
             className="px-6 py-2.5 bg-[#F9A11B] text-[#00285E] rounded-xl text-sm font-bold shadow-md shadow-[#F9A11B]/20 hover:bg-[#E08F12] transition-all cursor-pointer"
           >
-            {isEdit ? 'Lưu thay đổi' : 'Tạo chính sách'}
+            {isEdit ? "Lưu thay đổi" : "Tạo chính sách"}
           </button>
         </div>
       </motion.div>
