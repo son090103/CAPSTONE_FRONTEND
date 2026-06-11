@@ -3,18 +3,18 @@ import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 
 // Lazy-loaded components
 const Header = lazy(() => import("./pages/customer/Header"));
-const Home = lazy(() => import("./pages/customer/Home/Home"));
+const Home = lazy(() => import("./pages/customer/home/Home"));
 const Services = lazy(() => import("./pages/customer/services/Services"));
-const Parts = lazy(() => import("./pages/customer/Parts/Parts"));
-const BookingPage = lazy(() => import("./pages/customer/Booking/BookingPage"));
-const Signup = lazy(() => import("./pages/customer/Home/SingUp"));
+const Parts = lazy(() => import("./pages/customer/parts/Parts"));
+const BookingPage = lazy(() => import("./pages/customer/booking/BookingPage"));
+const Signup = lazy(() => import("./pages/customer/home/SingUp"));
 const Footer = lazy(() => import("./pages/customer/Footer"));
-const Login = lazy(() => import("./pages/customer/Home/Login"));
+const Login = lazy(() => import("./pages/customer/home/Login"));
 const UserProfile = lazy(() => import("./pages/customer/UserProfile/UserProfile"));
-const ForgotPassword = lazy(() => import("./pages/customer/Home/ForgotPassword"));
-const Team = lazy(() => import("./pages/customer/Team/Team"));
-const OtpVerification = lazy(() => import("./pages/customer/Home/verify-otp"));
-const VerifyPhone = lazy(() => import("./pages/customer/Home/verify-phone"));
+const ForgotPassword = lazy(() => import("./pages/customer/home/ForgotPassword"));
+const Team = lazy(() => import("./pages/customer/team/Team"));
+const OtpVerification = lazy(() => import("./pages/customer/home/verify-otp"));
+const VerifyPhone = lazy(() => import("./pages/customer/home/verify-phone"));
 
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./pages/admin/settings/AdminSettings"));
@@ -82,7 +82,7 @@ function App() {
           <Route path="otp-verification" element={<OtpVerification />} />
           <Route path="verify-phone" element={<VerifyPhone />} />
         </Route>
-        
+
         {/* Admin Dashboard */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="" element={<Navigate to="statistics" replace />} />

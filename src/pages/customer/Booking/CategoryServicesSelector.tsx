@@ -1,5 +1,5 @@
 import { Check, Layers } from 'lucide-react';
-import type { ServiceItem } from './BookingPage';
+import type { ServiceItem } from '../../../model/Service';
 
 interface CategoryServicesSelectorProps {
     activeCategories: any[];

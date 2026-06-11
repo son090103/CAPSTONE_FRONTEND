@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useCallback } from "react";
 
 export const useFetchClient = () => {
   const navigate = useNavigate();
@@ -6,7 +7,7 @@ export const useFetchClient = () => {
   // ==========================================
   // LOẠI 1: PUBLIC (Không Token - Dùng cho Login, Register)
   // ==========================================
-  const fetchPublic = async <T = any>(
+  const fetchPublic = useCallback(async <T = any>(
     url: string,
     method: string = "GET",
     bodyData: any = null,
@@ -33,13 +34,13 @@ export const useFetchClient = () => {
       console.error("Lỗi Public API:", error);
       throw error;
     }
-  };
+  }, []);
 
   // ==========================================
   // LOẠI 2: PRIVATE JSON (Có Token + Bảo vệ)
   // Dùng cho: Xem xe, Đặt lịch... (Nơi cần quyền, body là JSON)
   // ==========================================
-  const fetchPrivate = async <T = any>(
+  const fetchPrivate = useCallback(async <T = any>(
     url: string,
     method: string = "GET",
     bodyData: any = null,
@@ -76,7 +77,7 @@ export const useFetchClient = () => {
       console.error("Lỗi Private API:", error);
       throw error;
     }
-  };
+  }, [navigate]);
 
   // ==========================================
   // LOẠI 3: PRIVATE FORM (Có Token + Body là FormData)
@@ -87,7 +88,7 @@ export const useFetchClient = () => {
   // "multipart/form-data; boundary=----..." với đúng boundary.
   // Nếu tự set Content-Type thì multer trên BE không parse được.
   // ==========================================
-  const fetchPrivateForm = async <T = any>(
+  const fetchPrivateForm = useCallback(async <T = any>(
     url: string,
     method: string = "POST",
     formData: FormData,
@@ -124,7 +125,7 @@ export const useFetchClient = () => {
       console.error("Lỗi Private Form API:", error);
       throw error;
     }
-  };
+  }, [navigate]);
 
   return { fetchPublic, fetchPrivate, fetchPrivateForm };
 };

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -20,9 +20,12 @@ import {
   ShieldCheck,
   Ban
 } from 'lucide-react';
+import { useFetchClient } from '../../../hook/useFetchClient';
+import { APPOINTMENT_API_ENDPOINTS } from '../../../constants/customer/appointmentsEndpoints';
 
 export interface AppointmentItem {
   id: string;
+  dbId: number;
   date: string;
   time: string;
   vehicleName: string;
@@ -31,122 +34,148 @@ export interface AppointmentItem {
   serviceCategory: string;
   serviceItems: string[];
   price: number;
-  status: 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   notes?: string;
   bay: string;
   advisor: string;
+  booking_type: 'SPECIFIC' | 'CONSULTATION';
 }
-
-const INITIAL_APPOINTMENTS: AppointmentItem[] = [
-  {
-    id: 'AGM-582103',
-    date: '2026-06-04',
-    time: '09:30 AM',
-    vehicleName: 'Porsche 911 Carrera',
-    vehiclePlate: '911-LUX-2023',
-    vehicleImage: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=200&q=80',
-    serviceCategory: 'Bảo dưỡng định kỳ',
-    serviceItems: ['Thay nhớt động cơ Mobil 1', 'Thay lọc nhớt chính hãng', 'Vệ sinh lọc gió động cơ', 'Bảo dưỡng má phanh'],
-    price: 2450000,
-    status: 'CONFIRMED',
-    notes: 'Có tiếng kêu rè rè nhẹ ở gầm bên phụ phía trước khi di chuyển qua gờ giảm tốc.',
-    bay: 'Cầu nâng số 1',
-    advisor: 'Lê Minh Hoàng',
-  },
-  {
-    id: 'AGM-491283',
-    date: '2026-06-10',
-    time: '02:00 PM',
-    vehicleName: 'BMW M4 Competition',
-    vehiclePlate: 'M4-FAST-2022',
-    vehicleImage: 'https://images.unsplash.com/photo-1555353540-64580b51c258?auto=format&fit=crop&w=200&q=80',
-    serviceCategory: 'Dịch vụ lốp & phanh',
-    serviceItems: ['Cân chỉnh thước lái 3D Hunter', 'Đảo lốp xe toàn diện', 'Kiểm tra độ chụm & đĩa phanh'],
-    price: 1300000,
-    status: 'CONFIRMED',
-    notes: 'Kiểm tra tình trạng mòn không đều của lốp trước bên phải.',
-    bay: 'Cầu nâng số 3 (Khu vực Hunter 3D)',
-    advisor: 'Nguyễn Tuấn Hải',
-  },
-  {
-    id: 'AGM-391204',
-    date: '2026-05-18',
-    time: '10:30 AM',
-    vehicleName: 'Porsche 911 Carrera',
-    vehiclePlate: '911-LUX-2023',
-    vehicleImage: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=200&q=80',
-    serviceCategory: 'Kiểm tra tổng quát',
-    serviceItems: ['Kiểm tra 50 điểm kỹ thuật chi tiết', 'Vệ sinh dàn lạnh điều hòa nội soi', 'Thay lọc gió cabin carbon'],
-    price: 2200000,
-    status: 'COMPLETED',
-    notes: 'Bảo dưỡng cấp 2 chuẩn bị đi phượt xa.',
-    bay: 'Cầu nâng số 2',
-    advisor: 'Trần Đại Nghĩa',
-  },
-  {
-    id: 'AGM-289123',
-    date: '2026-04-20',
-    time: '08:00 AM',
-    vehicleName: 'BMW M4 Competition',
-    vehiclePlate: 'M4-FAST-2022',
-    vehicleImage: 'https://images.unsplash.com/photo-1555353540-64580b51c258?auto=format&fit=crop&w=200&q=80',
-    serviceCategory: 'Chăm sóc nội thất',
-    serviceItems: ['Dọn vệ sinh nội thất toàn diện', 'Khử trùng và diệt khuẩn Ozone cabin'],
-    price: 1500000,
-    status: 'CANCELLED',
-    notes: 'Khách hàng bận đi công tác đột xuất ở nước ngoài nên báo hủy lịch hẹn.',
-    bay: 'Khu vực Detailing số 1',
-    advisor: 'Lê Minh Hoàng',
-  },
-];
 
 export default function AppointmentsTab() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { fetchPrivate } = useFetchClient();
 
-  const [appointments, setAppointments] = useState<AppointmentItem[]>(INITIAL_APPOINTMENTS);
+  const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [bookingTypeFilter, setBookingTypeFilter] = useState<'SPECIFIC' | 'CONSULTATION'>('SPECIFIC');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedAppt, setSelectedAppt] = useState<AppointmentItem | null>(null);
 
-  // Filter lists & counts
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter((appt) => {
-      const matchesStatus = selectedStatus === 'ALL' || appt.status === selectedStatus;
-      const matchesSearch =
-        appt.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        appt.vehicleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        appt.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        appt.serviceCategory.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
-    });
-  }, [appointments, selectedStatus, searchQuery]);
+  const loadAppointments = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.GET_APPOINTMENTS);
+      if (res && res.success && res.data) {
+        // Map backend appointments to AppointmentItem
+        const mapped: AppointmentItem[] = res.data.map((appt: any) => {
+          // Parse date and time from scheduled_time
+          const d = new Date(appt.scheduled_time);
+          const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+          
+          let hours = d.getHours();
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12;
+          hours = hours ? hours : 12; // convert 0 to 12
+          const timeStr = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
 
-  const counts = useMemo(() => {
-    return {
-      ALL: appointments.length,
-      CONFIRMED: appointments.filter((a) => a.status === 'CONFIRMED').length,
-      COMPLETED: appointments.filter((a) => a.status === 'COMPLETED').length,
-      CANCELLED: appointments.filter((a) => a.status === 'CANCELLED').length,
-    };
-  }, [appointments]);
+          // Get vehicle name
+          const vehicleName = appt.vehicle
+            ? `${appt.vehicle.model?.make?.make_name || ''} ${appt.vehicle.model?.model_name || ''}`.trim()
+            : 'N/A';
+          const vehiclePlate = appt.vehicle ? appt.vehicle.license_plate : 'N/A';
 
-  const handleCancelAppointment = (id: string) => {
-    if (confirm(t('appointments.cancelConfirm', 'Bạn có chắc chắn muốn hủy lịch hẹn này?'))) {
-      setAppointments((prev) =>
-        prev.map((appt) =>
-          appt.id === id ? { ...appt, status: 'CANCELLED' as const } : appt
-        )
-      );
-      if (selectedAppt && selectedAppt.id === id) {
-        setSelectedAppt((prev) => (prev ? { ...prev, status: 'CANCELLED' as const } : null));
+          // Get service items and service category
+          const serviceItems = appt.appointmentDetails?.map((d: any) => {
+            if (d.combo) return d.combo.combo_name;
+            if (d.catalog) return d.catalog.service_name;
+            return '';
+          }).filter(Boolean) || [];
+
+          const serviceCategory = appt.booking_type === 'CONSULTATION'
+            ? 'Yêu cầu tư vấn'
+            : appt.appointmentDetails?.some((d: any) => d.combo)
+              ? 'Gói dịch vụ (Combo)'
+              : 'Dịch vụ lẻ';
+
+          // Estimate price if not in DB
+          let price = 0;
+          if (appt.booking_type === 'SPECIFIC') {
+            const priceMap: Record<number, number> = {
+              1: 500000,
+              2: 1200000,
+              3: 400000,
+              4: 800000,
+              5: 300000,
+              6: 0
+            };
+            appt.appointmentDetails?.forEach((d: any) => {
+              if (d.catalog_id) {
+                price += priceMap[d.catalog_id] ?? 300000;
+              }
+              if (d.combo_id) {
+                price += 1500000; // default combo price fallback
+              }
+            });
+          }
+
+          return {
+            id: `AGM-${appt.id}`, // Format matching visual code
+            dbId: appt.id, // Store original db ID
+            date: dateStr,
+            time: timeStr,
+            vehicleName,
+            vehiclePlate,
+            vehicleImage: appt.vehicleImage || 'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=200&q=80',
+            serviceCategory,
+            serviceItems: serviceItems.length > 0 ? serviceItems : (appt.booking_type === 'CONSULTATION' ? ['Hỗ trợ tư vấn kỹ thuật'] : ['Khác']),
+            price,
+            status: appt.status,
+            notes: appt.notes,
+            bay: appt.bay || 'Đang sắp xếp',
+            advisor: appt.advisor || 'Đang phân phối',
+            booking_type: appt.booking_type
+          };
+        });
+        setAppointments(mapped);
+      } else {
+        setError("Không thể lấy danh sách lịch hẹn.");
       }
-      alert(t('appointments.cancelSuccess', 'Hủy lịch hẹn thành công!'));
+    } catch (err: any) {
+      console.error("Lỗi khi tải lịch hẹn:", err);
+      setError(err.message || "Đã xảy ra lỗi khi kết nối với máy chủ.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const handleCancelAppointment = async (id: string, dbId: number) => {
+    if (confirm(t('appointments.cancelConfirm', 'Bạn có chắc chắn muốn hủy lịch hẹn này?'))) {
+      try {
+        const response = await fetchPrivate(`${APPOINTMENT_API_ENDPOINTS.CANCEL_APPOINTMENT}?id=${dbId}`, 'PUT');
+        if (response && response.success) {
+          alert(t('appointments.cancelSuccess', 'Hủy lịch hẹn thành công!'));
+          loadAppointments();
+          if (selectedAppt && selectedAppt.id === id) {
+            setSelectedAppt(null);
+          }
+        } else {
+          alert(response.message || "Không thể hủy lịch hẹn.");
+        }
+      } catch (err: any) {
+        console.error("Lỗi khi hủy lịch hẹn:", err);
+        alert(err.message || "Đã xảy ra lỗi khi hủy lịch hẹn.");
+      }
     }
   };
 
   const getStatusConfig = (status: AppointmentItem['status']) => {
     switch (status) {
+      case 'PENDING':
+        return {
+          label: t('appointments.status.pending', 'Chờ xác nhận'),
+          bg: 'bg-amber-50 text-amber-600 border border-amber-100',
+          dot: 'bg-amber-500',
+        };
       case 'CONFIRMED':
         return {
           label: t('appointments.status.confirmed', 'Đã xác nhận'),
@@ -165,8 +194,49 @@ export default function AppointmentsTab() {
           bg: 'bg-rose-50 text-rose-600 border border-rose-100',
           dot: 'bg-rose-500',
         };
+      default:
+        return {
+          label: status,
+          bg: 'bg-gray-50 text-gray-600 border border-gray-100',
+          dot: 'bg-gray-500',
+        };
     }
   };
+
+  // Filter lists & counts based on selected booking type
+  const currentAppointments = useMemo(() => {
+    return appointments.filter(appt => appt.booking_type === bookingTypeFilter);
+  }, [appointments, bookingTypeFilter]);
+
+  const serviceAppointments = useMemo(() => {
+    return appointments.filter(appt => appt.booking_type === 'SPECIFIC');
+  }, [appointments]);
+
+  const supportAppointments = useMemo(() => {
+    return appointments.filter(appt => appt.booking_type === 'CONSULTATION');
+  }, [appointments]);
+
+  const filteredAppointments = useMemo(() => {
+    return currentAppointments.filter((appt) => {
+      const matchesStatus = selectedStatus === 'ALL' || appt.status === selectedStatus;
+      const matchesSearch =
+        appt.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appt.vehicleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appt.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appt.serviceCategory.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [currentAppointments, selectedStatus, searchQuery]);
+
+  const counts = useMemo(() => {
+    return {
+      ALL: currentAppointments.length,
+      PENDING: currentAppointments.filter((a) => a.status === 'PENDING').length,
+      CONFIRMED: currentAppointments.filter((a) => a.status === 'CONFIRMED').length,
+      COMPLETED: currentAppointments.filter((a) => a.status === 'COMPLETED').length,
+      CANCELLED: currentAppointments.filter((a) => a.status === 'CANCELLED').length,
+    };
+  }, [currentAppointments]);
 
   return (
     <motion.div
@@ -196,6 +266,48 @@ export default function AppointmentsTab() {
         </button>
       </div>
 
+      {/* Booking Type Filter Tabs */}
+      <div className="flex border-b border-gray-100 -mt-2">
+        <button
+          type="button"
+          onClick={() => {
+            setBookingTypeFilter('SPECIFIC');
+            setSelectedStatus('ALL');
+          }}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${
+            bookingTypeFilter === 'SPECIFIC'
+              ? 'text-brand-orange border-brand-orange'
+              : 'text-gray-400 border-transparent hover:text-brand-blue'
+          }`}
+        >
+          <span>Lịch đặt dịch vụ</span>
+          {serviceAppointments.length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-slate-100 text-slate-600 rounded-full font-bold">
+              {serviceAppointments.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setBookingTypeFilter('CONSULTATION');
+            setSelectedStatus('ALL');
+          }}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${
+            bookingTypeFilter === 'CONSULTATION'
+              ? 'text-brand-orange border-brand-orange'
+              : 'text-gray-400 border-transparent hover:text-brand-blue'
+          }`}
+        >
+          <span>Lịch đặt hỗ trợ</span>
+          {supportAppointments.length > 0 && (
+            <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-slate-100 text-slate-600 rounded-full font-bold">
+              {supportAppointments.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Search & Filter Bar */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
         {/* Search */}
@@ -214,6 +326,7 @@ export default function AppointmentsTab() {
         <div className="flex gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-thin">
           {[
             { id: 'ALL', label: t('appointments.filter.all', 'Tất cả'), count: counts.ALL },
+            { id: 'PENDING', label: t('appointments.filter.pending', 'Chờ xác nhận'), count: counts.PENDING },
             { id: 'CONFIRMED', label: t('appointments.filter.confirmed', 'Đã xác nhận'), count: counts.CONFIRMED },
             { id: 'COMPLETED', label: t('appointments.filter.completed', 'Đã hoàn thành'), count: counts.COMPLETED },
             { id: 'CANCELLED', label: t('appointments.filter.cancelled', 'Đã hủy'), count: counts.CANCELLED },
@@ -244,8 +357,31 @@ export default function AppointmentsTab() {
         </div>
       </div>
 
-      {/* Appointments List */}
-      {filteredAppointments.length === 0 ? (
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 shadow-xs">
+          <div className="w-10 h-10 border-4 border-brand-orange border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs text-gray-400 mt-4">Đang tải lịch hẹn...</span>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-gray-100 shadow-xs text-center px-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 mb-4">
+            <AlertCircle className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-bold text-sm text-brand-blue">
+            Không thể tải danh sách lịch hẹn
+          </h3>
+          <p className="text-xs text-gray-400 mt-1 max-w-xs">
+            {error}
+          </p>
+          <button
+            onClick={loadAppointments}
+            className="mt-5 px-5 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold shadow-md hover:bg-brand-blue/95 transition-all cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : filteredAppointments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-gray-100 shadow-xs text-center px-4">
           <div className="w-16 h-16 rounded-2xl bg-blue-50/50 flex items-center justify-center text-brand-blue mb-4">
             <ClipboardList className="w-8 h-8 opacity-60" />
@@ -256,14 +392,16 @@ export default function AppointmentsTab() {
           <p className="text-xs text-gray-400 mt-1 max-w-xs">
             {searchQuery
               ? t('appointments.noSearchQueryResults', 'Thử thay đổi từ khóa hoặc điều kiện lọc của bạn.')
-              : t('appointments.noAppointmentsDesc', 'Bạn chưa có lịch hẹn đặt trước nào tại Gara của chúng tôi.')}
+              : bookingTypeFilter === 'SPECIFIC'
+                ? 'Bạn chưa có lịch đặt dịch vụ nào tại Gara của chúng tôi.'
+                : 'Bạn chưa có lịch đặt hỗ trợ, tư vấn nào.'}
           </p>
           {!searchQuery && (
             <button
               onClick={() => navigate('/phone-service')}
               className="mt-5 px-5 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold shadow-md hover:bg-brand-blue/95 transition-all cursor-pointer"
             >
-              {t('appointments.bookNowLink', 'Đặt lịch hẹn ngay')}
+              {bookingTypeFilter === 'SPECIFIC' ? t('appointments.bookNowLink', 'Đặt lịch hẹn ngay') : 'Yêu cầu hỗ trợ ngay'}
             </button>
           )}
         </div>
@@ -277,10 +415,10 @@ export default function AppointmentsTab() {
                 layout
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-2xl border border-gray-100 hover:border-gray-200/80 shadow-xs p-5 flex flex-col justify-between transition-all hover:shadow-md relative overflow-hidden group"
+                className="bg-white rounded-2xl border border-gray-100 hover:border-gray-200/80 shadow-xs p-5 flex flex-col justify-between transition-all hover:shadow-md relative overflow-hidden group text-left"
               >
                 {/* Status Stripe */}
-                <div className={`absolute top-0 left-0 right-0 h-1.5 ${appt.status === 'CONFIRMED' ? 'bg-blue-500' : appt.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <div className={`absolute top-0 left-0 right-0 h-1.5 ${appt.status === 'CONFIRMED' ? 'bg-blue-500' : appt.status === 'COMPLETED' ? 'bg-emerald-500' : appt.status === 'PENDING' ? 'bg-amber-500' : 'bg-rose-500'}`} />
 
                 {/* Top Info */}
                 <div className="flex justify-between items-start gap-2 mb-4">
@@ -303,32 +441,49 @@ export default function AppointmentsTab() {
                   </span>
                 </div>
 
-                {/* Middle Vehicle & Service */}
-                <div className="flex gap-4 items-center bg-slate-50/70 p-3 rounded-xl border border-slate-100 mb-4">
-                  <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 shadow-inner">
-                    <img src={appt.vehicleImage} alt={appt.vehicleName} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="min-w-0 flex-grow text-xs">
-                    <div className="font-bold text-brand-blue flex items-center gap-1 truncate">
-                      <Car className="w-3.5 h-3.5 text-brand-blue" />
-                      {appt.vehicleName}
+                {/* Middle Vehicle & Service for SPECIFIC */}
+                {appt.booking_type === 'SPECIFIC' && (
+                  <div className="flex gap-4 items-center bg-slate-50/70 p-3 rounded-xl border border-slate-100 mb-4">
+                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 shadow-inner">
+                      <img src={appt.vehicleImage} alt={appt.vehicleName} className="w-full h-full object-cover" />
                     </div>
-                    <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{appt.vehiclePlate}</div>
-                    <div className="text-[10px] text-brand-orange font-bold mt-1 uppercase flex items-center gap-1">
-                      <Wrench className="w-3 h-3" />
-                      {appt.serviceCategory}
+                    <div className="min-w-0 flex-grow text-xs text-left">
+                      <div className="font-bold text-brand-blue flex items-center gap-1 truncate">
+                        <Car className="w-3.5 h-3.5 text-brand-blue" />
+                        {appt.vehicleName}
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{appt.vehiclePlate}</div>
+                      <div className="text-[10px] text-brand-orange font-bold mt-1 uppercase flex items-center gap-1">
+                        <Wrench className="w-3 h-3" />
+                        {appt.serviceCategory}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Middle Support Query for CONSULTATION */}
+                {appt.booking_type === 'CONSULTATION' && (
+                  <div className="bg-amber-50/30 p-3.5 rounded-xl border border-amber-100/30 mb-4 text-xs text-left">
+                    <div className="font-bold text-brand-blue flex items-center gap-1.5 mb-1.5">
+                      <AlertCircle className="w-4 h-4 text-brand-orange" />
+                      Yêu cầu tư vấn hỗ trợ
+                    </div>
+                    {appt.notes ? (
+                      <p className="text-slate-600 line-clamp-2 italic">"{appt.notes}"</p>
+                    ) : (
+                      <p className="text-gray-400 italic">Không có ghi chú chi tiết.</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Bottom Total Price & Actions */}
                 <div className="flex justify-between items-center border-t border-gray-100 pt-4 mt-auto">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col text-left">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-                      {t('appointments.estCost', 'Chi phí ước tính')}
+                      {appt.booking_type === 'CONSULTATION' ? 'Chi phí tư vấn' : t('appointments.estCost', 'Chi phí ước tính')}
                     </span>
                     <span className="font-mono font-bold text-sm text-brand-blue mt-0.5">
-                      {appt.price.toLocaleString()}đ
+                      {appt.booking_type === 'CONSULTATION' ? 'Miễn phí' : `${appt.price.toLocaleString()}đ`}
                     </span>
                   </div>
 
@@ -342,10 +497,10 @@ export default function AppointmentsTab() {
                       <Eye className="w-4 h-4" />
                     </button>
 
-                    {appt.status === 'CONFIRMED' && (
+                    {(appt.status === 'PENDING' || appt.status === 'CONFIRMED') && (
                       <button
                         type="button"
-                        onClick={() => handleCancelAppointment(appt.id)}
+                        onClick={() => handleCancelAppointment(appt.id, appt.dbId)}
                         className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                         title={t('appointments.cancel', 'Hủy lịch hẹn')}
                       >
@@ -429,49 +584,53 @@ export default function AppointmentsTab() {
                 </div>
 
                 {/* Vehicle Section */}
-                <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">
-                    {t('appointments.apptVehicle', 'Phương tiện đăng ký')}
-                  </h4>
-                  <div className="flex gap-4 items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 shadow-inner">
-                      <img src={selectedAppt.vehicleImage} alt={selectedAppt.vehicleName} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-grow text-xs">
-                      <div className="font-bold text-brand-blue flex items-center gap-1 truncate">
-                        <Car className="w-3.5 h-3.5 text-brand-blue" />
-                        {selectedAppt.vehicleName}
+                {selectedAppt.booking_type === 'SPECIFIC' && selectedAppt.vehiclePlate !== 'N/A' && (
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">
+                      {t('appointments.apptVehicle', 'Phương tiện đăng ký')}
+                    </h4>
+                    <div className="flex gap-4 items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-900 shrink-0 shadow-inner">
+                        <img src={selectedAppt.vehicleImage} alt={selectedAppt.vehicleName} className="w-full h-full object-cover" />
                       </div>
-                      <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{selectedAppt.vehiclePlate}</div>
+                      <div className="min-w-0 flex-grow text-xs text-left">
+                        <div className="font-bold text-brand-blue flex items-center gap-1 truncate">
+                          <Car className="w-3.5 h-3.5 text-brand-blue" />
+                          {selectedAppt.vehicleName}
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{selectedAppt.vehiclePlate}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Service Items Section */}
-                <div className="space-y-2.5">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">
-                      {t('appointments.apptServices', 'Hạng mục dịch vụ')}
-                    </h4>
-                    <span className="text-[10px] text-brand-orange font-bold uppercase">{selectedAppt.serviceCategory}</span>
+                {selectedAppt.booking_type === 'SPECIFIC' && (
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">
+                        {t('appointments.apptServices', 'Hạng mục dịch vụ')}
+                      </h4>
+                      <span className="text-[10px] text-brand-orange font-bold uppercase">{selectedAppt.serviceCategory}</span>
+                    </div>
+                    <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
+                      {selectedAppt.serviceItems.map((item, idx) => (
+                        <div key={idx} className="p-3 bg-white hover:bg-slate-50/50 flex items-center gap-2 font-medium text-slate-700 text-left">
+                          <div className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
-                    {selectedAppt.serviceItems.map((item, idx) => (
-                      <div key={idx} className="p-3 bg-white hover:bg-slate-50/50 flex items-center gap-2 font-medium text-slate-700">
-                        <div className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
 
-                {/* Diagnostic Notes */}
+                {/* Diagnostic Notes / Consultation Query */}
                 {selectedAppt.notes && (
                   <div className="space-y-2">
                     <h4 className="text-[10px] font-bold text-brand-blue uppercase tracking-wider">
-                      {t('appointments.apptNotes', 'Ghi chú kỹ thuật / Yêu cầu')}
+                      {selectedAppt.booking_type === 'CONSULTATION' ? 'Nội dung yêu cầu tư vấn' : t('appointments.apptNotes', 'Ghi chú kỹ thuật / Yêu cầu')}
                     </h4>
-                    <div className="p-3.5 bg-amber-50/40 rounded-xl border border-amber-100/50 text-slate-600 leading-relaxed italic text-[11px]">
+                    <div className="p-3.5 bg-amber-50/40 rounded-xl border border-amber-100/50 text-slate-600 leading-relaxed italic text-[11px] text-left">
                       "{selectedAppt.notes}"
                     </div>
                   </div>
@@ -479,8 +638,12 @@ export default function AppointmentsTab() {
 
                 {/* Total Cost Breakdown */}
                 <div className="border-t border-slate-100 pt-4 flex justify-between items-center">
-                  <span className="font-bold text-brand-blue text-xs">{t('appointments.apptTotal', 'TỔNG CHI PHÍ ƯỚC TÍNH:')}</span>
-                  <span className="text-base font-mono font-bold text-brand-orange">{selectedAppt.price.toLocaleString()}đ</span>
+                  <span className="font-bold text-brand-blue text-xs">
+                    {selectedAppt.booking_type === 'CONSULTATION' ? 'CHI PHÍ TƯ VẤN:' : t('appointments.apptTotal', 'TỔNG CHI PHÍ ƯỚC TÍNH:')}
+                  </span>
+                  <span className="text-base font-mono font-bold text-brand-orange">
+                    {selectedAppt.booking_type === 'CONSULTATION' ? 'Miễn phí' : `${selectedAppt.price.toLocaleString()}đ`}
+                  </span>
                 </div>
               </div>
 
@@ -492,9 +655,9 @@ export default function AppointmentsTab() {
                 >
                   {t('common.close', 'Đóng')}
                 </button>
-                {selectedAppt.status === 'CONFIRMED' && (
+                {(selectedAppt.status === 'PENDING' || selectedAppt.status === 'CONFIRMED') && (
                   <button
-                    onClick={() => handleCancelAppointment(selectedAppt.id)}
+                    onClick={() => handleCancelAppointment(selectedAppt.id, selectedAppt.dbId)}
                     className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all text-xs cursor-pointer text-center"
                   >
                     {t('appointments.cancelAppt', 'Hủy lịch hẹn')}

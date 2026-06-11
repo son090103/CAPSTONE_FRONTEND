@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Check, Sparkles } from 'lucide-react';
-import type { ServiceCombo, ServiceItem } from './BookingPage';
 import { useFetchClient } from '../../../hook/useFetchClient';
 import { SERVICE_API_ENDPOINTS } from '../../../constants/customer/serviceApiEndpoints';
+import type { ServiceCombo, ServiceItem } from '../../../model/Service';
 
 interface ComboServicesSelectorProps {
     dbCombos: ServiceCombo[];
@@ -10,7 +10,6 @@ interface ComboServicesSelectorProps {
     selectedComboId: number | null;
     setSelectedComboId: (id: number | null) => void;
     mappedServices: ServiceItem[];
-    getServicePriceValue: (id: number) => number;
     COLORS: { orange: string; navy: string;[key: string]: string };
 }
 
@@ -20,7 +19,6 @@ export default function ComboServicesSelector({
     selectedComboId,
     setSelectedComboId,
     mappedServices,
-    getServicePriceValue,
     COLORS,
 }: ComboServicesSelectorProps) {
     const { fetchPublic } = useFetchClient();
@@ -57,7 +55,7 @@ export default function ComboServicesSelector({
                 }
             }
         };
-        
+
         if (dbCombos.length === 0) {
             fetchCombos();
         }
@@ -69,8 +67,11 @@ export default function ComboServicesSelector({
                 const isSelected = selectedComboId === combo.id;
                 const serviceIds = combo.service_ids || [];
                 const discountPercentage = combo.discount_percentage ?? 10;
-                
-                const original = serviceIds.reduce((sum, id) => sum + getServicePriceValue(id), 0);
+
+                const original = serviceIds.reduce((sum, id) => {
+                    const s = mappedServices.find(x => x.id === id);
+                    return sum + (s?.numericPrice || 0);
+                }, 0);
                 const discounted = Math.round(original * (1 - discountPercentage / 100));
                 const comboServiceNames = serviceIds.map(id => {
                     const s = mappedServices.find(x => x.id === id);
