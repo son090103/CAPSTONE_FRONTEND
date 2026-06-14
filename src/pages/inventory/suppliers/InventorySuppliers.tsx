@@ -1,97 +1,87 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Tags, Plus, Pencil, X } from "lucide-react";
+import { Truck, Plus, Pencil, X, Phone, MapPin } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import {
-  type UpdatePartCategory,
-  type CreatePartCategory,
-  type GetPartCategory,
-} from "../../../model/dto/sparePartCategory.dto";
-import { PART_CATEGORY_API_ENDPOINTS } from "../../../constants/inventory/sparePartApiEndPoint";
+  type GetSupplierResponse,
+  type CreateSupplierRequest,
+  type UpdateSupplierRequest,
+} from "../../../model/dto/supplierManagement.dto";
 import { useFetchClient } from "../../../hook/useFetchClient";
+import { SUPPLIER_API_ENDPOINTS } from "../../../constants/inventory/supplierApiEndPoint";
 
-export default function PartCategories() {
+export default function InventorySuppliers() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [suppliers, setSuppliers] = useState<GetSupplierResponse[]>([]);
+  const [name, setName] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [address, setAddress] = useState<string>("");
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const [editingSupplier, setEditingSupplier] =
+    useState<GetSupplierResponse | null>(null);
+  const { fetchPrivate, fetchPrivateFormGeneric } = useFetchClient();
   const { showToast } = useOutletContext<{
     showToast: (text: string, type?: "success" | "info" | "warning") => void;
   }>();
 
-  const { fetchPrivate, fetchPrivateFormGeneric } = useFetchClient();
-  const [categories, setCategories] = useState<GetPartCategory[]>([]);
-
-  const [createOpen, setCreateOpen] = useState(false);
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [categoryDescription, setCategoryDescription] = useState<string>("");
-  const [isActive, setIsActive] = useState<boolean>(true);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editing, setEditing] = useState<GetPartCategory | null>(null);
-
   useEffect(() => {
-    handleGetPartCategories();
+    handleGetSuppliers();
   }, []);
 
-  const handleGetPartCategories = async () => {
+  const handleGetSuppliers = async () => {
     try {
-      const result = await fetchPrivate<GetPartCategory[]>(
-        PART_CATEGORY_API_ENDPOINTS.PART_CATEGORY,
+      const result = await fetchPrivate<GetSupplierResponse[]>(
+        SUPPLIER_API_ENDPOINTS.SUPPLIER_API,
         "GET",
       );
-      setCategories(result.data);
-      console.log("result", result);
-      return result;
+      setSuppliers(result.data);
     } catch (error) {
       console.error("Lỗi lấy danh sách danh mục", error);
     }
   };
 
-  const handleCreatePartCategory = async () => {
+  const handleCreateSupplier = async () => {
     try {
-      const result = await fetchPrivateFormGeneric<CreatePartCategory>(
-        PART_CATEGORY_API_ENDPOINTS.PART_CATEGORY,
+      const payload: CreateSupplierRequest = {
+        name: name,
+        phone: phone,
+        address: address,
+        is_active: isActive,
+      };
+      await fetchPrivateFormGeneric(
+        SUPPLIER_API_ENDPOINTS.SUPPLIER_API,
         "POST",
-        {
-          category_name: categoryName,
-          description: categoryDescription,
-          is_active: isActive,
-        },
+        payload,
       );
-      showToast("Tạo mới danh mục thành công", "success");
+      showToast("Tạo mới nhà cung cấp thành công", "success");
       setCreateOpen(false);
-      handleGetPartCategories();
-      return result;
+      handleGetSuppliers();
     } catch (error) {
-      console.error("Lỗi tao danh mục", error);
+      console.error("Lỗi tạo mới", error);
     }
   };
 
-  const handleUpdateCategory = async () => {
+  const handleUpdateSupplier = async () => {
+    if (!editingSupplier) return;
     try {
-      const result = await fetchPrivate<UpdatePartCategory>(
-        `${PART_CATEGORY_API_ENDPOINTS.PART_CATEGORY}/${editing?.id}`,
+      const payload: UpdateSupplierRequest = {
+        name: editingSupplier.name,
+        phone: editingSupplier.phone,
+        address: editingSupplier.address,
+        is_active: editingSupplier.is_active,
+      };
+      await fetchPrivate(
+        `${SUPPLIER_API_ENDPOINTS.SUPPLIER_API}/${editingSupplier.id}`,
         "PATCH",
-        {
-          category_name: editing?.category_name,
-          description: editing?.description,
-          is_active: editing?.is_active,
-        },
+        payload,
       );
-      showToast("Cập nhật danh mục thành công", "success");
+      showToast("Cập nhật nhà cung cấp thành công", "success");
       setEditOpen(false);
-      handleGetPartCategories();
-      return result;
+      handleGetSuppliers();
     } catch (error) {
-      console.error("Lỗi tao danh mục", error);
+      console.error("Lỗi tạo cập nhật", error);
     }
-  };
-
-  const openCreate = () => {
-    setCategoryName("");
-    setIsActive(true);
-    setCreateOpen(true);
-  };
-
-  const openEdit = (c: GetPartCategory) => {
-    setEditing(c);
-    setEditOpen(true);
   };
 
   return (
@@ -100,18 +90,18 @@ export default function PartCategories() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">
-            Danh mục phụ tùng
+            Nhà cung cấp
           </h1>
           <p className="text-slate-500 text-sm">
-            Quản lý các nhóm phân loại phụ tùng trong kho.
+            Quản lý danh sách nhà cung cấp phụ tùng.
           </p>
         </div>
         <button
-          onClick={openCreate}
+          onClick={() => setCreateOpen(true)}
           className="flex items-center gap-2 px-5 py-2.5 bg-[#00285E] text-white rounded-xl text-sm font-semibold shadow-md shadow-[#00285E]/10 hover:bg-[#082245] transition-all transform hover:translate-y-[-1px] active:translate-y-0 self-start"
         >
           <Plus size={16} />
-          <span>Thêm danh mục</span>
+          <span>Thêm nhà cung cấp</span>
         </button>
       </div>
 
@@ -120,10 +110,10 @@ export default function PartCategories() {
         {/* Toolbar */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-2.5">
           <h2 className="text-lg font-bold text-slate-800 tracking-tight">
-            Danh sách danh mục
+            Danh sách nhà cung cấp
           </h2>
           <span className="bg-[#EDF3FF] text-[#00285E] px-2.5 py-0.5 rounded-full text-xs font-bold">
-            {categories.length} danh mục
+            {suppliers.length} nhà cung cấp
           </span>
         </div>
 
@@ -132,60 +122,69 @@ export default function PartCategories() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
-                <th className="py-4 px-6">Danh mục</th>
-                <th className="py-4 px-6">Mô tả</th>
+                <th className="py-4 px-6">Nhà cung cấp</th>
+                <th className="py-4 px-6">Số điện thoại</th>
+                <th className="py-4 px-6">Địa chỉ</th>
                 <th className="py-4 px-4">Trạng thái</th>
                 <th className="py-4 px-6 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {categories.length === 0 ? (
+              {suppliers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={5}
                     className="py-14 text-center text-slate-400 text-sm"
                   >
-                    Chưa có danh mục nào...
+                    Chưa có nhà cung cấp nào...
                   </td>
                 </tr>
               ) : (
-                categories.map((c) => (
+                suppliers.map((s) => (
                   <tr
-                    key={c.id}
+                    key={s.id}
                     className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors group"
                   >
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-[#EDF3FF] text-[#00285E] flex items-center justify-center shrink-0">
-                          <Tags size={16} />
+                          <Truck size={16} />
                         </div>
                         <span className="font-bold text-slate-800 text-sm group-hover:text-[#00285E] transition-colors">
-                          {c.category_name}
+                          {s.name}
                         </span>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-slate-800 text-sm group-hover:text-[#00285E] transition-colors">
-                          {c.description}
-                        </span>
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Phone size={14} className="text-slate-400" />
+                        <span>{s.phone}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <MapPin size={14} className="text-slate-400" />
+                        <span>{s.address}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`w-2 h-2 rounded-full ${c.is_active ? "bg-emerald-500" : "bg-slate-400"}`}
+                          className={`w-2 h-2 rounded-full ${s.is_active ? "bg-emerald-500" : "bg-slate-400"}`}
                         ></span>
                         <span className="text-sm font-bold text-slate-600">
-                          {c.is_active ? "Hoạt động" : "Tạm ẩn"}
+                          {s.is_active ? "Hoạt động" : "Ngừng hợp tác"}
                         </span>
                       </div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => openEdit(c)}
-                          title="Sửa danh mục"
+                          onClick={() => {
+                            setEditingSupplier(s);
+                            setEditOpen(true);
+                          }}
+                          title="Sửa nhà cung cấp"
                           className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
                         >
                           <Pencil size={15} />
@@ -219,7 +218,7 @@ export default function PartCategories() {
             >
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
                 <h3 className="text-lg font-bold text-slate-800">
-                  Thêm danh mục
+                  Thêm nhà cung cấp
                 </h3>
                 <button
                   onClick={() => setCreateOpen(false)}
@@ -229,30 +228,39 @@ export default function PartCategories() {
                 </button>
               </div>
               <div className="p-5 space-y-4">
-                <Field label="Tên danh mục">
+                <Field label="Tên nhà cung cấp">
                   <input
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className={inputCls}
-                    placeholder="VD: Dầu nhớt"
+                    placeholder="VD: Công ty TNHH Phụ tùng Minh Anh"
                   />
                 </Field>
-                <Field label="Mô tả danh mục">
+                <Field label="Số điện thoại">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={inputCls}
+                    placeholder="VD: 0901 234 567"
+                  />
+                </Field>
+                <Field label="Địa chỉ">
                   <textarea
-                    value={categoryDescription}
-                    onChange={(e) => setCategoryDescription(e.target.value)}
-                    rows={4}
-                    className={`${inputCls} resize-y min-h-[96px]`}
-                    placeholder="Mô tả danh mục"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    rows={3}
+                    className={`${inputCls} resize-y min-h-[80px]`}
+                    placeholder="VD: 123 Đường Lê Văn Việt, Quận 9, TP.HCM"
                   />
                 </Field>
                 <label className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 cursor-pointer">
                   <div>
                     <span className="text-sm font-bold text-slate-700 block">
-                      Đang hoạt động
+                      Đang hợp tác
                     </span>
                     <span className="text-xs text-slate-400">
-                      Danh mục tạm ẩn sẽ không hiện khi tạo sản phẩm.
+                      Nhà cung cấp ngừng hợp tác sẽ không hiện khi tạo phiếu
+                      nhập.
                     </span>
                   </div>
                   <button
@@ -274,10 +282,10 @@ export default function PartCategories() {
                   Hủy
                 </button>
                 <button
-                  onClick={handleCreatePartCategory}
+                  onClick={handleCreateSupplier}
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#00285E] text-white hover:bg-[#082245] transition-colors shadow-md shadow-[#00285E]/10"
                 >
-                  Thêm danh mục
+                  Thêm nhà cung cấp
                 </button>
               </div>
             </motion.div>
@@ -287,7 +295,7 @@ export default function PartCategories() {
 
       {/* ── MODAL SỬA ── */}
       <AnimatePresence>
-        {editOpen && editing && (
+        {editOpen && editingSupplier && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -304,7 +312,7 @@ export default function PartCategories() {
             >
               <div className="flex items-center justify-between p-5 border-b border-slate-100">
                 <h3 className="text-lg font-bold text-slate-800">
-                  Sửa danh mục
+                  Sửa nhà cung cấp
                 </h3>
                 <button
                   onClick={() => setEditOpen(false)}
@@ -314,57 +322,87 @@ export default function PartCategories() {
                 </button>
               </div>
               <div className="p-5 space-y-4">
-                <Field label="Tên danh mục">
+                <Field label="Tên nhà cung cấp">
                   <input
-                    value={editing.category_name}
+                    value={editingSupplier?.name}
                     onChange={(e) =>
-                      setEditing({ ...editing, category_name: e.target.value })
+                      setEditingSupplier({
+                        ...editingSupplier,
+                        name: e.target.value,
+                      })
                     }
                     className={inputCls}
-                    placeholder="VD: Dầu nhớt"
+                    placeholder="VD: Công ty TNHH Phụ tùng Minh Anh"
                   />
                 </Field>
-                <Field label="Mô tả danh mục">
-                  <textarea
-                    value={editing.description}
+                <Field label="Số điện thoại">
+                  <input
+                    value={editingSupplier?.phone}
                     onChange={(e) =>
-                      setEditing({ ...editing, description: e.target.value })
+                      setEditingSupplier({
+                        ...editingSupplier,
+                        phone: e.target.value,
+                      })
                     }
-                    className={`${inputCls} resize-y min-h-[96px]`}
-                    placeholder="VD: Dầu nhớt"
+                    className={inputCls}
+                    placeholder="VD: 0901 234 567"
+                  />
+                </Field>
+                <Field label="Địa chỉ">
+                  <textarea
+                    value={editingSupplier?.address}
+                    onChange={(e) =>
+                      setEditingSupplier({
+                        ...editingSupplier,
+                        address: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    className={`${inputCls} resize-y min-h-[80px]`}
+                    placeholder="VD: 123 Đường Lê Văn Việt, Quận 9, TP.HCM"
                   />
                 </Field>
                 <label className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 cursor-pointer">
                   <div>
                     <span className="text-sm font-bold text-slate-700 block">
-                      Đang hoạt động
+                      Đang hợp tác
                     </span>
                     <span className="text-xs text-slate-400">
-                      Danh mục tạm ẩn sẽ không hiện khi tạo sản phẩm.
+                      Nhà cung cấp ngừng hợp tác sẽ không hiện khi tạo phiếu
+                      nhập.
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() =>
-                      setEditing({ ...editing, is_active: !editing.is_active })
+                      setEditingSupplier({
+                        ...editingSupplier,
+                        is_active: !editingSupplier.is_active,
+                      })
                     }
-                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${editing.is_active ? "bg-[#00285E]" : "bg-slate-300"}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${editingSupplier.is_active ? "bg-[#00285E]" : "bg-slate-300"}`}
                   >
                     <span
-                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${editing.is_active ? "left-[22px]" : "left-0.5"}`}
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${editingSupplier.is_active ? "left-[22px]" : "left-0.5"}`}
                     ></span>
                   </button>
                 </label>
               </div>
               <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100">
                 <button
-                  onClick={() => setEditOpen(false)}
+                  type="button"
+                  onClick={() =>
+                    setEditingSupplier({
+                      ...editingSupplier,
+                      is_active: !editingSupplier.is_active,
+                    })
+                  }
                   className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={handleUpdateCategory}
+                  onClick={handleUpdateSupplier}
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#00285E] text-white hover:bg-[#082245] transition-colors shadow-md shadow-[#00285E]/10"
                 >
                   Lưu thay đổi
@@ -397,4 +435,3 @@ function Field({
     </label>
   );
 }
-

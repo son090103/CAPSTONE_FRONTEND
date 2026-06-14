@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowDownToLine,
@@ -9,6 +9,8 @@ import {
   X,
   Truck,
   Package,
+  Plus,
+  Trash2,
   Eye,
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
@@ -31,6 +33,17 @@ interface Receipt {
   items: ReceiptItem[];
 }
 
+interface ImportItemForm {
+  part_id: string;
+  name: string;
+  brand: string;
+  category_id: string;
+  warranty_period_months: number;
+  warranty_km_limit: number;
+  quantity: number;
+  unit_price: number;
+}
+
 const formatPrice = (v: number) => v.toLocaleString('vi-VN') + 'đ';
 
 const formatDate = (d: string) => {
@@ -38,75 +51,19 @@ const formatDate = (d: string) => {
   return `${day}/${m}/${y}`;
 };
 
-const RECEIPTS: Receipt[] = [
-  {
-    id: 'r1',
-    code: 'PN-2026-0512',
-    supplier: 'Castrol Việt Nam',
-    date: '2026-06-04',
-    status: 'completed',
-    note: 'Nhập bổ sung dầu nhớt đầu tháng',
-    items: [
-      { name: 'Dầu nhớt Castrol 5W-30', code: 'OIL-C530', quantity: 120, unit: 'bình', price: 300000 },
-      { name: 'Dầu Shell Helix 5W-30', code: 'OIL-SHL-30', quantity: 60, unit: 'bình', price: 330000 },
-    ],
-  },
-  {
-    id: 'r2',
-    code: 'PN-2026-0513',
-    supplier: 'Michelin VN',
-    date: '2026-06-03',
-    status: 'completed',
-    items: [
-      { name: 'Lốp Michelin 205/55R16', code: 'TIR-MIC-16', quantity: 40, unit: 'lốp', price: 1750000 },
-    ],
-  },
-  {
-    id: 'r3',
-    code: 'PN-2026-0514',
-    supplier: 'Bosch Auto Parts',
-    date: '2026-06-02',
-    status: 'pending',
-    note: 'Chờ kiểm tra chất lượng',
-    items: [
-      { name: 'Lọc dầu Bosch', code: 'FLT-OIL-BS', quantity: 200, unit: 'cái', price: 88000 },
-      { name: 'Má phanh sau Honda', code: 'BRK-HON-R', quantity: 30, unit: 'bộ', price: 680000 },
-    ],
-  },
-  {
-    id: 'r4',
-    code: 'PN-2026-0510',
-    supplier: 'Denso Phụ Tùng',
-    date: '2026-05-29',
-    status: 'completed',
-    items: [
-      { name: 'Lọc gió điều hòa Denso', code: 'FLT-AC-DS', quantity: 80, unit: 'cái', price: 130000 },
-    ],
-  },
-  {
-    id: 'r5',
-    code: 'PN-2026-0508',
-    supplier: 'NGK Spark Plug',
-    date: '2026-05-25',
-    status: 'completed',
-    items: [
-      { name: 'Bugi NGK Iridium', code: 'SPK-NGK-IR', quantity: 150, unit: 'cái', price: 195000 },
-    ],
-  },
-  {
-    id: 'r6',
-    code: 'PN-2026-0505',
-    supplier: 'Castrol Việt Nam',
-    date: '2026-05-20',
-    status: 'completed',
-    items: [
-      { name: 'Dầu Mobil 1 5W-40', code: 'OIL-MOB-40', quantity: 90, unit: 'bình', price: 380000 },
-    ],
-  },
-];
-
 const receiptTotal = (r: Receipt) => r.items.reduce((s, it) => s + it.quantity * it.price, 0);
 const receiptQty = (r: Receipt) => r.items.reduce((s, it) => s + it.quantity, 0);
+
+const emptyItem = (): ImportItemForm => ({
+  part_id: '',
+  name: '',
+  brand: '',
+  category_id: '',
+  warranty_period_months: 0,
+  warranty_km_limit: 0,
+  quantity: 1,
+  unit_price: 0,
+});
 
 export default function ImportHistory() {
   const { searchQuery, showToast } = useOutletContext<{
@@ -119,26 +76,46 @@ export default function ImportHistory() {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [selected, setSelected] = useState<Receipt | null>(null);
 
+  const receipts: Receipt[] = [];
+
   const effectiveSearch = (searchQuery || localSearch).toLowerCase();
 
-  const filtered = useMemo(() => {
-    return RECEIPTS.filter((r) => {
-      const matchSearch =
-        r.code.toLowerCase().includes(effectiveSearch) ||
-        r.supplier.toLowerCase().includes(effectiveSearch) ||
-        r.items.some((it) => it.name.toLowerCase().includes(effectiveSearch));
-      const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [effectiveSearch, statusFilter]);
+  const filtered = receipts.filter((r) => {
+    const matchSearch =
+      r.code.toLowerCase().includes(effectiveSearch) ||
+      r.supplier.toLowerCase().includes(effectiveSearch) ||
+      r.items.some((it) => it.name.toLowerCase().includes(effectiveSearch));
+    const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
-  // Summary stats
-  const stats = useMemo(() => {
-    const totalReceipts = RECEIPTS.length;
-    const totalValue = RECEIPTS.reduce((s, r) => s + receiptTotal(r), 0);
-    const pending = RECEIPTS.filter((r) => r.status === 'pending').length;
-    return { totalReceipts, totalValue, pending };
-  }, []);
+  const stats = {
+    totalReceipts: receipts.length,
+    totalValue: receipts.reduce((s, r) => s + receiptTotal(r), 0),
+    pending: receipts.filter((r) => r.status === 'pending').length,
+  };
+
+  // ── Import (goods receipt) modal ──
+  const [importOpen, setImportOpen] = useState(false);
+  const [supplierId, setSupplierId] = useState('');
+  const [items, setItems] = useState<ImportItemForm[]>([emptyItem()]);
+
+  const openImport = () => {
+    setSupplierId('');
+    setItems([emptyItem()]);
+    setImportOpen(true);
+  };
+
+  const addItem = () => setItems((prev) => [...prev, emptyItem()]);
+  const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, patch: Partial<ImportItemForm>) =>
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+
+  const importTotal = items.reduce((sum, it) => sum + it.quantity * it.unit_price, 0);
+
+  const handleImport = () => {
+    setImportOpen(false);
+  };
 
   return (
     <div className="flex-1 p-4 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
@@ -151,13 +128,22 @@ export default function ImportHistory() {
           </h1>
           <p className="text-slate-500 text-sm">Danh sách các phiếu nhập kho đã thực hiện.</p>
         </div>
-        <button
-          onClick={() => showToast('Đang xuất lịch sử nhập kho...', 'info')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors self-start"
-        >
-          <Download size={16} className="text-slate-500" />
-          <span>Xuất Excel</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => showToast('Đang xuất lịch sử nhập kho...', 'info')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+          >
+            <Download size={16} className="text-slate-500" />
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={openImport}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#00285E] text-white rounded-xl text-sm font-semibold shadow-md shadow-[#00285E]/10 hover:bg-[#082245] transition-all transform hover:translate-y-[-1px] active:translate-y-0"
+          >
+            <ArrowDownToLine size={16} />
+            <span>Nhập kho</span>
+          </button>
+        </div>
       </div>
 
       {/* SUMMARY CARDS */}
@@ -380,6 +366,120 @@ export default function ImportHistory() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── IMPORT (NHẬP KHO) MODAL ── */}
+      <AnimatePresence>
+        {importOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setImportOpen(false)} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><ArrowDownToLine size={18} /></div>
+                  <h3 className="text-lg font-bold text-slate-800">Phiếu nhập kho</h3>
+                </div>
+                <button onClick={() => setImportOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><X size={18} /></button>
+              </div>
+
+              <div className="p-5 space-y-5">
+                {/* Receipt header */}
+                <Field label="Nhà cung cấp">
+                  <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputCls}>
+                    <option value="">— Chọn nhà cung cấp —</option>
+                  </select>
+                </Field>
+
+                {/* Line items */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sản phẩm nhập</span>
+                    <button onClick={addItem} className="flex items-center gap-1.5 text-xs font-bold text-[#00285E] hover:text-[#082245] transition-colors">
+                      <Plus size={14} /> Thêm sản phẩm
+                    </button>
+                  </div>
+
+                  {items.map((item, idx) => (
+                    <div key={idx} className="border border-slate-100 rounded-xl p-4 space-y-3 relative">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sản phẩm #{idx + 1}</span>
+                        <button onClick={() => removeItem(idx)} disabled={items.length === 1} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
+                      <Field label="Sản phẩm có sẵn (tùy chọn)">
+                        <select value={item.part_id} onChange={(e) => updateItem(idx, { part_id: e.target.value })} className={inputCls}>
+                          <option value="">— Tạo sản phẩm mới —</option>
+                        </select>
+                      </Field>
+
+                      {!item.part_id && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="Tên sản phẩm" className="sm:col-span-2">
+                            <input value={item.name} onChange={(e) => updateItem(idx, { name: e.target.value })} className={inputCls} placeholder="VD: Dầu nhớt Castrol 5W-30" />
+                          </Field>
+                          <Field label="Thương hiệu">
+                            <input value={item.brand} onChange={(e) => updateItem(idx, { brand: e.target.value })} className={inputCls} placeholder="VD: Castrol" />
+                          </Field>
+                          <Field label="Danh mục">
+                            <select value={item.category_id} onChange={(e) => updateItem(idx, { category_id: e.target.value })} className={inputCls}>
+                              <option value="">— Chọn danh mục —</option>
+                            </select>
+                          </Field>
+                          <Field label="Bảo hành (tháng)">
+                            <input type="number" min={0} value={item.warranty_period_months} onChange={(e) => updateItem(idx, { warranty_period_months: Number(e.target.value) })} className={inputCls} />
+                          </Field>
+                          <Field label="Bảo hành (km)">
+                            <input type="number" min={0} value={item.warranty_km_limit} onChange={(e) => updateItem(idx, { warranty_km_limit: Number(e.target.value) })} className={inputCls} />
+                          </Field>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Field label="Số lượng">
+                          <input type="number" min={1} value={item.quantity} onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })} className={inputCls} />
+                        </Field>
+                        <Field label="Giá nhập (cogs)" className="sm:col-span-2">
+                          <input type="number" min={0} value={item.unit_price} onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })} className={inputCls} />
+                        </Field>
+                      </div>
+
+                      <div className="flex items-center justify-end text-sm font-bold text-slate-700">
+                        Thành tiền: <span className="ml-1.5 text-[#00285E]">{formatPrice(item.quantity * item.unit_price)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total */}
+                <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-500">Tổng giá trị nhập</span>
+                  <span className="text-xl font-bold text-[#00285E]">{formatPrice(importTotal)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 sticky bottom-0 bg-white">
+                <button onClick={() => setImportOpen(false)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Hủy</button>
+                <button onClick={handleImport} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#00285E] text-white hover:bg-[#082245] transition-colors shadow-md shadow-[#00285E]/10">
+                  <ArrowDownToLine size={16} /> Lưu phiếu nhập
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+const inputCls =
+  'w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all';
+
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <label className={`block ${className ?? ''}`}>
+      <span className="text-xs font-bold text-slate-500 mb-1.5 block">{label}</span>
+      {children}
+    </label>
   );
 }

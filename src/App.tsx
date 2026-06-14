@@ -26,9 +26,9 @@ const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminC
 const InventoryLayout = lazy (() => import("./pages/inventory/InventoryLayout"));
 const InventoryDashboard = lazy(() => import( "./pages/inventory/dashboard/InventoryDashboard"));
 const InventoryParts = lazy(() => import( "./pages/inventory/parts/InventoryParts"));
-const ImportHistory = lazy(() => import( "./pages/inventory/import/InventoryImportHistory"));
+const ImportHistory = lazy(() => import( "./pages/inventory/import/InventoryImport"));
 const PartCategories = lazy(() => import("./pages/inventory/categories/InventoryPartCategories"));
-
+const InventorySuppliers = lazy(() =>  import("./pages/inventory/suppliers/InventorySuppliers"));
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-slate-50/50 backdrop-blur-xs flex flex-col items-center justify-center z-50">
     <div className="relative w-16 h-16">
@@ -78,6 +78,7 @@ function App() {
           <Route path="parts" element={<InventoryParts />} />
           <Route path="categories" element={<PartCategories />} />
           <Route path="import" element={<ImportHistory />} />
+          <Route path="suppliers" element={<InventorySuppliers />} />
         </Route>
       </Routes>
       {!isAdminPath && (

@@ -7,7 +7,7 @@ import {
   type CreatePartCategory,
   type GetPartCategory,
 } from "../../../model/dto/spartPartCategory.dto";
-import { PART_CATEGORY_API_ENDPOINTS } from "../../../constants/inventory/spartePartApiEndPoint";
+import { PART_CATEGORY_API_ENDPOINTS } from "../../../constants/inventory/sparePartApiEndPoint";
 import { useFetchClient } from "../../../hook/useFetchClient";
 
 export default function PartCategories() {
