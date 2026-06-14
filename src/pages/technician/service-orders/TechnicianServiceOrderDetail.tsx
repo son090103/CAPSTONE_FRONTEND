@@ -467,11 +467,10 @@ export default function TechnicianServiceOrderDetail() {
                   onChange={(e) => { setRejectReason(e.target.value); setRejectError(''); }}
                   placeholder="Nhập lý do từ chối phân công..."
                   rows={4}
-                  className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all resize-none ${
-                    rejectError
+                  className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all resize-none ${rejectError
                       ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400'
                       : 'border-slate-200/80 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40]'
-                  }`}
+                    }`}
                 />
                 {rejectError && (
                   <p className="text-xs text-rose-500 font-semibold mt-1.5 flex items-center gap-1">

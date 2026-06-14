@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ClipboardPlus,
   Search,
@@ -16,150 +16,70 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// ========== MOCK SERVICE ORDERS DATABASE ==========
-export interface ServiceOrderModel {
-  id: string;
-  appointmentId?: string;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  vehiclePlate: string;
-  vehicleModel: string;
-  vehicleMileage: number;
-  services: { id: string; name: string; price: number; category: string }[];
-  notes?: string;
-  status: 'draft' | 'assigned' | 'in_progress' | 'waiting_parts' | 'waiting_approval' | 'qc_checking' | 'completed' | 'cancelled';
-  createdBy: string;
-  createdAt: string;
-  cancelledAt?: string;
-  cancelledBy?: string;
-  cancelReason?: string;
-  incurredCost?: number;
-}
-
-const MOCK_SERVICE_ORDERS: ServiceOrderModel[] = [
-  {
-    id: 'SO-001',
-    appointmentId: 'APT-001',
-    customerId: 'C001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901 234 567',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2.5Q',
-    vehicleMileage: 45000,
-    services: [
-      { id: 'SV001', name: 'Bảo dưỡng định kỳ cấp 1', price: 500000, category: 'Bảo dưỡng' },
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-    ],
-    status: 'in_progress',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T09:30:00',
-  },
-  {
-    id: 'SO-002',
-    customerId: 'C002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0912 345 678',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Honda City RS',
-    vehicleMileage: 22000,
-    services: [
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-      { id: 'SV005', name: 'Vệ sinh kim phun điện tử', price: 1200000, category: 'Động cơ' },
-    ],
-    status: 'completed',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-02T10:15:00',
-  },
-  {
-    id: 'SO-003',
-    customerId: 'C009',
-    customerName: 'Phạm Minh Hùng',
-    customerPhone: '0909 888 777',
-    vehiclePlate: '51G-888.88',
-    vehicleModel: 'Mercedes-Benz C200',
-    vehicleMileage: 15000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV004', name: 'Cân chỉnh thước lái 3D', price: 600000, category: 'Sửa chữa gầm' },
-    ],
-    status: 'waiting_approval',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T11:00:00',
-  },
-  {
-    id: 'SO-004',
-    customerId: 'C010',
-    customerName: 'Lê Văn Nam',
-    customerPhone: '0977 123 456',
-    vehiclePlate: '30A-999.99',
-    vehicleModel: 'Mazda 3 Premium',
-    vehicleMileage: 32000,
-    services: [
-      { id: 'SV007', name: 'Thay má phanh trước', price: 800000, category: 'Phanh' },
-    ],
-    status: 'cancelled',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T08:00:00',
-    cancelledAt: '2026-06-02T08:15:00',
-    cancelledBy: 'Trần Thị Thuỷ (Lễ tân)',
-    cancelReason: 'Khách hàng thay đổi quyết định, không sửa nữa trước khi tháo lắp.',
-    incurredCost: 0,
-  },
-  {
-    id: 'SO-005',
-    customerId: 'C011',
-    customerName: 'Đặng Hoàng Nam',
-    customerPhone: '0988 555 444',
-    vehiclePlate: '51K-555.55',
-    vehicleModel: 'Hyundai SantaFe',
-    vehicleMileage: 60000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV010', name: 'Sơn phục hồi vết xước', price: 1500000, category: 'Thân vỏ' },
-    ],
-    status: 'waiting_parts',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-01T14:00:00',
-  },
-];
+import { useFetchClient_v2 as useFetchClient } from '../../../hook/useFetchClient';
+import { SERVICE_ORDER_API_ENDPOINTS } from '../../../constants/reception/appointmentsEndpoints';
 
 export const SO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  draft: { label: 'Bản nháp', color: '#6B7280', bg: '#F3F4F6', icon: Clock },
-  assigned: { label: 'Đã giao việc', color: '#6366F1', bg: '#EEF2FF', icon: Users },
-  in_progress: { label: 'Đang sửa chữa', color: '#3B82F6', bg: '#EFF6FF', icon: Loader2 },
-  waiting_parts: { label: 'Chờ phụ tùng', color: '#D97706', bg: '#FEF3C7', icon: AlertCircle },
-  waiting_approval: { label: 'Chờ khách duyệt', color: '#EC4899', bg: '#FDF2F8', icon: HelpCircle },
-  qc_checking: { label: 'Đang QC', color: '#8B5CF6', bg: '#F5F3FF', icon: Clock },
-  completed: { label: 'Hoàn thành', color: '#10B981', bg: '#ECFDF5', icon: CheckCircle2 },
-  cancelled: { label: 'Đã huỷ lệnh', color: '#EF4444', bg: '#FEF2F2', icon: XCircle },
+  INSPECTING: { label: 'Tiếp nhận xe', color: '#6B7280', bg: '#F3F4F6', icon: Clock },
+  ASSIGNED: { label: 'Đã phân công', color: '#6366F1', bg: '#EEF2FF', icon: Users },
+  IN_PROGRESS: { label: 'Đang sửa chữa', color: '#3B82F6', bg: '#EFF6FF', icon: Loader2 },
+  WAITING_FOR_PARTS: { label: 'Chờ phụ tùng', color: '#D97706', bg: '#FEF3C7', icon: AlertCircle },
+  WAITING_APPROVAL: { label: 'Chờ khách duyệt', color: '#EC4899', bg: '#FDF2F8', icon: HelpCircle },
+  QC_CHECKING: { label: 'Đang QC', color: '#8B5CF6', bg: '#F5F3FF', icon: Clock },
+  COMPLETED: { label: 'Hoàn thành', color: '#10B981', bg: '#ECFDF5', icon: CheckCircle2 },
+  CANCELLED: { label: 'Đã huỷ lệnh', color: '#EF4444', bg: '#FEF2F2', icon: XCircle },
 };
 
 const ITEMS_PER_PAGE = 5;
 
 export default function ReceptionServiceOrderList() {
   const navigate = useNavigate();
+  const { fetchPrivate } = useFetchClient();
 
+  const [serviceOrders, setServiceOrders] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadServiceOrders();
+  }, []);
+
+  const loadServiceOrders = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetchPrivate(SERVICE_ORDER_API_ENDPOINTS.GET_ALL, 'GET');
+      if (res && res.success) {
+        setServiceOrders(res.data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách lệnh sửa chữa:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filtered data
   const filteredOrders = useMemo(() => {
-    return MOCK_SERVICE_ORDERS.filter((so) => {
+    return serviceOrders.filter((so) => {
+      const customerName = so.vehicle?.customer?.user?.fullName || '';
+      const customerPhone = so.vehicle?.customer?.phone || '';
+      const vehiclePlate = so.vehicle?.license_plate || '';
+      const soId = `SO-${so.id}`;
+
       const matchSearch =
         searchTerm === '' ||
-        so.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        so.customerPhone.includes(searchTerm) ||
-        so.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        so.id.toLowerCase().includes(searchTerm.toLowerCase());
+        customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customerPhone.includes(searchTerm) ||
+        vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        soId.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchStatus = statusFilter === 'all' || so.status === statusFilter;
 
       return matchSearch && matchStatus;
     });
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, serviceOrders]);
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -170,23 +90,20 @@ export default function ReceptionServiceOrderList() {
 
   // KPI counts
   const kpiCounts = useMemo(() => ({
-    total: MOCK_SERVICE_ORDERS.length,
-    inProgress: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'in_progress' || o.status === 'waiting_parts').length,
-    waitingApproval: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'waiting_approval').length,
-    completed: MOCK_SERVICE_ORDERS.filter((o) => o.status === 'completed').length,
-  }), []);
+    total: serviceOrders.length,
+    inProgress: serviceOrders.filter((o) => o.status === 'IN_PROGRESS' || o.status === 'WAITING_FOR_PARTS').length,
+    waitingApproval: serviceOrders.filter((o) => o.status === 'WAITING_APPROVAL').length,
+    completed: serviceOrders.filter((o) => o.status === 'COMPLETED').length,
+  }), [serviceOrders]);
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
     const d = new Date(dateStr);
-    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const getOrderTotal = (services: { price: number }[]) => {
-    return services.reduce((sum, s) => sum + s.price, 0);
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + ' đ';
+    return (price || 0).toLocaleString('vi-VN') + ' đ';
   };
 
   return (
@@ -214,9 +131,9 @@ export default function ReceptionServiceOrderList() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng hóa đơn dịch vụ', value: kpiCounts.total, icon: <Wrench size={22} />, color: '#00285E', bg: '#EFF6FF' },
+          { label: 'Tổng lệnh', value: kpiCounts.total, icon: <Wrench size={22} />, color: '#00285E', bg: '#EFF6FF' },
           { label: 'Đang sửa chữa / Chờ linh kiện', value: kpiCounts.inProgress, icon: <Loader2 size={22} className="animate-spin" />, color: '#D97706', bg: '#FEF3C7' },
-          { label: 'Chờ khách duyệt báo giá', value: kpiCounts.waitingApproval, icon: <HelpCircle size={22} />, color: '#EC4899', bg: '#FDF2F8' },
+          { label: 'Chờ khách duyệt', value: kpiCounts.waitingApproval, icon: <HelpCircle size={22} />, color: '#EC4899', bg: '#FDF2F8' },
           { label: 'Đã hoàn thành', value: kpiCounts.completed, icon: <CheckCircle2 size={22} />, color: '#059669', bg: '#D1FAE5' },
         ].map((card, i) => (
           <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-xs">
@@ -255,25 +172,30 @@ export default function ReceptionServiceOrderList() {
               className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
             >
               <option value="all">Tất cả trạng thái</option>
-              <option value="draft">Bản nháp</option>
-              <option value="assigned">Đã phân công</option>
-              <option value="in_progress">Đang sửa chữa</option>
-              <option value="waiting_parts">Chờ phụ tùng</option>
-              <option value="waiting_approval">Chờ khách duyệt</option>
-              <option value="qc_checking">Chờ QC</option>
-              <option value="completed">Đã hoàn thành</option>
-              <option value="cancelled">Đã huỷ</option>
+              <option value="INSPECTING">Tiếp nhận xe</option>
+              <option value="ASSIGNED">Đã phân công</option>
+              <option value="IN_PROGRESS">Đang sửa chữa</option>
+              <option value="WAITING_FOR_PARTS">Chờ phụ tùng</option>
+              <option value="WAITING_APPROVAL">Chờ khách duyệt</option>
+              <option value="QC_CHECKING">Chờ QC</option>
+              <option value="COMPLETED">Đã hoàn thành</option>
+              <option value="CANCELLED">Đã huỷ</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden">
-        {paginatedData.length === 0 ? (
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden min-h-[400px]">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <Loader2 size={48} className="mb-4 text-slate-300 animate-spin" />
+            <p className="text-lg font-semibold mb-1">Đang tải dữ liệu...</p>
+          </div>
+        ) : paginatedData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <AlertCircle size={48} className="mb-4 text-slate-300" />
-            <p className="text-lg font-semibold mb-1">Không tìm thấy hóa đơn dịch vụ</p>
+            <p className="text-lg font-semibold mb-1">Không tìm thấy lệnh sửa chữa</p>
             <p className="text-sm">Thử thay đổi từ khóa hoặc bộ lọc trạng thái.</p>
           </div>
         ) : (
@@ -284,7 +206,6 @@ export default function ReceptionServiceOrderList() {
                   <th className="py-3 px-4">Mã lệnh</th>
                   <th className="py-3 px-4">Khách hàng</th>
                   <th className="py-3 px-4">Xe</th>
-                  <th className="py-3 px-4">Tổng chi phí</th>
                   <th className="py-3 px-4">Ngày tạo</th>
                   <th className="py-3 px-4">Trạng thái</th>
                   <th className="py-3 px-4 text-center">Thao tác</th>
@@ -292,42 +213,39 @@ export default function ReceptionServiceOrderList() {
               </thead>
               <tbody>
                 {paginatedData.map((so) => {
-                  const statusCfg = SO_STATUS_CONFIG[so.status];
+                  const statusCfg = SO_STATUS_CONFIG[so.status] || SO_STATUS_CONFIG['INSPECTING'];
                   const StatusIcon = statusCfg.icon;
                   return (
                     <tr key={so.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-4">
-                        <span className="font-bold text-[#00285E] text-xs">{so.id}</span>
+                        <span className="font-bold text-[#00285E] text-xs">SO-{so.id}</span>
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#EDF3FF] flex items-center justify-center">
+                          <div className="w-9 h-9 rounded-full bg-[#EDF3FF] flex items-center justify-center shrink-0">
                             <Users size={16} className="text-[#00285E]" />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800 text-sm">{so.customerName}</p>
-                            <p className="text-slate-400 text-xs">{so.customerPhone}</p>
+                            <p className="font-semibold text-slate-800 text-sm whitespace-nowrap">{so.vehicle?.customer?.user?.fullName || 'Khách vãng lai'}</p>
+                            <p className="text-slate-400 text-xs">{so.vehicle?.customer?.phone}</p>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-4">
                         <div>
-                          <p className="font-semibold text-slate-700 text-xs">{so.vehiclePlate}</p>
-                          <p className="text-slate-400 text-xs">{so.vehicleModel}</p>
+                          <p className="font-semibold text-slate-700 text-xs">{so.vehicle?.license_plate}</p>
+                          <p className="text-slate-400 text-xs whitespace-nowrap">{so.vehicle?.model?.make?.make_name} {so.vehicle?.model?.model_name}</p>
                         </div>
-                      </td>
-                      <td className="py-4 px-4 font-bold text-slate-800 text-xs">
-                        {formatPrice(getOrderTotal(so.services))}
                       </td>
                       <td className="py-4 px-4">
                         <span className="text-xs text-slate-600 font-semibold">{formatDate(so.createdAt)}</span>
                       </td>
                       <td className="py-4 px-4">
                         <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap"
                           style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}
                         >
-                          <StatusIcon size={12} className={so.status === 'in_progress' ? 'animate-spin' : ''} />
+                          <StatusIcon size={12} className={so.status === 'IN_PROGRESS' ? 'animate-spin' : ''} />
                           {statusCfg.label}
                         </span>
                       </td>
@@ -335,10 +253,10 @@ export default function ReceptionServiceOrderList() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => navigate(`/reception/service-orders/${so.id}`)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#00285E] bg-[#EDF3FF] hover:bg-[#D2E2FF] transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#00285E] bg-[#EDF3FF] hover:bg-[#D2E2FF] transition-colors whitespace-nowrap"
                           >
                             <Eye size={13} />
-                            Chi tiết / Hủy
+                            Chi tiết
                           </button>
                         </div>
                       </td>

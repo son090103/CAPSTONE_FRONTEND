@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CalendarCheck,
@@ -23,9 +23,11 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../store/store';
 import type { UserModel } from '../../model/User';
-import { useFetchClient } from '../../hook/useFetchClient';
+import { useFetchClient_v2 as useFetchClient } from '../../hook/useFetchClient';
 import { loginSuccess, logout } from '../../store/slices/userSlice';
 import { PROFILE_API_ENDPOINTS } from '../../constants/common/profileEndpoints';
+import { NOTIFICATION_API_ENDPOINTS } from '../../constants/reception/notificationEndpoints';
+import { useSocket } from '../../hook/useSocket';
 
 export default function ReceptionLayout() {
   const navigate = useNavigate();
@@ -38,6 +40,32 @@ export default function ReceptionLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'info' | 'warning'; text: string } | null>(null);
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const desktopNotifRef = useRef<HTMLDivElement>(null);
+  const mobileNotifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showNotificationDropdown) {
+        const target = event.target as Node;
+        const isOutsideDesktop = desktopNotifRef.current && !desktopNotifRef.current.contains(target);
+        const isOutsideMobile = mobileNotifRef.current && !mobileNotifRef.current.contains(target);
+        
+        // If clicked outside both the desktop and mobile dropdown containers
+        if (isOutsideDesktop !== false && isOutsideMobile !== false) {
+          setShowNotificationDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotificationDropdown]);
 
   const showToast = (text: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setToastMessage({ text, type });
@@ -69,6 +97,51 @@ export default function ReceptionLayout() {
     const token = localStorage.getItem('token');
     if (token && !user) fetchUserProfile();
   }, [dispatch, fetchPrivate, user]);
+
+  const socket = useSocket();
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const response = await fetchPrivate(NOTIFICATION_API_ENDPOINTS.GET_NOTIFICATIONS);
+        if (Array.isArray(response)) {
+          setNotifications(response);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải thông báo", error);
+      }
+    };
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await fetchPrivate(NOTIFICATION_API_ENDPOINTS.GET_UNREAD_COUNT);
+        if (response && typeof response.count === 'number') {
+          setUnreadCount(response.count);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải số lượng thông báo chưa đọc", error);
+      }
+    };
+
+    if (user) {
+      loadNotifications();
+      loadUnreadCount();
+    }
+
+    if (socket) {
+      const handleNewNotification = (data: any) => {
+        showToast(data.message || 'Bạn có thông báo mới', 'info');
+        loadNotifications(); // Tải lại danh sách thông báo để update đỏ
+        loadUnreadCount();
+      };
+
+      socket.on('new_notification', handleNewNotification);
+
+      return () => {
+        socket.off('new_notification', handleNewNotification);
+      };
+    }
+  }, [user, fetchPrivate, socket]);
 
   const avatarUrl = user?.avatar?.trim() || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&auto=format&fit=crop';
   const displayName = user?.fullName || 'Lễ tân viên';
@@ -181,6 +254,67 @@ export default function ReceptionLayout() {
     </>
   );
 
+  const NotificationDropdown = () => (
+    <AnimatePresence>
+      {showNotificationDropdown && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 origin-top-right"
+        >
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h3 className="font-bold text-slate-800">Thông báo</h3>
+            <span className="text-xs font-semibold bg-[#E0ECFF] text-[#00285E] px-2.5 py-1 rounded-md">{unreadCount} mới</span>
+          </div>
+          <div className="max-h-[360px] overflow-y-auto">
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <div 
+                  key={notif.id} 
+                  className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                  onClick={async () => {
+                    if (!notif.isRead) {
+                      try {
+                        await fetchPrivate(NOTIFICATION_API_ENDPOINTS.MARK_AS_READ(notif.id), 'PUT');
+                        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
+                        setUnreadCount(prev => Math.max(0, prev - 1));
+                      } catch (error) {
+                        console.error('Lỗi khi đánh dấu thông báo đã đọc:', error);
+                      }
+                    }
+                    if (notif.link) {
+                      navigate(notif.link);
+                      setShowNotificationDropdown(false);
+                    }
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-1.5">
+                    <h4 className={`text-sm ${!notif.isRead ? 'font-bold text-slate-800' : 'font-semibold text-slate-600'}`}>{notif.title}</h4>
+                    <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-2">
+                      {new Date(notif.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{notif.content}</p>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-slate-500 text-sm flex flex-col items-center gap-2">
+                <Bell size={24} className="text-slate-300" />
+                <span>Không có thông báo nào</span>
+              </div>
+            )}
+          </div>
+          {notifications.length > 0 && (
+            <div className="p-3 border-t border-slate-100 text-center bg-slate-50/50">
+              <button className="text-xs font-semibold text-[#00285E] hover:text-[#F9A11B] transition-colors">Đánh dấu tất cả đã đọc</button>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
     <div className="min-h-screen bg-[#F4F7FC] font-sans antialiased text-slate-800 flex flex-col md:flex-row relative">
 
@@ -215,14 +349,19 @@ export default function ReceptionLayout() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative" ref={mobileNotifRef}>
             <button
-              onClick={() => showToast('Không có thông báo mới', 'info')}
+              onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
               className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-600 relative"
             >
               <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full ring-2 ring-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
+            <NotificationDropdown />
           </div>
           <img
             src={avatarUrl}
@@ -274,13 +413,20 @@ export default function ReceptionLayout() {
           <div className="flex items-center gap-6">
             {/* Quick action buttons */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => showToast('Không có thông báo mới', 'info')}
-                className="p-2.5 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors text-slate-600 relative group"
-              >
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-              </button>
+              <div className="relative" ref={desktopNotifRef}>
+                <button
+                  onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                  className="p-2.5 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors text-slate-600 relative group"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full ring-2 ring-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationDropdown />
+              </div>
               <button
                 onClick={() => showToast('Mở cài đặt nhanh...', 'info')}
                 className="p-2.5 rounded-full hover:bg-slate-50 border border-slate-100 transition-colors text-slate-600"

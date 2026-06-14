@@ -8,7 +8,7 @@ import {
     Sparkles, Upload, X
 } from 'lucide-react';
 import { COLORS } from '../../../components/share/Color';
-import { useFetchClient } from '../../../hook/useFetchClient';
+import { useFetchClient_v2 } from '../../../hook/useFetchClient';
 import { SERVICE_API_ENDPOINTS } from '../../../constants/customer/serviceApiEndpoints';
 import { APPOINTMENT_API_ENDPOINTS } from '../../../constants/customer/appointmentsEndpoints';
 import { GARAGE_CONFIG_API_ENDPOINTS } from '../../../constants/customer/garage_configurationsEndpoints';
@@ -25,12 +25,12 @@ export default function BookingPage() {
     const [step, setStep] = useState(1);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { fetchPublic, fetchPrivate, fetchPrivateForm } = useFetchClient();
+    const { fetchPublic, fetchPrivate, fetchPrivateForm } = useFetchClient_v2();
 
     // Booking Flow State: 'CONSULTATION' | 'SPECIFIC'
     const [bookingFlow, setBookingFlow] = useState<'CONSULTATION' | 'SPECIFIC'>('SPECIFIC');
     // Service Subtype State: 'service' | 'combo'
-    const [serviceSubtype, setServiceSubtype] = useState<'service' | 'combo'>('service');
+    const [serviceSubtype, setServiceSubtype] = useState<'service' | 'combo'>('combo');
     // Consultation notes / description state
     const [notes, setNotes] = useState('');
 
@@ -47,6 +47,10 @@ export default function BookingPage() {
 
     const [bookingDate, setBookingDate] = useState('');
     const [bookingTime, setBookingTime] = useState('');
+
+    const [customerVehicles, setCustomerVehicles] = useState<any[]>([]);
+    const [selectedCustomerVehicleId, setSelectedCustomerVehicleId] = useState<number | null>(null);
+    const [vehicleInputMode, setVehicleInputMode] = useState<'NEW' | 'EXISTING'>('NEW');
 
     const [vehicleBrand, setVehicleBrand] = useState('');
     const [vehicleModel, setVehicleModel] = useState('');
@@ -250,9 +254,9 @@ export default function BookingPage() {
         return () => clearTimeout(delayFn);
     }, [vehicleModel, selectedMakeId, fetchPublic]);
 
-    // Load customer profile data
+    // Load customer profile data & vehicles
     useEffect(() => {
-        const loadProfile = async () => {
+        const loadProfileAndVehicles = async () => {
             try {
                 const res = await fetchPrivate(PROFILE_API_ENDPOINTS.GET_PROFILE);
                 if (res && res.success && res.data) {
@@ -263,11 +267,18 @@ export default function BookingPage() {
                         setCallbackPhone(res.data.phone_number);
                     }
                 }
+                const vehicleRes = await fetchPrivate(PROFILE_API_ENDPOINTS.GET_VEHICLES);
+                if (vehicleRes && vehicleRes.success && vehicleRes.data) {
+                    setCustomerVehicles(vehicleRes.data);
+                    if (vehicleRes.data.length > 0) {
+                        setVehicleInputMode('EXISTING');
+                    }
+                }
             } catch (error) {
-                console.error("Lỗi khi tải thông tin cá nhân:", error);
+                console.error("Lỗi khi tải thông tin cá nhân hoặc danh sách xe:", error);
             }
         };
-        loadProfile();
+        loadProfileAndVehicles();
     }, []);
 
     const handleColorImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,7 +286,7 @@ export default function BookingPage() {
         if (!files || files.length === 0) return;
 
         const file = files[0];
-        
+
         // Preview local image
         const localUrl = URL.createObjectURL(file);
         setColorImagePreview(localUrl);
@@ -593,6 +604,9 @@ export default function BookingPage() {
                     }
                 }
                 if (bookingFlow === 'SPECIFIC') {
+                    if (vehicleInputMode === 'EXISTING') {
+                        return selectedCustomerVehicleId !== null;
+                    }
                     const parsedYear = parseInt(vehicleYear, 10);
                     const currentYear = new Date().getFullYear();
                     const isYearValid = !isNaN(parsedYear) && parsedYear >= 1900 && parsedYear <= currentYear + 1;
@@ -607,8 +621,7 @@ export default function BookingPage() {
             case 2:
                 if (bookingFlow === 'CONSULTATION') return bookingDate !== '' && bookingTime !== '';
                 if (bookingFlow === 'SPECIFIC') {
-                    if (serviceSubtype === 'service') return selectedServiceIds.length > 0;
-                    if (serviceSubtype === 'combo') return selectedComboId !== null;
+                    return selectedServiceIds.length > 0 || selectedComboId !== null;
                 }
                 return false;
             case 3:
@@ -660,20 +673,17 @@ export default function BookingPage() {
             }
 
             const payload = {
-                vehicle_id: null,
+                vehicle_id: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'EXISTING' ? selectedCustomerVehicleId : null,
                 booking_type: bookingFlow,
                 scheduled_time: new Date(`${bookingDate}T${bookingTime}:00`).toISOString(),
                 notes: finalNotes || null,
-                details: bookingFlow === 'SPECIFIC'
-                    ? (serviceSubtype === 'service'
-                        ? selectedServiceIds.map(id => ({ catalog_id: id }))
-                        : [{ combo_id: selectedComboId }])
-                    : null,
-                vehicle_brand: bookingFlow === 'SPECIFIC' ? vehicleBrand : null,
-                vehicle_model: bookingFlow === 'SPECIFIC' ? vehicleModel : null,
-                vehicle_plate: bookingFlow === 'SPECIFIC' ? vehiclePlate : null,
-                vehicle_year: bookingFlow === 'SPECIFIC' ? parseInt(vehicleYear, 10) : null,
-                vehicle_color: bookingFlow === 'SPECIFIC' ? (vehicleColor.trim() || null) : null,
+                service_ids: bookingFlow === 'SPECIFIC' && selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
+                combo_ids: bookingFlow === 'SPECIFIC' && selectedComboId ? [selectedComboId] : undefined,
+                vehicle_brand: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehicleBrand : null,
+                vehicle_model: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehicleModel : null,
+                vehicle_plate: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehiclePlate : null,
+                vehicle_year: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? parseInt(vehicleYear, 10) : null,
+                vehicle_color: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? (vehicleColor.trim() || null) : null,
             };
 
             const response = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.CREATE_APPOINTMENT, 'POST', payload);
@@ -900,11 +910,10 @@ export default function BookingPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setConsultationType('AI_DIAGNOSIS')}
-                                                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${
-                                                        consultationType === 'AI_DIAGNOSIS'
+                                                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${consultationType === 'AI_DIAGNOSIS'
                                                             ? 'bg-[#00285E] text-white shadow-xs'
                                                             : 'text-slate-500 hover:text-slate-800 bg-transparent'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <Sparkles size={12} className={consultationType === 'AI_DIAGNOSIS' ? 'text-amber-300' : 'text-amber-500'} />
                                                     AI nhận diện lỗi, phân tích
@@ -912,11 +921,10 @@ export default function BookingPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setConsultationType('CALL_BACK')}
-                                                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${
-                                                        consultationType === 'CALL_BACK'
+                                                    className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${consultationType === 'CALL_BACK'
                                                             ? 'bg-[#00285E] text-white shadow-xs'
                                                             : 'text-slate-500 hover:text-slate-800 bg-transparent'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <Phone size={12} />
                                                     Gọi điện tư vấn trực tiếp
@@ -943,7 +951,7 @@ export default function BookingPage() {
                                                         <label className="block text-xs font-bold text-slate-700 mb-2">
                                                             Ảnh chụp khu vực gặp lỗi (Tùy chọn)
                                                         </label>
-                                                        
+
                                                         {!issueImagePreview ? (
                                                             <div>
                                                                 <input
@@ -988,11 +996,10 @@ export default function BookingPage() {
                                                             type="button"
                                                             disabled={!issueDescription.trim() || isAnalyzingIssue}
                                                             onClick={handleAnalyzeIssue}
-                                                            className={`py-3 px-6 rounded-xl font-bold text-xs transition-all flex items-center gap-2 border-none ${
-                                                                !issueDescription.trim() || isAnalyzingIssue
+                                                            className={`py-3 px-6 rounded-xl font-bold text-xs transition-all flex items-center gap-2 border-none ${!issueDescription.trim() || isAnalyzingIssue
                                                                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                                                     : 'bg-amber-500 hover:bg-amber-600 text-slate-950 hover:shadow-md cursor-pointer'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {isAnalyzingIssue ? (
                                                                 <>
@@ -1018,13 +1025,12 @@ export default function BookingPage() {
                                                                 </span>
                                                                 <div className="flex items-center gap-1">
                                                                     <span className="text-[10px] text-slate-400 font-medium">Mức độ:</span>
-                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                                                        aiIssueResult.severity === 'Cao'
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${aiIssueResult.severity === 'Cao'
                                                                             ? 'bg-rose-50 border border-rose-100 text-rose-600'
                                                                             : aiIssueResult.severity === 'Trung bình'
                                                                                 ? 'bg-amber-50 border border-amber-100 text-amber-700'
                                                                                 : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
-                                                                    }`}>
+                                                                        }`}>
                                                                         {aiIssueResult.severity}
                                                                     </span>
                                                                 </div>
@@ -1087,7 +1093,77 @@ export default function BookingPage() {
 
                                     {/* SPECIFIC SERVICE FLOW: VEHICLE INFO */}
                                     {bookingFlow === 'SPECIFIC' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                                        <div className="space-y-6 text-left">
+                                            {customerVehicles.length > 0 && (
+                                                <div className="flex gap-2 p-1 bg-slate-100/60 rounded-xl max-w-sm border border-slate-200/20">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setVehicleInputMode('EXISTING')}
+                                                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${vehicleInputMode === 'EXISTING'
+                                                                ? 'bg-[#00285E] text-white shadow-xs'
+                                                                : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                                                            }`}
+                                                    >
+                                                        Chọn xe đã lưu
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setVehicleInputMode('NEW');
+                                                            setSelectedCustomerVehicleId(null);
+                                                            setVehicleBrand('');
+                                                            setVehicleModel('');
+                                                            setVehiclePlate('');
+                                                            setVehicleYear('');
+                                                            setVehicleColor('');
+                                                        }}
+                                                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${vehicleInputMode === 'NEW'
+                                                                ? 'bg-[#00285E] text-white shadow-xs'
+                                                                : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                                                            }`}
+                                                    >
+                                                        Thêm xe mới
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {vehicleInputMode === 'EXISTING' && customerVehicles.length > 0 ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {customerVehicles.map((v) => (
+                                                        <div
+                                                            key={v.id}
+                                                            onClick={() => {
+                                                                setSelectedCustomerVehicleId(v.id);
+                                                                setVehicleBrand(v.model?.make?.make_name || '');
+                                                                setVehicleModel(v.model?.model_name || '');
+                                                                setVehiclePlate(v.license_plate || '');
+                                                                setVehicleYear(v.year?.toString() || '');
+                                                                setVehicleColor(v.color || '');
+                                                            }}
+                                                            className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${selectedCustomerVehicleId === v.id
+                                                                ? 'border-amber-400 bg-amber-50/30 shadow-md'
+                                                                : 'border-slate-100 bg-white hover:border-amber-200 hover:bg-slate-50'
+                                                                }`}
+                                                        >
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <h3 className="font-bold text-brand-blue text-sm m-0">
+                                                                    {v.model?.make?.make_name} {v.model?.model_name}
+                                                                </h3>
+                                                                {selectedCustomerVehicleId === v.id && (
+                                                                    <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center text-white">
+                                                                        <Check size={12} strokeWidth={3} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500 space-y-1">
+                                                                <p className="m-0">Biển số: <span className="font-semibold text-slate-700">{v.license_plate}</span></p>
+                                                                <p className="m-0">Năm SX: {v.year} {v.color && `• Màu: ${v.color}`}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                             <div className="relative" ref={brandRef}>
                                                 <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1 text-left">
                                                     {t('booking.step3.brandLabel', 'Hãng xe')}
@@ -1198,22 +1274,20 @@ export default function BookingPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setColorInputMode('TEXT')}
-                                                        className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all border-none cursor-pointer ${
-                                                            colorInputMode === 'TEXT'
+                                                        className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all border-none cursor-pointer ${colorInputMode === 'TEXT'
                                                                 ? 'bg-white text-brand-blue shadow-xs'
                                                                 : 'text-slate-500 hover:text-slate-800 bg-transparent'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         Nhập trực tiếp
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => setColorInputMode('IMAGE')}
-                                                        className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${
-                                                            colorInputMode === 'IMAGE'
+                                                        className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer ${colorInputMode === 'IMAGE'
                                                                 ? 'bg-white text-brand-blue shadow-xs'
                                                                 : 'text-slate-500 hover:text-slate-800 bg-transparent'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         <Sparkles size={10} className="text-amber-500" />
                                                         Tải ảnh xe (AI)
@@ -1256,85 +1330,87 @@ export default function BookingPage() {
                                                                     htmlFor="colorImageUpload"
                                                                     className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-amber-400/80 bg-white/50 hover:bg-white p-6 rounded-2xl transition-all cursor-pointer group"
                                                                 >
-                                                                     <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-amber-50/50 flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors mb-2">
-                                                                         <Upload size={18} />
-                                                                     </div>
-                                                                     <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
-                                                                         Kéo thả hoặc chọn ảnh xe
-                                                                     </span>
-                                                                     <span className="text-[10px] text-gray-400 mt-1">
-                                                                         AI sẽ tự động nhận diện màu sắc từ hình ảnh xe của bạn
-                                                                     </span>
-                                                                 </label>
-                                                             </div>
-                                                         ) : (
-                                                             <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-xs space-y-3">
-                                                                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                                                                     <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                                                                         <img src={colorImagePreview} alt="Xem trước ảnh xe" className="w-full h-full object-cover" />
-                                                                         <button
-                                                                             type="button"
-                                                                             onClick={handleRemoveColorImage}
-                                                                             className="absolute top-0 right-0 p-1 bg-black/60 hover:bg-black/80 text-white rounded-bl-xl border-none cursor-pointer"
-                                                                         >
-                                                                             <X size={14} />
-                                                                         </button>
-                                                                     </div>
-                                                                     <div className="flex-grow space-y-2 w-full">
-                                                                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Màu sắc nhận diện bởi AI:</div>
-                                                                         <div className="relative">
-                                                                             <input
-                                                                                 type="text"
-                                                                                 placeholder="Chưa nhận diện được..."
-                                                                                 value={vehicleColor}
-                                                                                 onChange={(e) => setVehicleColor(e.target.value)}
-                                                                                 className={`${inputClass} !py-2 !px-3`}
-                                                                                 disabled={isAnalyzingColor}
-                                                                             />
-                                                                             {vehicleColor && !isAnalyzingColor && (
-                                                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
-                                                                                     <Check size={10} strokeWidth={3} /> AI gợi ý
-                                                                                 </span>
-                                                                             )}
-                                                                         </div>
-                                                                         <div className="flex justify-between items-center text-[10px] text-gray-400">
-                                                                             <span>* Bạn có thể tự chỉnh sửa lại nếu kết quả nhận diện chưa chuẩn xác</span>
-                                                                             <button
-                                                                                 type="button"
-                                                                                 onClick={handleRemoveColorImage}
-                                                                                 className="text-amber-500 hover:text-amber-600 font-bold underline bg-transparent border-none cursor-pointer"
-                                                                             >
-                                                                                 Tải ảnh khác
-                                                                             </button>
-                                                                         </div>
-                                                                     </div>
-                                                                 </div>
+                                                                    <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-amber-50/50 flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors mb-2">
+                                                                        <Upload size={18} />
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                                        Kéo thả hoặc chọn ảnh xe
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-400 mt-1">
+                                                                        AI sẽ tự động nhận diện màu sắc từ hình ảnh xe của bạn
+                                                                    </span>
+                                                                </label>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-xs space-y-3">
+                                                                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                                                    <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                                                                        <img src={colorImagePreview} alt="Xem trước ảnh xe" className="w-full h-full object-cover" />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={handleRemoveColorImage}
+                                                                            className="absolute top-0 right-0 p-1 bg-black/60 hover:bg-black/80 text-white rounded-bl-xl border-none cursor-pointer"
+                                                                        >
+                                                                            <X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="flex-grow space-y-2 w-full">
+                                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Màu sắc nhận diện bởi AI:</div>
+                                                                        <div className="relative">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Chưa nhận diện được..."
+                                                                                value={vehicleColor}
+                                                                                onChange={(e) => setVehicleColor(e.target.value)}
+                                                                                className={`${inputClass} !py-2 !px-3`}
+                                                                                disabled={isAnalyzingColor}
+                                                                            />
+                                                                            {vehicleColor && !isAnalyzingColor && (
+                                                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
+                                                                                    <Check size={10} strokeWidth={3} /> AI gợi ý
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-[10px] text-gray-400">
+                                                                            <span>* Bạn có thể tự chỉnh sửa lại nếu kết quả nhận diện chưa chuẩn xác</span>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={handleRemoveColorImage}
+                                                                                className="text-amber-500 hover:text-amber-600 font-bold underline bg-transparent border-none cursor-pointer"
+                                                                            >
+                                                                                Tải ảnh khác
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
 
-                                                                 {/* AI parsed output details */}
-                                                                 {aiDetectionResult && aiDetectionResult.rawText && (
-                                                                     <div className="pt-3 border-t border-slate-200/60 text-xs space-y-2 text-left">
-                                                                         <div className="font-bold text-slate-700 flex items-center gap-1.5">
-                                                                             <Sparkles size={12} className="text-amber-500" />
-                                                                             Chi tiết xe do AI nhận diện:
-                                                                         </div>
-                                                                         <div className="bg-white p-3.5 rounded-xl border border-slate-100/80 text-slate-600 leading-relaxed whitespace-pre-line text-left">
-                                                                             {aiDetectionResult.rawText}
-                                                                         </div>
-                                                                     </div>
-                                                                 )}
-                                                             </div>
-                                                         )}
+                                                                {/* AI parsed output details */}
+                                                                {aiDetectionResult && aiDetectionResult.rawText && (
+                                                                    <div className="pt-3 border-t border-slate-200/60 text-xs space-y-2 text-left">
+                                                                        <div className="font-bold text-slate-700 flex items-center gap-1.5">
+                                                                            <Sparkles size={12} className="text-amber-500" />
+                                                                            Chi tiết xe do AI nhận diện:
+                                                                        </div>
+                                                                        <div className="bg-white p-3.5 rounded-xl border border-slate-100/80 text-slate-600 leading-relaxed whitespace-pre-line text-left">
+                                                                            {aiDetectionResult.rawText}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
 
-                                                         {/* AI Loading State */}
-                                                         {isAnalyzingColor && (
-                                                             <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50 px-3 py-2.5 rounded-xl border border-amber-100/50 animate-pulse">
-                                                                 <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                                 <span>AI đang phân tích hình ảnh để nhận diện màu sắc...</span>
-                                                             </div>
-                                                         )}
-                                                     </div>
-                                                 )}
-                                             </div>
+                                                        {/* AI Loading State */}
+                                                        {isAnalyzingColor && (
+                                                            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50/50 px-3 py-2.5 rounded-xl border border-amber-100/50 animate-pulse">
+                                                                <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                <span>AI đang phân tích hình ảnh để nhận diện màu sắc...</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </motion.div>
@@ -1360,21 +1436,21 @@ export default function BookingPage() {
                                     <div className="flex p-1 bg-slate-100/80 rounded-2xl mb-8 max-w-xl border border-slate-200/40">
                                         <button
                                             type="button"
-                                            onClick={() => { setServiceSubtype('service'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                                }`}
-                                        >
-                                            <Settings size={14} />
-                                            Dịch vụ lẻ
-                                        </button>
-                                        <button
-                                            type="button"
                                             onClick={() => { setServiceSubtype('combo'); setServicePage(1); }}
                                             className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
                                                 }`}
                                         >
                                             <Sparkles size={14} />
                                             Gói Combo
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setServiceSubtype('service'); setServicePage(1); }}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                }`}
+                                        >
+                                            <Settings size={14} />
+                                            Dịch vụ lẻ
                                         </button>
                                     </div>
 
@@ -1391,6 +1467,8 @@ export default function BookingPage() {
                                             setSelectedCategoryId={setSelectedCategoryId}
                                             servicePage={servicePage}
                                             setServicePage={setServicePage}
+                                            dbCombos={dbCombos}
+                                            selectedComboId={selectedComboId}
                                         />
                                     )}
 
@@ -1402,6 +1480,8 @@ export default function BookingPage() {
                                             setSelectedComboId={setSelectedComboId}
                                             mappedServices={mappedServices}
                                             COLORS={COLORS}
+                                            selectedServiceIds={selectedServiceIds}
+                                            setSelectedServiceIds={setSelectedServiceIds}
                                         />
                                     )}
 
@@ -1542,11 +1622,10 @@ export default function BookingPage() {
                             <button
                                 disabled={isSubmitting || isAnalyzingColor || isAnalyzingIssue}
                                 onClick={handleNext}
-                                className={`flex items-center gap-2 px-6 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md ${
-                                    isSubmitting || isAnalyzingColor || isAnalyzingIssue
+                                className={`flex items-center gap-2 px-6 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md ${isSubmitting || isAnalyzingColor || isAnalyzingIssue
                                         ? 'bg-[#00285E]/50 opacity-40 cursor-not-allowed'
                                         : 'bg-[#00285E] hover:bg-[#00285E]/90 cursor-pointer'
-                                }`}
+                                    }`}
                             >
                                 {isAnalyzingColor || isAnalyzingIssue ? (
                                     <>

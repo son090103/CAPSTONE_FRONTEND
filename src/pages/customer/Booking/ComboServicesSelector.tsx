@@ -11,6 +11,8 @@ interface ComboServicesSelectorProps {
     setSelectedComboId: (id: number | null) => void;
     mappedServices: ServiceItem[];
     COLORS: { orange: string; navy: string;[key: string]: string };
+    selectedServiceIds?: number[];
+    setSelectedServiceIds?: React.Dispatch<React.SetStateAction<number[]>>;
 }
 
 export default function ComboServicesSelector({
@@ -20,6 +22,8 @@ export default function ComboServicesSelector({
     setSelectedComboId,
     mappedServices,
     COLORS,
+    selectedServiceIds = [],
+    setSelectedServiceIds,
 }: ComboServicesSelectorProps) {
     const { fetchPublic } = useFetchClient();
 
@@ -81,7 +85,23 @@ export default function ComboServicesSelector({
                 return (
                     <div
                         key={combo.id}
-                        onClick={() => setSelectedComboId(isSelected ? null : combo.id)}
+                        onClick={() => {
+                            if (isSelected) {
+                                setSelectedComboId(null);
+                            } else {
+                                // Check for overlap with already selected single services
+                                if (combo.service_ids && selectedServiceIds.length > 0) {
+                                    const overlaps = combo.service_ids.filter(id => selectedServiceIds.includes(id));
+                                    if (overlaps.length > 0) {
+                                        alert('Gói Combo này bao gồm các dịch vụ bạn đã chọn lẻ. Các dịch vụ lẻ trùng lặp sẽ tự động được bỏ chọn để tránh trùng lặp!');
+                                        if (setSelectedServiceIds) {
+                                            setSelectedServiceIds(prev => prev.filter(id => !overlaps.includes(id)));
+                                        }
+                                    }
+                                }
+                                setSelectedComboId(combo.id);
+                            }
+                        }}
                         className="relative p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group text-left"
                         style={{
                             borderColor: isSelected ? COLORS.orange : '#F1F5F9',

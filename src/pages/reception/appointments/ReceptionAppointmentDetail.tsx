@@ -61,6 +61,10 @@ export default function ReceptionAppointmentDetail() {
   const [rescheduleDate, setRescheduleDate] = useState('2026-06-03');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('08:00');
 
+  const [isVinModalOpen, setIsVinModalOpen] = useState(false);
+  const [vinNumber, setVinNumber] = useState('');
+  const [isSubmittingVin, setIsSubmittingVin] = useState(false);
+
   const loadAppointmentDetail = async () => {
     if (!id) return;
     try {
@@ -103,6 +107,8 @@ export default function ReceptionAppointmentDetail() {
             ? `${appt.vehicle.model.make?.make_name || ''} ${appt.vehicle.model.model_name || ''}`.trim()
             : 'Chưa cập nhật',
           vehicleYear: appt.vehicle?.year || undefined,
+          vinNumber: appt.vehicle?.vin_number || undefined,
+          hasServiceOrder: !!appt.serviceOrder,
           services,
           appointmentDate,
           appointmentTime,
@@ -211,6 +217,39 @@ export default function ReceptionAppointmentDetail() {
     setShowRescheduleModal(false);
   };
 
+  const handleConfirmReceive = async () => {
+    if (!appointment?.id) return;
+    try {
+      setIsSubmittingVin(true);
+      
+      // Update VIN if entered
+      if (vinNumber.trim()) {
+        const vinResponse = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.UPDATE_VIN(appointment.id), 'POST', {
+          vin_number: vinNumber.trim()
+        });
+        if (!vinResponse.success) {
+          throw new Error(vinResponse.message || 'Lỗi cập nhật số khung');
+        }
+      }
+
+      // Receive appointment
+      const receiveResponse = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.RECEIVE_APPOINTMENT(appointment.id), 'PUT');
+      if (receiveResponse.success) {
+        showToast(`Tiếp nhận xe cho lịch hẹn APT-${appointment.id.padStart(3, '0')} thành công!`, 'success');
+        setIsVinModalOpen(false);
+        loadAppointmentDetail();
+        navigate(`/reception/service-orders/create?appointmentId=${appointment.id}`);
+      } else {
+        throw new Error(receiveResponse.message || 'Lỗi tiếp nhận lịch hẹn');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Đã xảy ra lỗi', 'warning');
+    } finally {
+      setIsSubmittingVin(false);
+    }
+  };
+
   return (
     <div className="flex-1 p-4 md:p-8 space-y-6 max-w-5xl w-full mx-auto">
       {/* HEADER */}
@@ -240,7 +279,42 @@ export default function ReceptionAppointmentDetail() {
         </div>
 
         <div className="flex items-center gap-3">
-          {(appointment.status === 'pending' || appointment.status === 'confirmed') ? (
+          {(appointment.status === 'confirmed' || appointment.status === 'pending' || appointment.status === 'in_progress') && !appointment.hasServiceOrder && (
+            <>
+              {appointment.vinNumber ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      if (appointment.status !== 'in_progress') {
+                        const res = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.RECEIVE_APPOINTMENT(appointment.id), 'PUT');
+                        if (!res.success) throw new Error(res.message || 'Lỗi tiếp nhận');
+                      }
+                      navigate(`/reception/service-orders/create?appointmentId=${appointment.id}`);
+                    } catch (err: any) {
+                      showToast(err.message || 'Lỗi xử lý', 'warning');
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
+                >
+                  <Car size={16} />
+                  Tạo HĐ Dịch vụ
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setVinNumber('');
+                    setIsVinModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#00285E] hover:bg-[#001a3f] text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
+                >
+                  <Car size={16} />
+                  Tiếp nhận xe
+                </button>
+              )}
+            </>
+          )}
+
+          {(appointment.status === 'pending' || appointment.status === 'confirmed') && (
             <button
               onClick={() => setShowRescheduleModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#F9A11B] hover:bg-[#E08F12] text-[#00285E] rounded-xl text-sm font-bold transition-colors shadow-sm"
@@ -248,11 +322,8 @@ export default function ReceptionAppointmentDetail() {
               <Edit size={16} />
               Đổi lịch hẹn
             </button>
-          ) : (
-            <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-3.5 py-2.5 rounded-xl border border-slate-200/50">
-              Không thể đổi lịch (Xe đã được tiếp nhận / Đã kết thúc)
-            </div>
           )}
+
           {appointment.status !== 'cancelled' && appointment.status !== 'completed' && appointment.status !== 'in_progress' && (
             <button
               onClick={() => setShowCancelModal(true)}
@@ -489,6 +560,51 @@ export default function ReceptionAppointmentDetail() {
                 className="px-5 py-2.5 bg-[#00285E] hover:bg-[#001a3f] text-white rounded-xl text-sm font-bold transition-colors shadow-md"
               >
                 Xác nhận đổi lịch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIN MODAL */}
+      {isVinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-200">
+            <h3 className="text-lg font-bold text-[#00285E] mb-2 flex items-center gap-2">
+              <Car size={20} className="text-amber-500" />
+              Tiếp nhận & Cập nhật Số khung
+            </h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Vui lòng nhập Số khung (VIN) của xe trước khi tiếp nhận. Bạn có thể bỏ trống nếu chưa có thông tin.
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Số khung (VIN)</label>
+              <input
+                type="text"
+                value={vinNumber}
+                onChange={(e) => setVinNumber(e.target.value.toUpperCase())}
+                placeholder="Ví dụ: VF8123456789..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#00285E]/20 focus:border-[#00285E] transition-all uppercase"
+                disabled={isSubmittingVin}
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setIsVinModalOpen(false)}
+                disabled={isSubmittingVin}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmReceive}
+                disabled={isSubmittingVin}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-[#00285E] hover:bg-[#001a3f] transition-colors disabled:opacity-50"
+              >
+                {isSubmittingVin ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                Xác nhận tiếp nhận
               </button>
             </div>
           </div>

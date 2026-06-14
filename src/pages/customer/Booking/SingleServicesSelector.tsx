@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Check, Star, Settings } from 'lucide-react';
-import type { ServiceItem } from '../../../model/Service';
+import type { ServiceItem, ServiceCombo } from '../../../model/Service';
 
 interface SingleServicesSelectorProps {
     mappedServices: ServiceItem[];
@@ -13,6 +13,8 @@ interface SingleServicesSelectorProps {
     setSelectedCategoryId: React.Dispatch<React.SetStateAction<number | null>>;
     servicePage: number;
     setServicePage: React.Dispatch<React.SetStateAction<number>>;
+    dbCombos?: ServiceCombo[];
+    selectedComboId?: number | null;
 }
 
 export default function SingleServicesSelector({
@@ -26,14 +28,23 @@ export default function SingleServicesSelector({
     setSelectedCategoryId,
     servicePage,
     setServicePage,
+    dbCombos = [],
+    selectedComboId = null,
 }: SingleServicesSelectorProps) {
     const servicesPerPage = 16;
 
-    // Filter services by category
+    // Filter services by category and exclude services in the selected combo
     const filteredServices = useMemo(() => {
-        if (selectedCategoryId === null) return mappedServices;
-        return mappedServices.filter(s => s.category_id === selectedCategoryId);
-    }, [mappedServices, selectedCategoryId]);
+        let list = mappedServices;
+        if (selectedComboId) {
+            const combo = dbCombos.find(c => c.id === selectedComboId);
+            if (combo && combo.service_ids) {
+                list = list.filter(s => !combo.service_ids.includes(s.id));
+            }
+        }
+        if (selectedCategoryId === null) return list;
+        return list.filter(s => s.category_id === selectedCategoryId);
+    }, [mappedServices, selectedCategoryId, selectedComboId, dbCombos]);
 
     // Reset pagination to page 1 when category changes
     const handleCategoryChange = (catId: number | null) => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -12,90 +12,12 @@ import {
   XCircle,
   AlertTriangle,
   DollarSign,
+  Loader2,
 } from 'lucide-react';
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { SO_STATUS_CONFIG } from './ReceptionServiceOrderList';
-
-// ========== MOCK DATABASE (sẽ thay bằng API call) ==========
-const MOCK_SERVICE_ORDERS: Record<string, any> = {
-  'SO-001': {
-    id: 'SO-001',
-    appointmentId: 'APT-001',
-    customerId: 'C001',
-    customerName: 'Nguyễn Văn An',
-    customerPhone: '0901 234 567',
-    customerEmail: 'an.nguyen@email.com',
-    vehiclePlate: '51A-123.45',
-    vehicleModel: 'Toyota Camry 2.5Q',
-    vehicleYear: 2020,
-    vehicleMileage: 45000,
-    services: [
-      { id: 'SV001', name: 'Bảo dưỡng định kỳ cấp 1', price: 500000, category: 'Bảo dưỡng' },
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-    ],
-    status: 'in_progress',
-    notes: 'Khách yêu cầu kiểm tra kỹ giảm xóc trước bên trái do có tiếng kêu lọc cọc.',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T09:30:00',
-  },
-  'SO-002': {
-    id: 'SO-002',
-    customerId: 'C002',
-    customerName: 'Trần Thị Bình',
-    customerPhone: '0912 345 678',
-    customerEmail: 'binh.tran@email.com',
-    vehiclePlate: '30H-456.78',
-    vehicleModel: 'Honda City RS',
-    vehicleYear: 2022,
-    vehicleMileage: 22000,
-    services: [
-      { id: 'SV003', name: 'Thay dầu động cơ Castrol', price: 650000, category: 'Dầu nhớt' },
-      { id: 'SV005', name: 'Vệ sinh kim phun điện tử', price: 1200000, category: 'Động cơ' },
-    ],
-    status: 'completed',
-    createdBy: 'Nguyễn Minh Quân (Lễ tân)',
-    createdAt: '2026-06-02T10:15:00',
-  },
-  'SO-003': {
-    id: 'SO-003',
-    customerId: 'C009',
-    customerName: 'Phạm Minh Hùng',
-    customerPhone: '0909 888 777',
-    customerEmail: 'hung.pham@email.com',
-    vehiclePlate: '51G-888.88',
-    vehicleModel: 'Mercedes-Benz C200',
-    vehicleYear: 2019,
-    vehicleMileage: 15000,
-    services: [
-      { id: 'SV002', name: 'Bảo dưỡng định kỳ cấp 2', price: 1200000, category: 'Bảo dưỡng' },
-      { id: 'SV004', name: 'Cân chỉnh thước lái 3D', price: 600000, category: 'Sửa chữa gầm' },
-    ],
-    status: 'waiting_approval',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T11:00:00',
-  },
-  'SO-004': {
-    id: 'SO-004',
-    customerId: 'C010',
-    customerName: 'Lê Văn Nam',
-    customerPhone: '0977 123 456',
-    customerEmail: 'nam.le@email.com',
-    vehiclePlate: '30A-999.99',
-    vehicleModel: 'Mazda 3 Premium',
-    vehicleYear: 2018,
-    vehicleMileage: 32000,
-    services: [
-      { id: 'SV007', name: 'Thay má phanh trước', price: 800000, category: 'Phanh' },
-    ],
-    status: 'cancelled',
-    createdBy: 'Trần Thị Thuỷ (Lễ tân)',
-    createdAt: '2026-06-02T08:00:00',
-    cancelledAt: '2026-06-02T08:15:00',
-    cancelledBy: 'Trần Thị Thuỷ (Lễ tân)',
-    cancelReason: 'Khách hàng thay đổi quyết định, không sửa nữa trước khi tháo lắp.',
-    incurredCost: 0,
-  },
-};
+import { useFetchClient_v2 as useFetchClient } from '../../../hook/useFetchClient';
+import { SERVICE_ORDER_API_ENDPOINTS } from '../../../constants/reception/appointmentsEndpoints';
 
 export default function ReceptionServiceOrderDetail() {
   const navigate = useNavigate();
@@ -103,12 +25,45 @@ export default function ReceptionServiceOrderDetail() {
   const { showToast } = useOutletContext<{
     showToast: (text: string, type?: 'success' | 'info' | 'warning') => void;
   }>();
+  const { fetchPrivate } = useFetchClient();
 
-  // Load Order (Stateful mock for cancellation simulation)
-  const [order, setOrder] = useState<any>(id ? MOCK_SERVICE_ORDERS[id] : null);
+  const [order, setOrder] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [incurredCost, setIncurredCost] = useState('150000'); // 150k default if in progress
+
+  useEffect(() => {
+    if (id) {
+      loadOrderDetail(id);
+    }
+  }, [id]);
+
+  const loadOrderDetail = async (orderId: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetchPrivate(SERVICE_ORDER_API_ENDPOINTS.GET_DETAIL(orderId), 'GET');
+      if (res && res.success) {
+        setOrder(res.data);
+      } else {
+        showToast(res.message || 'Không tìm thấy hóa đơn.', 'warning');
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải chi tiết lệnh sửa chữa:', error);
+      showToast('Lỗi khi tải chi tiết lệnh sửa chữa.', 'warning');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-8 flex flex-col items-center justify-center text-slate-400">
+        <Loader2 size={48} className="mb-4 text-[#00285E] animate-spin" />
+        <p className="text-lg font-semibold mb-1">Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -127,17 +82,18 @@ export default function ReceptionServiceOrderDetail() {
     );
   }
 
-  const statusCfg = SO_STATUS_CONFIG[order.status];
+  const statusCfg = SO_STATUS_CONFIG[order.status] || SO_STATUS_CONFIG['INSPECTING'];
   const StatusIcon = statusCfg.icon;
 
-  const isAlreadyStarted = order.status !== 'draft' && order.status !== 'assigned';
+  const isAlreadyStarted = order.status !== 'INSPECTING' && order.status !== 'ASSIGNED';
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + ' đ';
+    return (price || 0).toLocaleString('vi-VN') + ' đ';
   };
 
   const getOrderTotal = () => {
-    return order.services.reduce((sum: number, s: any) => sum + s.price, 0);
+    if (!order.tasks || !Array.isArray(order.tasks)) return 0;
+    return order.tasks.reduce((sum: number, task: any) => sum + (task.catalog?.price || 0), 0);
   };
 
   const handleCancelOrder = () => {
@@ -148,20 +104,20 @@ export default function ReceptionServiceOrderDetail() {
 
     const costValue = isAlreadyStarted ? parseFloat(incurredCost) || 0 : 0;
 
-    // Simulate database update
-    const updatedOrder = {
-      ...order,
-      status: 'cancelled',
-      cancelledAt: new Date().toISOString(),
-      cancelledBy: 'Lê lễ tân (Receptionist)',
-      cancelReason: cancelReason,
-      incurredCost: costValue,
-    };
-
-    setOrder(updatedOrder);
+    // TODO: Call API to cancel order
+    showToast(`Hủy hóa đơn dịch vụ SO-${order.id} chưa có API (đang phát triển)!`, 'info');
     setShowCancelModal(false);
-    showToast(`Hủy hóa đơn dịch vụ ${order.id} thành công!`, 'success');
   };
+
+  // Helper cho data mapping
+  const customerName = order.vehicle?.customer?.user?.fullName || 'Khách vãng lai';
+  const customerPhone = order.vehicle?.customer?.phone || '—';
+  const customerEmail = order.vehicle?.customer?.user?.email || '—';
+  
+  const vehiclePlate = order.vehicle?.license_plate || '—';
+  const vehicleModel = `${order.vehicle?.model?.make?.make_name || ''} ${order.vehicle?.model?.model_name || ''}`.trim() || '—';
+  const vehicleYear = order.vehicle?.year?.toString() || '—';
+  const vehicleMileage = order.vehicle?.avg_daily_mileage ? `${order.vehicle.avg_daily_mileage.toLocaleString('vi-VN')} km` : '—';
 
   return (
     <div className="flex-1 p-4 md:p-8 space-y-6 max-w-5xl w-full mx-auto">
@@ -179,12 +135,12 @@ export default function ReceptionServiceOrderDetail() {
               Chi tiết hóa đơn dịch vụ
             </h1>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-slate-500">{order.id}</span>
+              <span className="text-sm font-bold text-slate-500">SO-{order.id}</span>
               <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap"
                 style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}
               >
-                <StatusIcon size={12} />
+                <StatusIcon size={12} className={order.status === 'IN_PROGRESS' ? 'animate-spin' : ''} />
                 {statusCfg.label}
               </span>
             </div>
@@ -192,7 +148,7 @@ export default function ReceptionServiceOrderDetail() {
         </div>
 
         <div className="flex items-center gap-3">
-          {order.status !== 'cancelled' && order.status !== 'completed' && (
+          {order.status !== 'CANCELLED' && order.status !== 'COMPLETED' && (
             <button
               onClick={() => setShowCancelModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-sm font-bold transition-colors"
@@ -205,7 +161,7 @@ export default function ReceptionServiceOrderDetail() {
       </div>
 
       {/* CANCELLED INFO CARD */}
-      {order.status === 'cancelled' && (
+      {order.status === 'CANCELLED' && (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 space-y-3">
           <h2 className="text-sm font-bold text-rose-800 flex items-center gap-2 uppercase tracking-widest">
             <XCircle size={16} />
@@ -247,10 +203,11 @@ export default function ReceptionServiceOrderDetail() {
             Thông tin hóa đơn dịch vụ
           </h2>
           <div className="space-y-3">
-            <InfoRow label="Mã hóa đơn dịch vụ" value={order.id} />
-            {order.appointmentId && <InfoRow label="Liên kết Lịch hẹn" value={order.appointmentId} highlight />}
-            <InfoRow label="Người tạo tiếp nhận" value={order.createdBy} />
+            <InfoRow label="Mã hóa đơn dịch vụ" value={`SO-${order.id}`} />
+            {order.appointment_id && <InfoRow label="Liên kết Lịch hẹn" value={`APT-${order.appointment_id}`} highlight />}
+            <InfoRow label="Người tạo tiếp nhận" value={order.receptionist?.fullName || '—'} />
             <InfoRow label="Thời điểm tiếp nhận" value={new Date(order.createdAt).toLocaleString('vi-VN')} />
+            <InfoRow label="Cầu nâng" value={order.bay?.bay_name || '—'} />
           </div>
         </div>
 
@@ -261,9 +218,9 @@ export default function ReceptionServiceOrderDetail() {
             Thông tin Khách hàng
           </h2>
           <div className="space-y-3">
-            <InfoRow label="Họ và tên" value={order.customerName} />
-            <InfoRow label="Số điện thoại" value={order.customerPhone} icon={<Phone size={14} className="text-slate-400" />} />
-            <InfoRow label="Email" value={order.customerEmail || '—'} icon={<Mail size={14} className="text-slate-400" />} />
+            <InfoRow label="Họ và tên" value={customerName} />
+            <InfoRow label="Số điện thoại" value={customerPhone} icon={<Phone size={14} className="text-slate-400" />} />
+            <InfoRow label="Email" value={customerEmail} icon={<Mail size={14} className="text-slate-400" />} />
           </div>
         </div>
 
@@ -274,35 +231,46 @@ export default function ReceptionServiceOrderDetail() {
             Thông tin Xe
           </h2>
           <div className="space-y-3">
-            <InfoRow label="Biển số" value={order.vehiclePlate} highlight />
-            <InfoRow label="Dòng xe" value={order.vehicleModel} />
-            <InfoRow label="Năm sản xuất" value={order.vehicleYear?.toString() || '—'} />
-            <InfoRow label="Số km tiếp nhận" value={order.vehicleMileage ? `${order.vehicleMileage.toLocaleString('vi-VN')} km` : '—'} icon={<Gauge size={14} className="text-slate-400" />} />
+            <InfoRow label="Biển số" value={vehiclePlate} highlight />
+            <InfoRow label="Dòng xe" value={vehicleModel} />
+            <InfoRow label="Năm sản xuất" value={vehicleYear} />
+            <InfoRow label="Số km tiếp nhận" value={vehicleMileage} icon={<Gauge size={14} className="text-slate-400" />} />
           </div>
         </div>
 
         {/* Services List */}
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-widest">
-              <Wrench size={16} className="text-[#00285E]" />
-              Hạng mục dịch vụ tiếp nhận
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-widest">
+                <Wrench size={16} className="text-[#00285E]" />
+                Hạng mục dịch vụ tiếp nhận
+              </h2>
+            </div>
+            
             <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-              {order.services.map((service: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded bg-[#00285E] text-white text-[10px] font-bold flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-700">{service.name}</span>
-                      <span className="text-[9px] text-slate-400 uppercase font-bold">{service.category}</span>
+              {(!order.tasks || order.tasks.length === 0) ? (
+                <div className="text-xs text-slate-400 italic py-2 text-center">Chưa có hạng mục dịch vụ nào</div>
+              ) : (
+                order.tasks.map((task: any, idx: number) => {
+                  return (
+                    <div key={idx} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded bg-[#00285E] text-white text-[10px] font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-slate-700">{task.catalog?.service_name || 'Dịch vụ'}</span>
+                          <span className="text-[9px] text-slate-400 uppercase font-bold">
+                            {task.catalog?.estimated_duration || 0} phút 
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-600">{formatPrice(task.catalog?.price)}</span>
                     </div>
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">{formatPrice(service.price)}</span>
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm font-bold text-[#00285E]">
@@ -311,6 +279,42 @@ export default function ReceptionServiceOrderDetail() {
           </div>
         </div>
       </div>
+
+      {/* Technicians */}
+      {order.tasks && order.tasks.length > 0 && (() => {
+        const technicians = new Map();
+        order.tasks.forEach((t: any) => {
+          const tech = t.assignments?.[0]?.technician;
+          if (tech && tech.id && tech.fullName) {
+            technicians.set(tech.id, tech.fullName);
+          }
+        });
+        const uniqueTechs = Array.from(technicians.values());
+        
+        if (uniqueTechs.length === 0) return null;
+
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6">
+            <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-widest">
+              <User size={16} className="text-[#00285E]" />
+              Nhân sự thực hiện
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {uniqueTechs.map((name, idx) => (
+                <div key={idx} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00285E] to-[#004aab] flex items-center justify-center text-white font-bold">
+                    {name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{name}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">Kỹ thuật viên</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Notes */}
       {order.notes && (

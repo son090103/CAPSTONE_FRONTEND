@@ -25,6 +25,9 @@ import {
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ServiceItem } from '../../../model/ServiceOrder';
+import { SERVICE_ORDER_API_ENDPOINTS } from '../../../constants/reception/appointmentsEndpoints';
+import { useFetchClient } from '../../../hook/useFetchClient';
+import { APPOINTMENT_API_ENDPOINTS } from '../../../constants/reception/appointmentsEndpoints';
 
 // ========== MOCK: Appointment data (auto-fill) ==========
 const MOCK_APPOINTMENT_DATA: Record<string, {
@@ -127,7 +130,8 @@ export default function ReceptionCreateServiceOrder() {
   const [manualVehiclePlate, setManualVehiclePlate] = useState('');
   const [manualVehicleModel, setManualVehicleModel] = useState('');
   const [manualVehicleYear, setManualVehicleYear] = useState('');
-  const [manualVehicleMileage, setManualVehicleMileage] = useState('');
+  const [currentOdo, setCurrentOdo] = useState('');
+  const [bayId, setBayId] = useState('1'); // Cầu nâng (default 1)
 
   // Common fields
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
@@ -137,28 +141,76 @@ export default function ReceptionCreateServiceOrder() {
   const [activeServiceTab, setActiveServiceTab] = useState<'single' | 'combo' | 'category'>('single');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
+  const { fetchPrivate } = useFetchClient();
+  const [isLoadingRecord, setIsLoadingRecord] = useState(false);
+
   // Handle URL appointmentId param on mount
   useEffect(() => {
     const apptId = searchParams.get('appointmentId');
-    if (apptId && MOCK_APPOINTMENT_DATA[apptId]) {
-      const data = MOCK_APPOINTMENT_DATA[apptId];
-      setSelectedRecord({
-        type: 'appointment',
-        id: data.id,
-        name: data.customerName,
-        phone: data.customerPhone,
-        plate: data.vehiclePlate,
-        model: data.vehicleModel,
-        year: data.vehicleYear,
-        mileage: data.vehicleMileage,
-        appointmentDate: data.appointmentDate,
-        appointmentTime: data.appointmentTime,
-        services: data.services,
-      });
-      if (data.services) {
-        setSelectedServices(new Set(data.services));
-      }
-      setMode('approved_record');
+    if (apptId) {
+      const fetchAppt = async () => {
+        setIsLoadingRecord(true);
+        try {
+          const response = await fetchPrivate(APPOINTMENT_API_ENDPOINTS.GET_APPOINTMENT_DETAIL(apptId));
+          if (response.success && response.data) {
+            const data = response.data;
+            const servicesDetails: any[] = [];
+            if (Array.isArray(data.appointmentDetails)) {
+              data.appointmentDetails.forEach((detail: any) => {
+                if (detail.catalog) {
+                  servicesDetails.push({
+                    id: detail.catalog.id,
+                    name: detail.catalog.service_name,
+                    price: detail.catalog.price,
+                    category: 'Dịch vụ lẻ'
+                  });
+                }
+                if (detail.combo) {
+                  const subServices = detail.combo.catalogs
+                    ? detail.combo.catalogs.map((c: any) => c.service_name)
+                    : [];
+                  servicesDetails.push({
+                    id: detail.combo.id,
+                    name: detail.combo.combo_name,
+                    price: detail.combo.total_price || 0,
+                    category: 'Combo dịch vụ',
+                    description: detail.combo.description,
+                    subServices
+                  });
+                }
+              });
+            }
+
+            let appointmentDate = '';
+            let appointmentTime = '';
+            if (data.scheduled_time) {
+              const dateObj = new Date(data.scheduled_time);
+              appointmentDate = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+              appointmentTime = String(dateObj.getHours()).padStart(2, '0') + ':' + String(dateObj.getMinutes()).padStart(2, '0');
+            }
+
+            setSelectedRecord({
+              type: 'appointment',
+              id: String(data.id),
+              name: data.customer?.user?.fullName || 'Khách vãng lai',
+              phone: data.customer?.user?.phoneNumber || data.customer?.phone || '',
+              plate: data.vehicle?.license_plate || 'Chưa cập nhật',
+              model: data.vehicle?.model ? `${data.vehicle.model.make?.make_name || ''} ${data.vehicle.model.model_name || ''}`.trim() : 'Chưa cập nhật',
+              year: data.vehicle?.year || '',
+              mileage: data.vehicle?.mileage || '',
+              appointmentDate,
+              appointmentTime,
+              servicesDetails,
+            });
+            setMode('approved_record');
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsLoadingRecord(false);
+        }
+      };
+      fetchAppt();
     }
   }, [searchParams]);
 
@@ -171,7 +223,7 @@ export default function ReceptionCreateServiceOrder() {
     }
 
     const valLower = val.toLowerCase();
-    
+
     // Search in mock appointments
     const filteredAppts = Object.values(MOCK_APPOINTMENT_DATA)
       .filter(
@@ -218,11 +270,8 @@ export default function ReceptionCreateServiceOrder() {
 
   const handleSelectRecord = (record: any) => {
     setSelectedRecord(record);
-    if (record.services) {
-      setSelectedServices(new Set(record.services));
-    } else {
-      setSelectedServices(new Set());
-    }
+    setSelectedServices(new Set());
+    setSelectedCombos(new Set());
     setRecordSearch('');
     setSearchResults([]);
   };
@@ -268,10 +317,10 @@ export default function ReceptionCreateServiceOrder() {
   const categoriesWithServices = useMemo(() => {
     const services = serviceSearch
       ? AVAILABLE_SERVICES.filter(
-          (s) =>
-            s.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
-            s.category.toLowerCase().includes(serviceSearch.toLowerCase())
-        )
+        (s) =>
+          s.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+          s.category.toLowerCase().includes(serviceSearch.toLowerCase())
+      )
       : AVAILABLE_SERVICES;
 
     const groups: Record<string, ServiceItem[]> = {};
@@ -310,6 +359,9 @@ export default function ReceptionCreateServiceOrder() {
   };
 
   const selectedTotal = useMemo(() => {
+    if (mode === 'approved_record' && selectedRecord?.type === 'appointment') {
+      return (selectedRecord.servicesDetails || []).reduce((sum: number, item: any) => sum + (item.price || 0), 0);
+    }
     const servicesPrice = AVAILABLE_SERVICES
       .filter((s) => selectedServices.has(s.id))
       .reduce((sum, s) => sum + s.price, 0);
@@ -317,40 +369,66 @@ export default function ReceptionCreateServiceOrder() {
       .filter((c) => selectedCombos.has(c.id))
       .reduce((sum, c) => sum + c.price, 0);
     return servicesPrice + combosPrice;
-  }, [selectedServices, selectedCombos]);
+  }, [selectedServices, selectedCombos, mode, selectedRecord]);
 
-  const handleSubmit = () => {
-    if (mode === 'approved_record') {
-      if (!selectedRecord) {
-        showToast('Vui lòng tìm kiếm và chọn lịch hẹn hoặc hồ sơ khách hàng.', 'warning');
+  const handleSubmit = async () => {
+    try {
+      if (mode === 'approved_record') {
+        if (!selectedRecord) {
+          showToast('Vui lòng tìm kiếm và chọn lịch hẹn hoặc hồ sơ khách hàng.', 'warning');
+          return;
+        }
+        if (!selectedRecord.vehicleId) {
+          showToast('Không tìm thấy thông tin xe. Vui lòng cập nhật xe trước.', 'warning');
+          return;
+        }
+      } else {
+        if (!manualCustName.trim() || !manualCustPhone.trim() || !manualVehiclePlate.trim() || !manualVehicleModel.trim()) {
+          showToast('Vui lòng điền đầy đủ thông tin Khách hàng và Xe.', 'warning');
+          return;
+        }
+      }
+
+      if (!currentOdo.trim()) {
+        showToast('Vui lòng nhập số km hiện tại (ODO).', 'warning');
         return;
       }
-    } else {
-      if (!manualCustName.trim()) {
-        showToast('Vui lòng điền họ và tên khách hàng.', 'warning');
+      if (!bayId) {
+        showToast('Vui lòng chọn cầu nâng.', 'warning');
         return;
       }
-      if (!manualCustPhone.trim()) {
-        showToast('Vui lòng điền số điện thoại.', 'warning');
+
+      if (mode === 'first_time' && selectedServices.size === 0 && selectedCombos.size === 0) {
+        showToast('Vui lòng chọn ít nhất 1 dịch vụ hoặc combo.', 'warning');
         return;
       }
-      if (!manualVehiclePlate.trim()) {
-        showToast('Vui lòng điền biển số xe.', 'warning');
+      if (mode === 'approved_record' && selectedRecord?.type === 'appointment' && (!selectedRecord.servicesDetails || selectedRecord.servicesDetails.length === 0)) {
+        showToast('Lịch hẹn không có dịch vụ nào.', 'warning');
         return;
       }
-      if (!manualVehicleModel.trim()) {
-        showToast('Vui lòng điền loại xe / dòng xe.', 'warning');
-        return;
+
+      // Prepare payload
+      const payload: any = {
+        vehicle_id: mode === 'approved_record' ? Number(selectedRecord.vehicleId) : null, // Backend doesn't support creating vehicle in this API yet
+        bay_id: Number(bayId),
+        current_odo: Number(currentOdo),
+        estimated_finish_time: null
+      };
+
+      if (mode === 'approved_record' && selectedRecord?.type === 'appointment') {
+        payload.appointment_id = Number(selectedRecord.id);
       }
+
+      const res = await fetchPrivate(SERVICE_ORDER_API_ENDPOINTS.CREATE, 'POST', payload);
+      if (res.success) {
+        showToast('Tạo hóa đơn dịch vụ thành công!', 'success');
+        setTimeout(() => navigate('/reception/appointments'), 1000);
+      } else {
+        throw new Error(res.message || 'Lỗi khi tạo hóa đơn dịch vụ');
+      }
+    } catch (err: any) {
+      showToast(err.message, 'warning');
     }
-
-    if (selectedServices.size === 0 && selectedCombos.size === 0) {
-      showToast('Vui lòng chọn ít nhất 1 dịch vụ hoặc combo.', 'warning');
-      return;
-    }
-
-    showToast('Tạo hóa đơn dịch vụ thành công!', 'success');
-    setTimeout(() => navigate('/reception/appointments'), 1000);
   };
 
   const formatPrice = (price: number) => price.toLocaleString('vi-VN') + ' đ';
@@ -383,11 +461,10 @@ export default function ReceptionCreateServiceOrder() {
             setMode('approved_record');
             setSelectedRecord(null);
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
-            mode === 'approved_record'
-              ? 'bg-white text-[#00285E] shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${mode === 'approved_record'
+            ? 'bg-white text-[#00285E] shadow-sm'
+            : 'text-slate-500 hover:text-slate-700'
+            }`}
         >
           <Layers size={14} />
           <span>Lịch hẹn / Khách hàng cũ</span>
@@ -397,11 +474,10 @@ export default function ReceptionCreateServiceOrder() {
             setMode('first_time');
             setSelectedRecord(null);
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
-            mode === 'first_time'
-              ? 'bg-white text-[#00285E] shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${mode === 'first_time'
+            ? 'bg-white text-[#00285E] shadow-sm'
+            : 'text-slate-500 hover:text-slate-700'
+            }`}
         >
           <PlusCircle size={14} />
           <span>Khách vãng lai lần đầu</span>
@@ -525,9 +601,12 @@ export default function ReceptionCreateServiceOrder() {
                     <FormReadonly label="Biển số" value={selectedRecord.plate} highlight />
                     <FormReadonly label="Loại xe" value={selectedRecord.model} />
                     <FormReadonly label="Năm SX" value={selectedRecord.year?.toString() || '—'} />
-                    <FormReadonly
-                      label="Số km"
-                      value={selectedRecord.mileage ? `${selectedRecord.mileage.toLocaleString('vi-VN')} km` : '—'}
+                    <FormInput
+                      label="Số km hiện tại (ODO) *"
+                      value={currentOdo}
+                      onChange={setCurrentOdo}
+                      placeholder={selectedRecord.mileage ? `Lần trước: ${selectedRecord.mileage.toLocaleString('vi-VN')} km` : 'VD: 15000...'}
+                      type="number"
                       icon={<Gauge size={14} className="text-slate-400" />}
                     />
                   </div>
@@ -605,13 +684,30 @@ export default function ReceptionCreateServiceOrder() {
                 </div>
                 <div className="sm:col-span-2">
                   <FormInput
-                    label="Số km hiện tại"
-                    value={manualVehicleMileage}
-                    onChange={setManualVehicleMileage}
+                    label="Số km hiện tại (ODO) *"
+                    value={currentOdo}
+                    onChange={setCurrentOdo}
                     placeholder="VD: 15000..."
                     type="number"
                     icon={<Gauge size={14} className="text-slate-400" />}
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+                    <Wrench size={14} className="text-slate-400" />
+                    Cầu nâng *
+                  </label>
+                  <select
+                    value={bayId}
+                    onChange={(e) => setBayId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold text-slate-700"
+                  >
+                    <option value="1">Cầu nâng số 1</option>
+                    <option value="2">Cầu nâng số 2</option>
+                    <option value="3">Cầu nâng số 3</option>
+                    <option value="4">Cầu nâng số 4</option>
+                    <option value="5">Cầu nâng số 5</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -621,246 +717,284 @@ export default function ReceptionCreateServiceOrder() {
 
       {/* SERVICE SELECTION */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
           <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-widest">
             <Wrench size={16} className="text-[#00285E]" />
-            Chọn Dịch vụ <span className="text-rose-500">*</span>
+            {mode === 'approved_record' && selectedRecord?.type === 'appointment' ? 'Dịch vụ đã đặt ở lịch hẹn' : 'Chọn Dịch vụ'} <span className="text-rose-500">*</span>
           </h2>
           <span className="text-xs font-bold text-[#00285E] bg-[#EDF3FF] px-3 py-1 rounded-lg">
-            Đã chọn: {selectedServices.size + selectedCombos.size} — Tổng: {formatPrice(selectedTotal)}
+            {mode === 'approved_record' && selectedRecord?.type === 'appointment'
+              ? `Số lượng: ${(selectedRecord.servicesDetails || []).length} — Tổng: ${formatPrice(selectedTotal)}`
+              : `Đã chọn: ${selectedServices.size + selectedCombos.size} — Tổng: ${formatPrice(selectedTotal)}`
+            }
           </span>
         </div>
 
-        {/* Sub-tabs Selector */}
-        <div className="flex gap-2 mb-4 border-b border-slate-100 pb-3 overflow-x-auto scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setActiveServiceTab('single')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeServiceTab === 'single'
-                ? 'bg-[#00285E] text-white shadow-sm'
-                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            <Wrench size={14} />
-            <span>Dịch vụ lẻ</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveServiceTab('combo')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeServiceTab === 'combo'
-                ? 'bg-[#00285E] text-white shadow-sm'
-                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            <Package size={14} />
-            <span>Combo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveServiceTab('category')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeServiceTab === 'category'
-                ? 'bg-[#00285E] text-white shadow-sm'
-                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            <Folder size={14} />
-            <span>Danh mục</span>
-          </button>
-        </div>
-
-        {/* Service search */}
-        <div className="relative mb-4">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder={
-              activeServiceTab === 'single'
-                ? 'Tìm dịch vụ lẻ theo tên hoặc danh mục...'
-                : activeServiceTab === 'combo'
-                ? 'Tìm combo theo tên hoặc mô tả...'
-                : 'Tìm danh mục hoặc dịch vụ bên trong...'
-            }
-            value={serviceSearch}
-            onChange={(e) => setServiceSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold"
-          />
-        </div>
-
-        {/* Tab contents */}
-        <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-          {activeServiceTab === 'single' && (
-            <>
-              {filteredServices.length > 0 ? (
-                filteredServices.map((service) => {
-                  const isSelected = selectedServices.has(service.id);
-                  return (
-                    <button
-                      key={service.id}
-                      type="button"
-                      onClick={() => toggleService(service.id)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                        isSelected
-                          ? 'bg-[#EDF3FF] border-[#00285E]/30 shadow-sm'
-                          : 'bg-white border-slate-200/60 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        {isSelected ? (
-                          <CheckSquare size={18} className="text-[#00285E]" />
-                        ) : (
-                          <Square size={18} className="text-slate-300" />
-                        )}
-                        <div>
-                          <p className={`text-sm font-semibold ${isSelected ? 'text-[#00285E]' : 'text-slate-700'}`}>
-                            {service.name}
-                          </p>
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase">{service.category}</p>
-                        </div>
+        {mode === 'approved_record' && selectedRecord?.type === 'appointment' ? (
+          /* SHOW BOOKED SERVICES FROM APPOINTMENT */
+          <div className="space-y-3">
+            {selectedRecord.servicesDetails && selectedRecord.servicesDetails.length > 0 ? (
+              selectedRecord.servicesDetails.map((svc: any, idx: number) => (
+                <div key={idx} className="flex flex-col px-4 py-3 rounded-xl border border-[#00285E]/20 bg-[#EDF3FF]/30 text-left">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckSquare size={18} className="text-[#00285E]" />
+                      <div>
+                        <p className="text-sm font-semibold text-[#00285E]">{svc.name}</p>
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase">{svc.category}</p>
                       </div>
-                      <span className={`text-sm font-bold ${isSelected ? 'text-[#00285E]' : 'text-slate-500'}`}>
-                        {formatPrice(service.price)}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8 text-xs font-semibold text-slate-400">
-                  Không tìm thấy dịch vụ nào phù hợp.
-                </div>
-              )}
-            </>
-          )}
-
-          {activeServiceTab === 'combo' && (
-            <>
-              {filteredCombos.length > 0 ? (
-                filteredCombos.map((combo) => {
-                  const isSelected = selectedCombos.has(combo.id);
-                  return (
-                    <button
-                      key={combo.id}
-                      type="button"
-                      onClick={() => toggleCombo(combo.id)}
-                      className={`w-full flex items-start justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                        isSelected
-                          ? 'bg-[#EDF3FF] border-[#00285E]/30 shadow-sm'
-                          : 'bg-white border-slate-200/60 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5">
-                          {isSelected ? (
-                            <CheckSquare size={18} className="text-[#00285E]" />
-                          ) : (
-                            <Square size={18} className="text-slate-300" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className={`text-sm font-semibold ${isSelected ? 'text-[#00285E]' : 'text-slate-700'}`}>
-                              {combo.name}
-                            </p>
-                            <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                              <Tag size={8} />
-                              TIẾT KIỆM
-                            </span>
-                          </div>
-                          <p className="text-[11px] font-medium text-slate-400 mt-1 max-w-md">
-                            {combo.description}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-bold whitespace-nowrap ml-2 ${isSelected ? 'text-[#00285E]' : 'text-slate-500'}`}>
-                        {formatPrice(combo.price)}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8 text-xs font-semibold text-slate-400">
-                  Không tìm thấy combo nào phù hợp.
-                </div>
-              )}
-            </>
-          )}
-
-          {activeServiceTab === 'category' && (
-            <>
-              {categoriesWithServices.length > 0 ? (
-                categoriesWithServices.map((cat) => {
-                  const isExpanded = expandedCategories.has(cat.name);
-                  return (
-                    <div key={cat.name} className="border border-slate-100 rounded-xl overflow-hidden shadow-2xs">
-                      {/* Category Header */}
-                      <button
-                        type="button"
-                        onClick={() => toggleCategoryExpand(cat.name)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50/70 hover:bg-slate-50 transition-colors text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Folder size={14} className="text-[#00285E]/70" />
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{cat.name}</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-500">
-                            {cat.services.length}
-                          </span>
-                          {cat.selectedCount > 0 && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600">
-                              Đã chọn: {cat.selectedCount}
-                            </span>
-                          )}
-                        </div>
-                        {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                      </button>
-
-                      {/* Category Services */}
-                      {isExpanded && (
-                        <div className="p-2 bg-white divide-y divide-slate-50">
-                          {cat.services.map((service) => {
-                            const isSelected = selectedServices.has(service.id);
-                            return (
-                              <button
-                                key={service.id}
-                                type="button"
-                                onClick={() => toggleService(service.id)}
-                                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all text-left ${
-                                  isSelected
-                                    ? 'bg-[#EDF3FF]/70 text-[#00285E]'
-                                    : 'hover:bg-slate-50/50 text-slate-600'
-                                }`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  {isSelected ? (
-                                    <CheckSquare size={16} className="text-[#00285E]" />
-                                  ) : (
-                                    <Square size={16} className="text-slate-300" />
-                                  )}
-                                  <span className="text-xs font-semibold">{service.name}</span>
-                                </div>
-                                <span className="text-xs font-bold">{formatPrice(service.price)}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8 text-xs font-semibold text-slate-400">
-                  Không tìm thấy danh mục nào.
+                    <span className="text-sm font-bold text-[#00285E]">{formatPrice(svc.price || 0)}</span>
+                  </div>
+                  {svc.subServices && svc.subServices.length > 0 && (
+                    <div className="mt-2 pl-8 space-y-1 border-t border-[#00285E]/10 pt-2">
+                      <p className="text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Chi tiết gói dịch vụ:</p>
+                      {svc.subServices.map((sub: string, subIdx: number) => (
+                        <div key={subIdx} className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                          <div className="w-1 h-1 rounded-full bg-slate-400" />
+                          {sub}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-xs font-semibold text-slate-400">
+                Lịch hẹn này không có dịch vụ nào được đặt trước.
+              </div>
+            )}
+          </div>
+        ) : (
+          /* SHOW MOCK CATALOG FOR FIRST TIME OR EXISTING CUSTOMER W/O APPOINTMENT */
+          <div>
 
-        {selectedServices.size === 0 && selectedCombos.size === 0 && (
-          <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs font-semibold text-amber-600">
-            <AlertCircle size={14} />
-            Cần chọn ít nhất 1 dịch vụ hoặc combo để tạo hóa đơn dịch vụ.
+            {/* Sub-tabs Selector */}
+            <div className="flex gap-2 mb-4 border-b border-slate-100 pb-3 overflow-x-auto scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setActiveServiceTab('single')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeServiceTab === 'single'
+                  ? 'bg-[#00285E] text-white shadow-sm'
+                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                  }`}
+              >
+                <Wrench size={14} />
+                <span>Dịch vụ lẻ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveServiceTab('combo')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeServiceTab === 'combo'
+                  ? 'bg-[#00285E] text-white shadow-sm'
+                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                  }`}
+              >
+                <Package size={14} />
+                <span>Combo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveServiceTab('category')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeServiceTab === 'category'
+                  ? 'bg-[#00285E] text-white shadow-sm'
+                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                  }`}
+              >
+                <Folder size={14} />
+                <span>Danh mục</span>
+              </button>
+            </div>
+
+            {/* Service search */}
+            <div className="relative mb-4">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={
+                  activeServiceTab === 'single'
+                    ? 'Tìm dịch vụ lẻ theo tên hoặc danh mục...'
+                    : activeServiceTab === 'combo'
+                      ? 'Tìm combo theo tên hoặc mô tả...'
+                      : 'Tìm danh mục hoặc dịch vụ bên trong...'
+                }
+                value={serviceSearch}
+                onChange={(e) => setServiceSearch(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold"
+              />
+            </div>
+
+            {/* Tab contents */}
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {activeServiceTab === 'single' && (
+                <>
+                  {filteredServices.length > 0 ? (
+                    filteredServices.map((service) => {
+                      const isSelected = selectedServices.has(service.id);
+                      return (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => toggleService(service.id)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${isSelected
+                            ? 'bg-[#EDF3FF] border-[#00285E]/30 shadow-sm'
+                            : 'bg-white border-slate-200/60 hover:bg-slate-50'
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {isSelected ? (
+                              <CheckSquare size={18} className="text-[#00285E]" />
+                            ) : (
+                              <Square size={18} className="text-slate-300" />
+                            )}
+                            <div>
+                              <p className={`text-sm font-semibold ${isSelected ? 'text-[#00285E]' : 'text-slate-700'}`}>
+                                {service.name}
+                              </p>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase">{service.category}</p>
+                            </div>
+                          </div>
+                          <span className={`text-sm font-bold ${isSelected ? 'text-[#00285E]' : 'text-slate-500'}`}>
+                            {formatPrice(service.price)}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-xs font-semibold text-slate-400">
+                      Không tìm thấy dịch vụ nào phù hợp.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeServiceTab === 'combo' && (
+                <>
+                  {filteredCombos.length > 0 ? (
+                    filteredCombos.map((combo) => {
+                      const isSelected = selectedCombos.has(combo.id);
+                      return (
+                        <button
+                          key={combo.id}
+                          type="button"
+                          onClick={() => toggleCombo(combo.id)}
+                          className={`w-full flex items-start justify-between px-4 py-3 rounded-xl border transition-all text-left ${isSelected
+                            ? 'bg-[#EDF3FF] border-[#00285E]/30 shadow-sm'
+                            : 'bg-white border-slate-200/60 hover:bg-slate-50'
+                            }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {isSelected ? (
+                                <CheckSquare size={18} className="text-[#00285E]" />
+                              ) : (
+                                <Square size={18} className="text-slate-300" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-semibold ${isSelected ? 'text-[#00285E]' : 'text-slate-700'}`}>
+                                  {combo.name}
+                                </p>
+                                <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                  <Tag size={8} />
+                                  TIẾT KIỆM
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-medium text-slate-400 mt-1 max-w-md">
+                                {combo.description}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={`text-sm font-bold whitespace-nowrap ml-2 ${isSelected ? 'text-[#00285E]' : 'text-slate-500'}`}>
+                            {formatPrice(combo.price)}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-xs font-semibold text-slate-400">
+                      Không tìm thấy combo nào phù hợp.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeServiceTab === 'category' && (
+                <>
+                  {categoriesWithServices.length > 0 ? (
+                    categoriesWithServices.map((cat) => {
+                      const isExpanded = expandedCategories.has(cat.name);
+                      return (
+                        <div key={cat.name} className="border border-slate-100 rounded-xl overflow-hidden shadow-2xs">
+                          {/* Category Header */}
+                          <button
+                            type="button"
+                            onClick={() => toggleCategoryExpand(cat.name)}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50/70 hover:bg-slate-50 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Folder size={14} className="text-[#00285E]/70" />
+                              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{cat.name}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-500">
+                                {cat.services.length}
+                              </span>
+                              {cat.selectedCount > 0 && (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600">
+                                  Đã chọn: {cat.selectedCount}
+                                </span>
+                              )}
+                            </div>
+                            {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                          </button>
+
+                          {/* Category Services */}
+                          {isExpanded && (
+                            <div className="p-2 bg-white divide-y divide-slate-50">
+                              {cat.services.map((service) => {
+                                const isSelected = selectedServices.has(service.id);
+                                return (
+                                  <button
+                                    key={service.id}
+                                    type="button"
+                                    onClick={() => toggleService(service.id)}
+                                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all text-left ${isSelected
+                                      ? 'bg-[#EDF3FF]/70 text-[#00285E]'
+                                      : 'hover:bg-slate-50/50 text-slate-600'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      {isSelected ? (
+                                        <CheckSquare size={16} className="text-[#00285E]" />
+                                      ) : (
+                                        <Square size={16} className="text-slate-300" />
+                                      )}
+                                      <span className="text-xs font-semibold">{service.name}</span>
+                                    </div>
+                                    <span className="text-xs font-bold">{formatPrice(service.price)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-xs font-semibold text-slate-400">
+                      Không tìm thấy danh mục nào.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {selectedServices.size === 0 && selectedCombos.size === 0 && (
+              <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs font-semibold text-amber-600">
+                <AlertCircle size={14} />
+                Cần chọn ít nhất 1 dịch vụ hoặc combo để tạo hóa đơn dịch vụ.
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -918,9 +1052,8 @@ function FormReadonly({
         {label}
       </span>
       <span
-        className={`text-sm font-bold text-right ${
-          highlight ? 'text-[#00285E] bg-[#EDF3FF] px-2 py-0.5 rounded-md' : 'text-slate-700'
-        }`}
+        className={`text-sm font-bold text-right ${highlight ? 'text-[#00285E] bg-[#EDF3FF] px-2 py-0.5 rounded-md' : 'text-slate-700'
+          }`}
       >
         {value || '—'}
       </span>

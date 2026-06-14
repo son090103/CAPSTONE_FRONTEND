@@ -33,8 +33,10 @@ export interface AppointmentItem {
   vehicleImage: string;
   serviceCategory: string;
   serviceItems: string[];
+  comboItems?: { name: string; services: string[] }[];
+  catalogItems?: string[];
   price: number;
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   notes?: string;
   bay: string;
   advisor: string;
@@ -66,7 +68,7 @@ export default function AppointmentsTab() {
           // Parse date and time from scheduled_time
           const d = new Date(appt.scheduled_time);
           const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
-          
+
           let hours = d.getHours();
           const minutes = String(d.getMinutes()).padStart(2, '0');
           const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -81,17 +83,31 @@ export default function AppointmentsTab() {
           const vehiclePlate = appt.vehicle ? appt.vehicle.license_plate : 'N/A';
 
           // Get service items and service category
-          const serviceItems = appt.appointmentDetails?.map((d: any) => {
-            if (d.combo) return d.combo.combo_name;
-            if (d.catalog) return d.catalog.service_name;
-            return '';
-          }).filter(Boolean) || [];
+          const serviceItems: string[] = [];
+          const comboItems: { name: string; services: string[] }[] = [];
+          const catalogItems: string[] = [];
+          appt.appointmentDetails?.forEach((d: any) => {
+            if (d.combo) {
+              serviceItems.push(d.combo.combo_name);
+              const services = d.combo.catalogs ? d.combo.catalogs.map((c: any) => c.service_name) : [];
+              comboItems.push({ name: d.combo.combo_name, services });
+            }
+            if (d.catalog) {
+              serviceItems.push(d.catalog.service_name);
+              catalogItems.push(d.catalog.service_name);
+            }
+          });
+
+          const hasCombo = appt.appointmentDetails?.some((d: any) => d.combo);
+          const hasCatalog = appt.appointmentDetails?.some((d: any) => d.catalog);
 
           const serviceCategory = appt.booking_type === 'CONSULTATION'
             ? 'Yêu cầu tư vấn'
-            : appt.appointmentDetails?.some((d: any) => d.combo)
-              ? 'Gói dịch vụ (Combo)'
-              : 'Dịch vụ lẻ';
+            : (hasCombo && hasCatalog)
+              ? 'Combo & Dịch vụ lẻ'
+              : hasCombo
+                ? 'Gói dịch vụ (Combo)'
+                : 'Dịch vụ lẻ';
 
           // Estimate price if not in DB
           let price = 0;
@@ -124,6 +140,8 @@ export default function AppointmentsTab() {
             vehicleImage: appt.vehicleImage || 'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=200&q=80',
             serviceCategory,
             serviceItems: serviceItems.length > 0 ? serviceItems : (appt.booking_type === 'CONSULTATION' ? ['Hỗ trợ tư vấn kỹ thuật'] : ['Khác']),
+            comboItems,
+            catalogItems,
             price,
             status: appt.status,
             notes: appt.notes,
@@ -170,17 +188,17 @@ export default function AppointmentsTab() {
 
   const getStatusConfig = (status: AppointmentItem['status']) => {
     switch (status) {
-      case 'PENDING':
-        return {
-          label: t('appointments.status.pending', 'Chờ xác nhận'),
-          bg: 'bg-amber-50 text-amber-600 border border-amber-100',
-          dot: 'bg-amber-500',
-        };
       case 'CONFIRMED':
         return {
           label: t('appointments.status.confirmed', 'Đã xác nhận'),
           bg: 'bg-blue-50 text-blue-600 border border-blue-100',
           dot: 'bg-blue-500',
+        };
+      case 'IN_PROGRESS':
+        return {
+          label: t('appointments.status.inProgress', 'Đang làm'),
+          bg: 'bg-purple-50 text-purple-600 border border-purple-100',
+          dot: 'bg-purple-500',
         };
       case 'COMPLETED':
         return {
@@ -233,6 +251,7 @@ export default function AppointmentsTab() {
       ALL: currentAppointments.length,
       PENDING: currentAppointments.filter((a) => a.status === 'PENDING').length,
       CONFIRMED: currentAppointments.filter((a) => a.status === 'CONFIRMED').length,
+      IN_PROGRESS: currentAppointments.filter((a) => a.status === 'IN_PROGRESS').length,
       COMPLETED: currentAppointments.filter((a) => a.status === 'COMPLETED').length,
       CANCELLED: currentAppointments.filter((a) => a.status === 'CANCELLED').length,
     };
@@ -274,11 +293,10 @@ export default function AppointmentsTab() {
             setBookingTypeFilter('SPECIFIC');
             setSelectedStatus('ALL');
           }}
-          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${
-            bookingTypeFilter === 'SPECIFIC'
-              ? 'text-brand-orange border-brand-orange'
-              : 'text-gray-400 border-transparent hover:text-brand-blue'
-          }`}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${bookingTypeFilter === 'SPECIFIC'
+            ? 'text-brand-orange border-brand-orange'
+            : 'text-gray-400 border-transparent hover:text-brand-blue'
+            }`}
         >
           <span>Lịch đặt dịch vụ</span>
           {serviceAppointments.length > 0 && (
@@ -293,11 +311,10 @@ export default function AppointmentsTab() {
             setBookingTypeFilter('CONSULTATION');
             setSelectedStatus('ALL');
           }}
-          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${
-            bookingTypeFilter === 'CONSULTATION'
-              ? 'text-brand-orange border-brand-orange'
-              : 'text-gray-400 border-transparent hover:text-brand-blue'
-          }`}
+          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 relative ${bookingTypeFilter === 'CONSULTATION'
+            ? 'text-brand-orange border-brand-orange'
+            : 'text-gray-400 border-transparent hover:text-brand-blue'
+            }`}
         >
           <span>Lịch đặt hỗ trợ</span>
           {supportAppointments.length > 0 && (
@@ -326,8 +343,8 @@ export default function AppointmentsTab() {
         <div className="flex gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-thin">
           {[
             { id: 'ALL', label: t('appointments.filter.all', 'Tất cả'), count: counts.ALL },
-            { id: 'PENDING', label: t('appointments.filter.pending', 'Chờ xác nhận'), count: counts.PENDING },
             { id: 'CONFIRMED', label: t('appointments.filter.confirmed', 'Đã xác nhận'), count: counts.CONFIRMED },
+            { id: 'IN_PROGRESS', label: t('appointments.filter.inProgress', 'Đang làm'), count: counts.IN_PROGRESS },
             { id: 'COMPLETED', label: t('appointments.filter.completed', 'Đã hoàn thành'), count: counts.COMPLETED },
             { id: 'CANCELLED', label: t('appointments.filter.cancelled', 'Đã hủy'), count: counts.CANCELLED },
           ].map((tab) => {
@@ -337,17 +354,15 @@ export default function AppointmentsTab() {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-brand-blue text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-500 border border-gray-100 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${isActive
+                  ? 'bg-brand-blue text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-500 border border-gray-100 hover:bg-slate-100'
+                  }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
-                  }`}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -614,8 +629,31 @@ export default function AppointmentsTab() {
                       <span className="text-[10px] text-brand-orange font-bold uppercase">{selectedAppt.serviceCategory}</span>
                     </div>
                     <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
-                      {selectedAppt.serviceItems.map((item, idx) => (
-                        <div key={idx} className="p-3 bg-white hover:bg-slate-50/50 flex items-center gap-2 font-medium text-slate-700 text-left">
+                      {selectedAppt.comboItems && selectedAppt.comboItems.length > 0 && selectedAppt.comboItems.map((item, idx) => (
+                        <div key={`combo-${idx}`} className="p-3 bg-white hover:bg-slate-50/50 flex flex-col items-start gap-1 font-medium text-slate-700 text-left">
+                          <div className="flex items-center gap-2">
+                             <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-purple-100 text-purple-600 uppercase tracking-widest shrink-0">Combo</span>
+                             <span>{item.name}</span>
+                          </div>
+                          {item.services && item.services.length > 0 && (
+                             <ul className="mt-1 ml-9 pl-3 border-l-2 border-slate-100 space-y-1 text-[10px] text-slate-500 font-normal">
+                                {item.services.map((srv, sIdx) => (
+                                   <li key={sIdx} className="relative before:content-[''] before:absolute before:-left-3 before:top-1.5 before:w-1.5 before:h-[1px] before:bg-slate-200">
+                                      {srv}
+                                   </li>
+                                ))}
+                             </ul>
+                          )}
+                        </div>
+                      ))}
+                      {selectedAppt.catalogItems && selectedAppt.catalogItems.length > 0 && selectedAppt.catalogItems.map((item, idx) => (
+                        <div key={`catalog-${idx}`} className="p-3 bg-white hover:bg-slate-50/50 flex items-center gap-2 font-medium text-slate-700 text-left">
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-brand-orange/10 text-brand-orange uppercase tracking-widest shrink-0">Dịch vụ lẻ</span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                      {(!selectedAppt.comboItems?.length && !selectedAppt.catalogItems?.length) && selectedAppt.serviceItems.map((item, idx) => (
+                        <div key={`other-${idx}`} className="p-3 bg-white hover:bg-slate-50/50 flex items-center gap-2 font-medium text-slate-700 text-left">
                           <div className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
                           <span>{item}</span>
                         </div>

@@ -9,6 +9,9 @@ export interface AppointmentModel {
   vehicleModel: string;
   vehicleYear?: number;
   vehicleMileage?: number;
+  vinNumber?: string;
+  hasServiceOrder?: boolean;
+  serviceOrderId?: string;
   services: string[];
   appointmentDate: string;
   appointmentTime: string;
