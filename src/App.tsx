@@ -49,6 +49,7 @@ const TechnicianLayout = lazy(() => import("./pages/technician/TechnicianLayout"
 const TechnicianServiceOrderList = lazy(() => import("./pages/technician/service-orders/TechnicianServiceOrderList"));
 const TechnicianServiceOrderDetail = lazy(() => import("./pages/technician/service-orders/TechnicianServiceOrderDetail"));
 const TechnicianAssignments = lazy(() => import("./pages/technician/assignments/TechnicianAssignments"));
+const TechnicianAssignmentsDetail = lazy(() => import("./pages/technician/assignments/TechnicianAssignmentsDetail"));
 const TechnicianRequestParts = lazy(() => import("./pages/technician/parts-request/TechnicianRequestParts"));
 const TechnicianUpdateProgress = lazy(() => import("./pages/technician/progress/TechnicianUpdateProgress"));
 const LoadingScreen = () => (
@@ -109,6 +110,7 @@ function App() {
           <Route path="service-orders" element={<TechnicianServiceOrderList />} />
           <Route path="service-orders/:id" element={<TechnicianServiceOrderDetail />} />
           <Route path="assignments" element={<TechnicianAssignments />} />
+          <Route path="assignments/:id" element={<TechnicianAssignmentsDetail />} />
           <Route path="parts-request" element={<TechnicianRequestParts />} />
           <Route path="parts-request/:id" element={<TechnicianRequestParts />} />
           <Route path="progress" element={<TechnicianUpdateProgress />} />
