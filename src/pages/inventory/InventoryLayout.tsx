@@ -78,7 +78,7 @@ export default function InventoryLayout() {
   // Sidebar menu items for inventory management
   const menuItems = [
     { name: 'Tổng quan', icon: LayoutDashboard, path: '/inventory' },
-    { name: 'Quản lý sản phẩm', icon: Boxes, path: '/inventory/parts' },
+    { name: 'Phụ tùng', icon: Boxes, path: '/inventory/parts' },
     { name: 'Danh mục phụ tùng', icon: Tags, path: '/inventory/categories' },
     { name: 'Lịch sử nhập kho', icon: ArrowDownToLine, path: '/inventory/import' },
     { name: 'Lịch sử xuất kho', icon: ArrowUpFromLine, path: '/inventory/export' },
@@ -91,7 +91,7 @@ export default function InventoryLayout() {
   const activeMenu = useMemo(() => {
     const path = location.pathname;
     if (path === '/inventory' || path === '/inventory/') return 'Tổng quan';
-    if (path.includes('/parts')) return 'Quản lý sản phẩm';
+    if (path.includes('/parts')) return 'Phụ tùng';
     if (path.includes('/categories')) return 'Danh mục phụ tùng';
     if (path.includes('/import')) return 'Lịch sử nhập kho';
     if (path.includes('/export')) return 'Lịch sử xuất kho';

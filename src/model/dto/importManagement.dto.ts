@@ -9,18 +9,41 @@ export interface Suppliers {
     name: string,
 }
 export interface Users{
-    id: number;
     fullName: string;
 }
-export interface ImportResponse {
+export interface ImportSparePartResponse {
     id: number;
     type: string;
     receipt_code: string,
     createdAt: string
     quantity: number;
     unit_price: number;
-    manager: { fullName: string };
-    part: { sku: string , name: string };
-    supplier: { name: string };
+    manager: Users;
+    part: Parts;
+    supplier: Suppliers;
 }
 
+export interface ConflictPart {
+  id: number;
+  sku: string;
+  name: string;
+  brand?: string;
+}
+
+export interface ImportSparePartItemRequest {
+  quantity: number;
+  unit_price: number;
+  retail_price?: number;
+  part_id?: number;
+  name?: string;
+  brand?: string;
+  category_id?: number;
+  warranty_period_months?: number;
+  warranty_km_limit?: number;
+  force: boolean;
+}
+
+export interface ImportSparePartRequest {
+  supplier_id: number;
+  items: ImportSparePartItemRequest[];
+}

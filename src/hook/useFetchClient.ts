@@ -118,10 +118,10 @@ export const useFetchClient = () => {
         console.warn("Lỗi 401: Token hết hạn. Đá về Login!");
         localStorage.removeItem("token");
         navigate("/login");
-        throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+        throw { status: 401, message: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại." };
       }
       if (!response.ok) {
-        throw new Error(data.message || "Có lỗi xảy ra từ máy chủ");
+        throw { status: response.status, message: data.message || "Có lỗi xảy ra từ máy chủ", part: data.part };
       }
       return data as T;
     } catch (error) {
