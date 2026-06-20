@@ -79,6 +79,7 @@ function App() {
           <Route path="parts" element={<Parts />} />
           <Route path="phone-service" element={<BookingPage />} />
           <Route path="login" element={<Login />} />
+          <Route path="oauth-success" element={<Login />} />
           <Route path="signup" element={<Signup />} />
           <Route path="user-profile" element={<UserProfile />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
