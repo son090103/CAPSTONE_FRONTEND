@@ -15,7 +15,7 @@ const Team = lazy(() => import("./pages/customer/team/Team"));
 const OtpVerification = lazy(() => import("./pages/customer/home/verify-otp"));
 const VerifyPhone = lazy(() => import("./pages/customer/home/verify-phone"));
 
-
+const VideoCallRoom = lazy(() => import("./pages/common/VideoCallRoom"));
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./pages/admin/settings/AdminSettings"));
 const AdminServicesCategories = lazy(() => import("./pages/admin/services/AdminServicesCategories"));
@@ -25,12 +25,13 @@ const AdminStaffManagement = lazy(() => import("./pages/admin/staff/AdminStaffMa
 const AdminWarrantyPolicies = lazy(() => import("./pages/admin/warranty/AdminWarrantyPolicies"));
 const AdminStatistics = lazy(() => import("./pages/admin/dashboard/AdminStatistics"));
 const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminCustomerManagement"));
-const InventoryLayout = lazy (() => import("./pages/inventory/InventoryLayout"));
-const InventoryDashboard = lazy(() => import( "./pages/inventory/dashboard/InventoryDashboard"));
-const InventoryParts = lazy(() => import( "./pages/inventory/parts/InventoryParts"));
-const ImportHistory = lazy(() => import( "./pages/inventory/import/InventoryImport"));
+const AdminCustomerDetailPage = lazy(() => import("./pages/admin/customer/AdminCustomerDetailPage"));
+const InventoryLayout = lazy(() => import("./pages/inventory/InventoryLayout"));
+const InventoryDashboard = lazy(() => import("./pages/inventory/dashboard/InventoryDashboard"));
+const InventoryParts = lazy(() => import("./pages/inventory/parts/InventoryParts"));
+const ImportHistory = lazy(() => import("./pages/inventory/import/InventoryImport"));
 const PartCategories = lazy(() => import("./pages/inventory/categories/InventoryPartCategories"));
-const InventorySuppliers = lazy(() =>  import("./pages/inventory/suppliers/InventorySuppliers"));
+const InventorySuppliers = lazy(() => import("./pages/inventory/suppliers/InventorySuppliers"));
 
 // Reception Page Imports
 const ReceptionLayout = lazy(() => import("./pages/reception/ReceptionLayout"));
@@ -69,7 +70,10 @@ function App() {
   const location = useLocation();
   const isAdminPath =
     location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/inventory");
+    location.pathname.startsWith("/inventory") ||
+    location.pathname.startsWith("/reception") ||
+    location.pathname.startsWith("/technician") ||
+    location.pathname.startsWith("/video-call");
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
@@ -87,6 +91,8 @@ function App() {
           <Route path="verify-phone" element={<VerifyPhone />} />
         </Route>
 
+        <Route path="/video-call/:roomId" element={<VideoCallRoom />} />
+
         {/* Admin Dashboard */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="" element={<AdminStatistics />} />
@@ -98,6 +104,7 @@ function App() {
           <Route path="warranty" element={<AdminWarrantyPolicies />} />
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="customers" element={<AdminCustomerManagement />} />
+          <Route path="customers/:id" element={<AdminCustomerDetailPage />} />
         </Route>
         <Route path="/inventory" element={<InventoryLayout />}>
           <Route path="" element={<InventoryDashboard />} />

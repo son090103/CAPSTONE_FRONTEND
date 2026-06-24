@@ -11,6 +11,7 @@ import {
     CheckCircle2,
     History,
     ShieldCheck,
+    Clock,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +23,7 @@ import AppointmentsTab from './AppointmentsTab';
 import SettingsTab from './SettingsTab';
 import HistoryTab from './HistoryTab';
 import WarrantyTab from './WarrantyTab';
+import TrackingTab from './TrackingTab';
 import type { RootState } from '../../../store/store';
 import type { UserModel } from '../../../model/User';
 import { useFetchClient } from '../../../hook/useFetchClient';
@@ -33,6 +35,7 @@ const MENU_ITEMS = [
     { id: 'appointments', label: 'Lịch hẹn', icon: Calendar },
     { id: 'history', label: 'Lịch sử sửa chữa', icon: History },
     { id: 'warranty', label: 'Bảo hành', icon: ShieldCheck },
+    { id: 'tracking', label: 'Theo dõi', icon: Clock },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
 ] as const;
 
@@ -374,6 +377,9 @@ export default function UserProfile() {
 
             case 'warranty':
                 return <WarrantyTab />;
+
+            case 'tracking':
+                return <TrackingTab />;
 
             case 'settings':
                 return (
