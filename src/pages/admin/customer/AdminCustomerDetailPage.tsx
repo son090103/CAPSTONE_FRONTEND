@@ -78,10 +78,10 @@ export default function AdminCustomerDetailPage() {
           const mappedAppointments = detail.appointments?.map((app: any) => ({
             id: app.id,
             date: app.scheduled_time ? new Date(app.scheduled_time) : new Date(),
-            serviceName: app.booking_type === "WALK_IN" ? "Khách vãng lai" : "Đặt trước",
+            serviceName: app.booking_type.includes("WALK_IN") ? "Khách vãng lai" : "Đặt trước",
             totalAmount: 0,
             status: app.serviceOrder ? app.serviceOrder.status : app.status,
-            category: app.booking_type === "WALK_IN" ? "Đến trực tiếp" : "Đặt lịch",
+            category: app.booking_type.includes("WALK_IN") ? "Đến trực tiếp" : "Đặt lịch",
             notes: app.notes || "",
             cost: app.serviceOrder ? app.serviceOrder.total_price || 0 : 0,
             vehicle: app.vehicle ? { model: "Hồ sơ xe", plate: app.vehicle.license_plate || "Chưa rõ biển số" } : null,
@@ -228,9 +228,9 @@ export default function AdminCustomerDetailPage() {
               <div className="mt-5">
                 <h2 className="font-black text-2xl text-slate-800 tracking-tight">{customer.fullName}</h2>
                 <div className="mt-3 flex justify-center">
-                  <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm ${TIER_CONFIG[customer.membership_tier].bg} ${TIER_CONFIG[customer.membership_tier].color} border ${TIER_CONFIG[customer.membership_tier].border}`}>
-                    <Award size={16} style={{ color: TIER_CONFIG[customer.membership_tier].iconColor }} />
-                    Hạng {TIER_CONFIG[customer.membership_tier].label}
+                  <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm ${TIER_CONFIG[customer.membership_tier as keyof typeof TIER_CONFIG]?.bg || TIER_CONFIG['BRONZE'].bg} ${TIER_CONFIG[customer.membership_tier as keyof typeof TIER_CONFIG]?.color || TIER_CONFIG['BRONZE'].color} border ${TIER_CONFIG[customer.membership_tier as keyof typeof TIER_CONFIG]?.border || TIER_CONFIG['BRONZE'].border}`}>
+                    <Award size={16} style={{ color: TIER_CONFIG[customer.membership_tier as keyof typeof TIER_CONFIG]?.iconColor || TIER_CONFIG['BRONZE'].iconColor }} />
+                    Hạng {TIER_CONFIG[customer.membership_tier as keyof typeof TIER_CONFIG]?.label || TIER_CONFIG['BRONZE'].label}
                   </span>
                 </div>
               </div>

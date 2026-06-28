@@ -73,10 +73,10 @@ export default function TechnicianAssignments() {
           const mappedData: Assignment[] = response.map((so: any) => {
             const services = so.tasks?.map((t: any) => t.catalog?.service_name) || [];
             const firstAssignment = so.tasks?.[0]?.assignments?.[0];
-            
+
             let status: Assignment['status'] = 'ASSIGNED';
             if (firstAssignment && ['ASSIGNED', 'IN_PROGRESS', 'PAUSED', 'PENDING_QC', 'COMPLETED'].includes(firstAssignment.status)) {
-               status = firstAssignment.status as Assignment['status'];
+              status = firstAssignment.status as Assignment['status'];
             }
 
             const aptDate = so.appointment?.scheduled_time ? new Date(so.appointment.scheduled_time) : new Date(so.createdAt);
@@ -339,18 +339,18 @@ export default function TechnicianAssignments() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => {
-                               if (asg.status === 'ASSIGNED') {
-                                 handleStartTask(asg.taskAssignmentId);
-                               } else if (asg.status === 'IN_PROGRESS') {
-                                 handleCompleteTask(asg.taskAssignmentId);
-                               }
+                              if (asg.status === 'ASSIGNED') {
+                                handleStartTask(asg.taskAssignmentId);
+                              } else if (asg.status === 'IN_PROGRESS') {
+                                handleCompleteTask(asg.taskAssignmentId);
+                              }
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0E4D40] bg-[#E8F5F0] hover:bg-[#C4E8E0] transition-colors"
                           >
                             {asg.status === 'ASSIGNED' ? <PlayCircle size={13} /> : asg.status === 'IN_PROGRESS' ? <CheckCircle2 size={13} /> : <Eye size={13} />}
                             {asg.status === 'ASSIGNED' ? 'Bắt đầu làm' : asg.status === 'IN_PROGRESS' ? 'Hoàn thành' : 'Chi tiết'}
                           </button>
-                          
+
                           <button
                             onClick={() => navigate(`/technician/assignments/${asg.serviceOrderId}`)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#0E4D40] hover:bg-slate-100 transition-colors"
@@ -386,11 +386,10 @@ export default function TechnicianAssignments() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    page === currentPage
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page === currentPage
                       ? 'bg-[#0E4D40] text-white shadow-md'
                       : 'text-slate-500 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>

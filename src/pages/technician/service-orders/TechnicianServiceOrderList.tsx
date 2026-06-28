@@ -1,3 +1,4 @@
+// chưa map đang static 
 import { useState, useMemo } from 'react';
 import {
   ClipboardList,
@@ -425,11 +426,10 @@ export default function TechnicianServiceOrderList() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    page === currentPage
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page === currentPage
                       ? 'bg-[#0E4D40] text-white shadow-md'
                       : 'text-slate-500 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>

@@ -22,6 +22,7 @@ const AdminServicesCategories = lazy(() => import("./pages/admin/services/AdminS
 const AdminResources = lazy(() => import("./pages/admin/resources/AdminResources"));
 const AdminServiceCatalog = lazy(() => import("./pages/admin/services/AdminServiceCatalog"));
 const AdminStaffManagement = lazy(() => import("./pages/admin/staff/AdminStaffManagement"));
+const AdminShiftManagement = lazy(() => import("./pages/admin/staff/AdminShiftManagement"));
 const AdminWarrantyPolicies = lazy(() => import("./pages/admin/warranty/AdminWarrantyPolicies"));
 const AdminStatistics = lazy(() => import("./pages/admin/dashboard/AdminStatistics"));
 const AdminCustomerManagement = lazy(() => import("./pages/admin/customer/AdminCustomerManagement"));
@@ -54,6 +55,7 @@ const TechnicianAssignments = lazy(() => import("./pages/technician/assignments/
 const TechnicianAssignmentsDetail = lazy(() => import("./pages/technician/assignments/TechnicianAssignmentsDetail"));
 const TechnicianRequestParts = lazy(() => import("./pages/technician/parts-request/TechnicianRequestParts"));
 const TechnicianUpdateProgress = lazy(() => import("./pages/technician/progress/TechnicianUpdateProgress"));
+const TechnicianMyShifts = lazy(() => import("./pages/technician/my-shifts/TechnicianMyShifts"));
 const LoadingScreen = () => (
   <div className="fixed inset-0 bg-slate-50/50 backdrop-blur-xs flex flex-col items-center justify-center z-50">
     <div className="relative w-16 h-16">
@@ -101,6 +103,7 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="services" element={<AdminServiceCatalog />} />
           <Route path="staff" element={<AdminStaffManagement />} />
+          <Route path="shifts" element={<AdminShiftManagement />} />
           <Route path="warranty" element={<AdminWarrantyPolicies />} />
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="customers" element={<AdminCustomerManagement />} />
@@ -124,6 +127,7 @@ function App() {
           <Route path="parts-request/:id" element={<TechnicianRequestParts />} />
           <Route path="progress" element={<TechnicianUpdateProgress />} />
           <Route path="progress/:id" element={<TechnicianUpdateProgress />} />
+          <Route path="my-shifts" element={<TechnicianMyShifts />} />
         </Route>
 
         {/* Reception Dashboard */}

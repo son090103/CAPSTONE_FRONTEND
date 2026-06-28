@@ -44,7 +44,8 @@ export default function BookingPage() {
     // Booking Flow State: 'CONSULTATION' | 'SPECIFIC'
     const [bookingFlow, setBookingFlow] = useState<'CONSULTATION' | 'SPECIFIC'>('SPECIFIC');
     // Service Subtype State: 'service' | 'combo'
-    const [serviceSubtype, setServiceSubtype] = useState<'service' | 'combo'>('combo');
+    const [serviceSubtype, setServiceSubtype] = useState<'combo' | 'service'>('combo');
+    const [serviceCategoryMode, setServiceCategoryMode] = useState<'SERVICES' | 'REPAIR'>('SERVICES');
     // Consultation notes / description state
     const [notes, setNotes] = useState('');
 
@@ -562,6 +563,17 @@ export default function BookingPage() {
                 subItems: subItems.length > 0 ? subItems : ['Chưa nhập thông tin yêu cầu'],
             };
         }
+        if (serviceCategoryMode === 'REPAIR') {
+            return {
+                title: 'Sửa chữa lỗi xe',
+                price: 'Liên hệ',
+                numericPrice: 0,
+                originalPrice: undefined,
+                discountPercentage: undefined,
+                promoText: 'Kỹ thuật viên sẽ kiểm tra trực tiếp',
+                subItems: issueDescription ? [`Mô tả: ${issueDescription}`] : ['Chưa có mô tả'],
+            };
+        }
         if (serviceSubtype === 'service') {
             if (selectedServiceIds.length === 0) return null;
             const selected = mappedServices.filter(x => selectedServiceIds.includes(x.id));
@@ -602,11 +614,11 @@ export default function BookingPage() {
             };
         }
         return null;
-    }, [bookingFlow, serviceSubtype, selectedServiceIds, selectedComboId, mappedServices, dbCombos, selectedSubItems, notes]);
+    }, [bookingFlow, serviceCategoryMode, serviceSubtype, selectedServiceIds, selectedComboId, mappedServices, dbCombos, selectedSubItems, issueDescription, consultationType, aiIssueResult]);
 
     // Handle subitems customize default fill — merge details of all selected services
     useEffect(() => {
-        if (bookingFlow === 'SPECIFIC' && serviceSubtype === 'service' && selectedServiceIds.length > 0) {
+        if (bookingFlow === 'SPECIFIC' && serviceCategoryMode === 'SERVICES' && serviceSubtype === 'service' && selectedServiceIds.length > 0) {
             const allDetails = selectedServiceIds.flatMap(id => {
                 const service = mappedServices.find(s => s.id === id);
                 return service?.details ?? [];
@@ -620,7 +632,7 @@ export default function BookingPage() {
                 setSelectedSubItems([]);
             }
         }
-    }, [bookingFlow, serviceSubtype, selectedServiceIds, mappedServices, selectedSubItems]);
+    }, [bookingFlow, serviceCategoryMode, serviceSubtype, selectedServiceIds, mappedServices, selectedSubItems]);
 
     const timeSlots = useMemo(() => {
         const slots: { time: string; label: string; isFull: boolean }[] = [];
@@ -696,6 +708,9 @@ export default function BookingPage() {
             case 2:
                 if (bookingFlow === 'CONSULTATION') return bookingDate !== '' && bookingTime !== '';
                 if (bookingFlow === 'SPECIFIC') {
+                    if (serviceCategoryMode === 'REPAIR') {
+                        return issueDescription.trim().length > 0;
+                    }
                     return selectedServiceIds.length > 0 || selectedComboId !== null;
                 }
                 return false;
@@ -745,15 +760,22 @@ export default function BookingPage() {
                 } else {
                     finalNotes = `[Yêu cầu Gọi Video Trực tiếp SOS] Khách hàng sẽ kết nối Video qua hệ thống.`;
                 }
+            } else if (bookingFlow === 'SPECIFIC' && serviceCategoryMode === 'REPAIR') {
+                finalNotes = `[Yêu cầu sửa chữa lỗi]\n- Mô tả lỗi của khách hàng: ${issueDescription}\n` + (notes ? `\n- Ghi chú thêm: ${notes}` : '');
+            }
+
+            let finalBookingType: string = bookingFlow; // CONSULTATION
+            if (bookingFlow === 'SPECIFIC') {
+                finalBookingType = serviceCategoryMode === 'SERVICES' ? 'CUSTOMER_SPECIFIC' : 'CUSTOMER_REPAIR';
             }
 
             const payload = {
                 vehicle_id: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'EXISTING' ? selectedCustomerVehicleId : null,
-                booking_type: bookingFlow,
+                booking_type: finalBookingType,
                 scheduled_time: new Date(`${bookingDate}T${bookingTime}:00`).toISOString(),
                 notes: finalNotes || null,
-                service_ids: bookingFlow === 'SPECIFIC' && selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
-                combo_ids: bookingFlow === 'SPECIFIC' && selectedComboId ? [selectedComboId] : undefined,
+                service_ids: bookingFlow === 'SPECIFIC' && serviceCategoryMode === 'SERVICES' && selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
+                combo_ids: bookingFlow === 'SPECIFIC' && serviceCategoryMode === 'SERVICES' && selectedComboId ? [selectedComboId] : undefined,
                 vehicle_brand: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehicleBrand : null,
                 vehicle_model: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehicleModel : null,
                 vehicle_plate: bookingFlow === 'SPECIFIC' && vehicleInputMode === 'NEW' ? vehiclePlate : null,
@@ -981,7 +1003,7 @@ export default function BookingPage() {
                                     {bookingFlow === 'CONSULTATION' && (
                                         <div className="space-y-6">
                                             {/* Subtype Switcher: AI Diagnosis vs Call Consultation */}
-                                            <div className="flex gap-2 p-1 bg-slate-100/60 rounded-xl max-w-md border border-slate-200/20">
+                                            <div className="flex gap-2 p-1 bg-slate-100/60 rounded-xl max-w-lg border border-slate-200/20">
                                                 <button
                                                     type="button"
                                                     onClick={() => setConsultationType('AI_DIAGNOSIS')}
@@ -1003,6 +1025,14 @@ export default function BookingPage() {
                                                 >
                                                     <Phone size={12} />
                                                     Gọi điện tư vấn trực tiếp
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBookingFlow('SPECIFIC')}
+                                                    className="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-none cursor-pointer text-slate-500 hover:text-slate-800 bg-transparent"
+                                                >
+                                                    <Wrench size={12} />
+                                                    Đặt dịch vụ sửa chữa
                                                 </button>
                                             </div>
 
@@ -1273,11 +1303,10 @@ export default function BookingPage() {
                                                                 setVehicleYear(v.year?.toString() || '');
                                                                 setVehicleColor(v.color || '');
                                                             }}
-                                                            className={`p-4 rounded-2xl border-2 transition-all relative overflow-hidden ${
-                                                                v.isDisabled ? 'opacity-60 cursor-not-allowed border-slate-200 bg-slate-50' : 
-                                                                selectedCustomerVehicleId === v.id
-                                                                ? 'border-amber-400 bg-amber-50/30 shadow-md cursor-pointer'
-                                                                : 'border-slate-100 bg-white hover:border-amber-200 hover:bg-slate-50 cursor-pointer'
+                                                            className={`p-4 rounded-2xl border-2 transition-all relative overflow-hidden ${v.isDisabled ? 'opacity-60 cursor-not-allowed border-slate-200 bg-slate-50' :
+                                                                    selectedCustomerVehicleId === v.id
+                                                                        ? 'border-amber-400 bg-amber-50/30 shadow-md cursor-pointer'
+                                                                        : 'border-slate-100 bg-white hover:border-amber-200 hover:bg-slate-50 cursor-pointer'
                                                                 }`}
                                                         >
                                                             <div className="flex justify-between items-start mb-2">
@@ -1560,48 +1589,70 @@ export default function BookingPage() {
                                         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-blue">
                                             <Settings size={20} />
                                         </div>
-                                        <h2 className="text-xl md:text-2xl font-bold text-brand-blue font-display">Chọn dịch vụ</h2>
+                                        <h2 className="text-xl md:text-2xl font-bold text-brand-blue font-display">Chọn dịch vụ hoặc Sửa chữa lỗi</h2>
                                     </div>
 
-                                    {/* Subtype Switcher */}
+                                    {/* Category Mode Switcher */}
                                     <div className="flex p-1 bg-slate-100/80 rounded-2xl mb-8 max-w-xl border border-slate-200/40">
                                         <button
                                             type="button"
-                                            onClick={() => { setServiceSubtype('combo'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                                }`}
+                                            onClick={() => setServiceCategoryMode('SERVICES')}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceCategoryMode === 'SERVICES' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'}`}
                                         >
-                                            <Sparkles size={14} />
-                                            Gói Combo
+                                            <Settings size={14} />
+                                            Chọn dịch vụ
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => { setServiceSubtype('service'); setServicePage(1); }}
-                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
-                                                }`}
+                                            onClick={() => setServiceCategoryMode('REPAIR')}
+                                            className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceCategoryMode === 'REPAIR' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'}`}
                                         >
-                                            <Settings size={14} />
-                                            Dịch vụ lẻ
+                                            <Wrench size={14} />
+                                            Sửa chữa lỗi
                                         </button>
                                     </div>
 
-                                    {/* List Display according to type */}
-                                    {serviceSubtype === 'service' && (
-                                        <SingleServicesSelector
-                                            mappedServices={mappedServices}
-                                            activeCategories={activeCategories}
-                                            selectedServiceIds={selectedServiceIds}
-                                            setSelectedServiceIds={setSelectedServiceIds}
-                                            COLORS={COLORS}
-                                            t={t as any}
-                                            selectedCategoryId={selectedCategoryId}
-                                            setSelectedCategoryId={setSelectedCategoryId}
-                                            servicePage={servicePage}
-                                            setServicePage={setServicePage}
-                                            dbCombos={dbCombos}
-                                            selectedComboId={selectedComboId}
-                                        />
-                                    )}
+                                    {serviceCategoryMode === 'SERVICES' ? (
+                                        <>
+                                            {/* Subtype Switcher */}
+                                            <div className="flex p-1 bg-slate-100/80 rounded-2xl mb-8 max-w-xl border border-slate-200/40">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setServiceSubtype('combo'); setServicePage(1); }}
+                                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'combo' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                        }`}
+                                                >
+                                                    <Sparkles size={14} />
+                                                    Gói Combo
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setServiceSubtype('service'); setServicePage(1); }}
+                                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${serviceSubtype === 'service' ? 'bg-[#00285E] text-white shadow-md shadow-blue-900/10' : 'text-slate-600 hover:text-slate-950 hover:bg-white/50'
+                                                        }`}
+                                                >
+                                                    <Settings size={14} />
+                                                    Dịch vụ lẻ
+                                                </button>
+                                            </div>
+
+                                            {/* List Display according to type */}
+                                            {serviceSubtype === 'service' && (
+                                                <SingleServicesSelector
+                                                    mappedServices={mappedServices}
+                                                    activeCategories={activeCategories}
+                                                    selectedServiceIds={selectedServiceIds}
+                                                    setSelectedServiceIds={setSelectedServiceIds}
+                                                    COLORS={COLORS}
+                                                    t={t as any}
+                                                    selectedCategoryId={selectedCategoryId}
+                                                    setSelectedCategoryId={setSelectedCategoryId}
+                                                    servicePage={servicePage}
+                                                    setServicePage={setServicePage}
+                                                    dbCombos={dbCombos}
+                                                    selectedComboId={selectedComboId}
+                                                />
+                                            )}
 
                                     {serviceSubtype === 'combo' && (
                                         <ComboServicesSelector
@@ -1675,6 +1726,22 @@ export default function BookingPage() {
                                                 })}
                                             </div>
                                         </motion.div>
+                                    )}
+                                        </>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                                    Mô tả tình trạng lỗi/hỏng hóc của xe để đặt lịch sửa chữa <span className="text-red-500">*</span>
+                                                </label>
+                                                <textarea
+                                                    value={issueDescription}
+                                                    onChange={(e) => setIssueDescription(e.target.value)}
+                                                    placeholder="Ví dụ: Xe bị xước móp ở cửa trước bên phải, cần phục hồi và sơn lại..."
+                                                    className="w-full h-40 bg-[#F8FAFC] border border-blue-50/50 rounded-2xl p-4 text-sm outline-none transition-all focus:border-amber-400 focus:bg-white text-brand-blue shadow-inner"
+                                                />
+                                            </div>
+                                        </div>
                                     )}
                                 </motion.div>
                             )}

@@ -16,6 +16,7 @@ import {
   Info,
   AlertTriangle,
   Settings,
+  Calendar,
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -134,6 +135,7 @@ export default function TechnicianLayout() {
   const menuItems = [
     { name: 'Đơn dịch vụ', icon: ClipboardList, path: '/technician/service-orders' },
     { name: 'Phân công', icon: CheckSquare, path: '/technician/assignments' },
+    { name: 'Lịch làm việc', icon: Calendar, path: '/technician/my-shifts' },
     { name: 'Yêu cầu phụ tùng', icon: PackagePlus, path: '/technician/parts-request' },
     { name: 'Cập nhật tiến độ', icon: Activity, path: '/technician/progress' },
   ];
@@ -143,6 +145,7 @@ export default function TechnicianLayout() {
     const path = location.pathname;
     if (path.includes('/service-orders')) return 'Đơn dịch vụ';
     if (path.includes('/assignments')) return 'Phân công';
+    if (path.includes('/my-shifts')) return 'Lịch làm việc';
     if (path.includes('/parts-request')) return 'Yêu cầu phụ tùng';
     if (path.includes('/progress')) return 'Cập nhật tiến độ';
     return 'Đơn dịch vụ';
