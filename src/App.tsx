@@ -15,7 +15,7 @@ const Team = lazy(() => import("./pages/customer/team/Team"));
 const OtpVerification = lazy(() => import("./pages/customer/home/verify-otp"));
 const VerifyPhone = lazy(() => import("./pages/customer/home/verify-phone"));
 
-
+// Admin Page Imports
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./pages/admin/settings/AdminSettings"));
 const AdminServicesCategories = lazy(() => import("./pages/admin/services/AdminServicesCategories"));
