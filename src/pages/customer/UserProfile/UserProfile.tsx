@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
     Car,
@@ -9,128 +9,339 @@ import {
     HelpCircle,
     LogOut,
     CheckCircle2,
+    History,
+    ShieldCheck,
 } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+import { logout, loginSuccess } from '../../../store/slices/userSlice';
 
 import DashboardTab from './DashboardTab';
 import VehiclesTab from './VehiclesTab';
 import AppointmentsTab from './AppointmentsTab';
 import SettingsTab from './SettingsTab';
-
-const DEFAULT_AVATAR_URL =
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+import HistoryTab from './HistoryTab';
+import WarrantyTab from './WarrantyTab';
+import type { RootState } from '../../../store/store';
+import type { UserModel } from '../../../model/User';
+import { useFetchClient } from '../../../hook/useFetchClient';
+import { PROFILE_API_ENDPOINTS } from '../../../constants/customer/profileApiEndpoint';
 
 const MENU_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'vehicles', label: 'Xe sở hữu', icon: Car },
     { id: 'appointments', label: 'Lịch hẹn', icon: Calendar },
+    { id: 'history', label: 'Lịch sử sửa chữa', icon: History },
+    { id: 'warranty', label: 'Bảo hành', icon: ShieldCheck },
     { id: 'settings', label: 'Cài đặt', icon: Settings },
-];
+] as const;
+
+type TabId = typeof MENU_ITEMS[number]['id'];
 
 export default function UserProfile() {
+    const { t } = useTranslation();
+
     useEffect(() => {
-        document.title = 'Thông tin cá nhân | AMG Intelligent';
-    }, []);
+        document.title = `${t('profile.title', 'Thông tin cá nhân')} | AGM Intelligent`;
+    }, [t]);
 
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const dispatch = useDispatch();
+    const { fetchPrivate, fetchPrivateForm } = useFetchClient();
 
-    // Dashboard tab state
-    const [isEditing, setIsEditing] = useState(false);
-    const [showToast, setShowToast] = useState(false);
-    const [formData, setFormData] = useState({
-        fullName: 'Nguyễn Văn An',
-        email: 'an.nguyen@email.com',
-        phone: '+84 90 123 4567',
-        address: '72 Lê Thánh Tôn, Quận 1, TP. HCM',
-    });
-
-    // Appointments tab state
-    const [selectedVehicle, setSelectedVehicle] = useState('porsche');
-    const [selectedService, setSelectedService] = useState('tongquat');
-    const [selectedDate, setSelectedDate] = useState(3);
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState('10:30 AM');
-    const [isAccepted, setIsAccepted] = useState(false);
-
-    // Settings tab state
-    const [settingsData, setSettingsData] = useState({
-        fullName: 'Nguyễn Văn An',
-        email: 'an.nguyen@example.com',
-        phone: '0901 234 567',
-        newPassword: '',
-        confirmPassword: '',
-        enable2FA: false,
-        notifyEmail: true,
-        notifySMS: false,
-        notifyPush: true,
-        language: 'Tiếng Việt',
-        darkMode: false,
-    });
-
-    // Shared avatar state
-    const [avatarUrl, setAvatarUrl] = useState(
-        () => localStorage.getItem('userAvatar') || DEFAULT_AVATAR_URL
+    const user = useSelector(
+        (state: RootState) => state.user.user as UserModel | null
     );
 
-    useEffect(() => {
-        const handleAvatarChange = () => {
-            setAvatarUrl(localStorage.getItem('userAvatar') || DEFAULT_AVATAR_URL);
-        };
-        window.addEventListener('storage', handleAvatarChange);
-        window.addEventListener('avatarChanged', handleAvatarChange);
-        return () => {
-            window.removeEventListener('storage', handleAvatarChange);
-            window.removeEventListener('avatarChanged', handleAvatarChange);
-        };
-    }, []);
+    // =====================================================
+    // TAB STATE
+    // =====================================================
 
-    const handleAvatarUpdate = () => {
+    const [activeTab, setActiveTab] = useState<TabId | string>('dashboard');
+    const [isEditing, setIsEditing] = useState(false);
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState(t('profile.updateSuccess', 'Cập nhật thông tin thành công!'));
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // =====================================================
+    // FORM DATA — derived từ Redux + editOverrides
+    // =====================================================
+
+    const [editOverrides, setEditOverrides] = useState<Partial<{
+        fullName: string;
+        email: string;
+        phone: string;
+        address: string;
+    }>>({});
+
+    const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+
+    const formData = {
+        fullName: editOverrides.fullName ?? user?.fullName ?? '',
+        email: editOverrides.email ?? '',
+        phone: editOverrides.phone ?? user?.phoneNumber ?? '',
+        address: editOverrides.address ?? '',
+    };
+
+    // =====================================================
+    // SETTINGS DATA — derived từ Redux + settingsOverrides
+    // =====================================================
+
+    const [settingsOverrides, setSettingsOverrides] = useState<Partial<{
+        fullName: string;
+        email: string;
+        phone: string;
+        newPassword: string;
+        confirmPassword: string;
+        enable2FA: boolean;
+        notifyEmail: boolean;
+        notifySMS: boolean;
+        notifyPush: boolean;
+        language: string;
+        darkMode: boolean;
+    }>>({});
+
+    const [pendingSettingsAvatarFile, setPendingSettingsAvatarFile] = useState<File | null>(null);
+
+    const settingsData = {
+        fullName: settingsOverrides.fullName ?? user?.fullName ?? '',
+        email: settingsOverrides.email ?? '',
+        phone: settingsOverrides.phone ?? user?.phoneNumber ?? '',
+        newPassword: settingsOverrides.newPassword ?? '',
+        confirmPassword: settingsOverrides.confirmPassword ?? '',
+        enable2FA: settingsOverrides.enable2FA ?? false,
+        notifyEmail: settingsOverrides.notifyEmail ?? true,
+        notifySMS: settingsOverrides.notifySMS ?? false,
+        notifyPush: settingsOverrides.notifyPush ?? true,
+        language: settingsOverrides.language ?? 'Tiếng Việt',
+        darkMode: settingsOverrides.darkMode ?? false,
+    };
+
+    // =====================================================
+    // AVATAR
+    // =====================================================
+
+    const [avatarPreview, setAvatarPreview] = useState<string>('');
+    const avatarUrl: string = avatarPreview || user?.avatar || '';
+
+
+    // =====================================================
+    // HELPER: Hiện toast
+    // =====================================================
+
+    const showSuccessToast = (message = t('profile.updateSuccess', 'Cập nhật thông tin thành công!')) => {
+        setToastMessage(message);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+    };
+
+    // =====================================================
+    // HELPER: Cập nhật Redux store sau khi API thành công
+    // =====================================================
+
+    const syncUserToRedux = (userData: any) => {
+        dispatch(loginSuccess({
+            id: userData.id,
+            fullName: userData.fullName,
+            phoneNumber: userData.phoneNumber,
+            avatar: userData.avatar,
+            role: userData.role,
+        }));
+    };
+
+    // =====================================================
+    // HANDLE AVATAR
+    // =====================================================
+
+    const handleAvatarUpdate = (forSettings = false) => {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.accept = 'image/*';
 
-        fileInput.onchange = (e: any) => {
-            const file = e.target?.files?.[0];
+        fileInput.onchange = (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            const file = target.files?.[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const resultString = reader.result as string;
-                    try {
-                        localStorage.setItem('userAvatar', resultString);
-                        setAvatarUrl(resultString);
-                        window.dispatchEvent(new Event('avatarChanged'));
-                        alert('Tải lên và đồng bộ ảnh đại diện thành công!');
-                    } catch {
-                        alert('Dung lượng ảnh quá lớn để lưu trữ cục bộ. Vui lòng chọn ảnh có kích thước nhỏ hơn.');
-                    }
-                };
-                reader.readAsDataURL(file);
+                const previewUrl = URL.createObjectURL(file);
+                setAvatarPreview(previewUrl);
+
+                if (forSettings) {
+                    setPendingSettingsAvatarFile(file);
+                } else {
+                    setPendingAvatarFile(file);
+                }
             }
         };
 
         fileInput.click();
     };
 
+    // =====================================================
+    // HANDLE FORM (Dashboard)
+    // =====================================================
+
     const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setEditOverrides((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = () => {
-        setIsEditing(false);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+    // =====================================================
+    // HANDLE SAVE DASHBOARD
+    // =====================================================
+
+    const handleSave = async () => {
+        setIsSubmitting(true);
+        try {
+            const form = new FormData();
+
+            const newFullName = editOverrides.fullName?.trim() ?? '';
+            if (newFullName) {
+                form.append('fullName', newFullName);
+            }
+
+            if (pendingAvatarFile) {
+                form.append('avatar', pendingAvatarFile);
+            }
+
+            if (!newFullName && !pendingAvatarFile) {
+                setIsEditing(false);
+                return;
+            }
+
+            const response = await fetchPrivateForm(
+                PROFILE_API_ENDPOINTS.UPDATE_PROFILE,
+                'PUT',
+                form,
+            );
+
+            syncUserToRedux(response.data);
+
+            setEditOverrides({});
+            setPendingAvatarFile(null);
+            setAvatarPreview('');
+
+            setIsEditing(false);
+            showSuccessToast(t('profile.updateSuccess', 'Cập nhật thông tin thành công!'));
+        } catch (error: any) {
+            alert(error.message || t('profile.updateFail', 'Cập nhật thất bại, vui lòng thử lại.'));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleSettingChange = (field: string, value: any) => {
-        setSettingsData((prev) => ({ ...prev, [field]: value }));
+    // =====================================================
+    // HANDLE SAVE AVATAR (DEDICATED)
+    // =====================================================
+
+    const handleAvatarSave = async () => {
+        if (!pendingAvatarFile) return;
+        setIsSubmitting(true);
+        try {
+            const form = new FormData();
+
+            const currentFullName = formData.fullName || user?.fullName || '';
+            if (currentFullName) {
+                form.append('fullName', currentFullName);
+            }
+
+            form.append('avatar', pendingAvatarFile);
+
+            const response = await fetchPrivateForm(
+                PROFILE_API_ENDPOINTS.UPDATE_PROFILE,
+                'PUT',
+                form,
+            );
+
+            syncUserToRedux(response.data);
+
+            setPendingAvatarFile(null);
+            setAvatarPreview('');
+            showSuccessToast(t('profile.avatarUpdateSuccess', 'Cập nhật ảnh đại diện thành công!'));
+        } catch (error: any) {
+            alert(error.message || t('profile.avatarUpdateFail', 'Cập nhật ảnh đại diện thất bại, vui lòng thử lại.'));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleResetAppointment = () => {
-        setSelectedVehicle('porsche');
-        setSelectedService('tongquat');
-        setSelectedDate(3);
-        setSelectedTimeSlot('10:30 AM');
-        setIsAccepted(false);
+    const handleAvatarCancel = () => {
+        setPendingAvatarFile(null);
+        setAvatarPreview('');
     };
+
+    // =====================================================
+    // HANDLE SAVE SETTINGS
+    // =====================================================
+
+    const handleSettingsSave = async () => {
+        if (
+            settingsOverrides.newPassword &&
+            settingsOverrides.newPassword !== settingsOverrides.confirmPassword
+        ) {
+            alert(t('settings.passwordMismatch', 'Mật khẩu mới và xác nhận mật khẩu không khớp!'));
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const form = new FormData();
+
+            const newFullName = settingsOverrides.fullName?.trim() ?? '';
+            if (newFullName) {
+                form.append('fullName', newFullName);
+            }
+
+            if (pendingSettingsAvatarFile) {
+                form.append('avatar', pendingSettingsAvatarFile);
+            }
+
+            if (!newFullName && !pendingSettingsAvatarFile) {
+                showSuccessToast(t('settings.updateSuccess', 'Đã lưu cài đặt thành công!'));
+                return;
+            }
+
+            const response = await fetchPrivateForm(
+                PROFILE_API_ENDPOINTS.UPDATE_PROFILE,
+                'PUT',
+                form,
+            );
+
+            syncUserToRedux(response.data);
+
+            setSettingsOverrides((prev) => ({
+                ...prev,
+                fullName: undefined,
+            }));
+            setPendingSettingsAvatarFile(null);
+            setAvatarPreview('');
+
+            showSuccessToast(t('settings.updateSuccess', 'Đã lưu cài đặt thành công!'));
+        } catch (error: any) {
+            alert(error.message || t('profile.updateFail', 'Cập nhật thất bại, vui lòng thử lại.'));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // =====================================================
+    // HANDLE CHANGE PASSWORD
+    // =====================================================
+    const handleChangePassword = async (data: any) => {
+        await fetchPrivate(
+            PROFILE_API_ENDPOINTS.CHANGE_PASSWORD,
+            'PUT',
+            data
+        );
+        showSuccessToast(t('settings.changePasswordSuccess', 'Đổi mật khẩu thành công!'));
+    };
+
+    const handleSettingChange = (field: string, value: string | boolean) => {
+        setSettingsOverrides((prev) => ({ ...prev, [field]: value }));
+    };
+
+
+    // =====================================================
+    // RENDER TAB
+    // =====================================================
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -140,40 +351,43 @@ export default function UserProfile() {
                         avatarUrl={avatarUrl}
                         formData={formData}
                         isEditing={isEditing}
-                        onAvatarUpdate={handleAvatarUpdate}
+                        isSubmitting={isSubmitting}
+                        onAvatarUpdate={() => handleAvatarUpdate(false)}
                         onInputChange={handleInputChange}
                         onSave={handleSave}
                         onEditToggle={setIsEditing}
+                        hasPendingAvatar={!!pendingAvatarFile}
+                        onAvatarSave={handleAvatarSave}
+                        onAvatarCancel={handleAvatarCancel}
+                        onViewAllHistory={() => setActiveTab('history')}
                     />
                 );
+
             case 'vehicles':
                 return <VehiclesTab />;
+
             case 'appointments':
-                return (
-                    <AppointmentsTab
-                        selectedVehicle={selectedVehicle}
-                        selectedService={selectedService}
-                        selectedDate={selectedDate}
-                        selectedTimeSlot={selectedTimeSlot}
-                        isAccepted={isAccepted}
-                        onSelectVehicle={setSelectedVehicle}
-                        onSelectService={setSelectedService}
-                        onSelectDate={setSelectedDate}
-                        onSelectTimeSlot={setSelectedTimeSlot}
-                        onAccept={() => setIsAccepted(true)}
-                        onReset={handleResetAppointment}
-                        onNavigateBack={() => setActiveTab('vehicles')}
-                    />
-                );
+                return <AppointmentsTab />;
+
+            case 'history':
+                return <HistoryTab />;
+
+            case 'warranty':
+                return <WarrantyTab />;
+
             case 'settings':
                 return (
                     <SettingsTab
                         settingsData={settingsData}
                         avatarUrl={avatarUrl}
-                        onAvatarUpdate={handleAvatarUpdate}
+                        isSubmitting={isSubmitting}
+                        onAvatarUpdate={() => handleAvatarUpdate(true)}
                         onSettingChange={handleSettingChange}
+                        onSave={handleSettingsSave}
+                        onChangePassword={handleChangePassword}
                     />
                 );
+
             default:
                 return null;
         }
@@ -181,7 +395,7 @@ export default function UserProfile() {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans">
-            {/* Toast Notification */}
+            {/* TOAST */}
             <AnimatePresence>
                 {showToast && (
                     <motion.div
@@ -191,74 +405,80 @@ export default function UserProfile() {
                         className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 font-bold text-sm border border-emerald-500"
                     >
                         <CheckCircle2 className="w-5 h-5 animate-bounce" />
-                        <span>Cập nhật thông tin thành công!</span>
+                        <span>{toastMessage}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Sidebar */}
-                <div className="lg:col-span-3 flex flex-col gap-3">
-                    <div className="px-4 py-1">
-                        <h2 className="text-gray-400 font-bold text-base tracking-wide">Thông tin cá nhân</h2>
+                {/* SIDEBAR */}
+                <div className="lg:col-span-3 flex flex-col gap-2 md:gap-3">
+                    <div className="hidden lg:block px-4 py-1">
+                        <h2 className="text-gray-400 font-bold text-base tracking-wide">
+                            {t('profile.title', 'Thông tin cá nhân')}
+                        </h2>
                     </div>
 
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="bg-[#F1F5F9] rounded-2xl p-4 flex flex-col justify-between border border-gray-200/60 shadow-sm min-h-[580px]"
+                        className="bg-[#F1F5F9] rounded-2xl p-3 md:p-4 flex flex-col justify-between border border-gray-200/60 shadow-sm min-h-auto lg:min-h-[580px]"
                     >
-                        <div className="space-y-2 pt-2">
+                        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2 pt-1 lg:pt-2">
                             {MENU_ITEMS.map((item) => {
                                 const IconComponent = item.icon;
                                 const isActive = activeTab === item.id;
+
                                 return (
                                     <motion.button
                                         key={item.id}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => setActiveTab(item.id)}
-                                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm transition-all text-left ${isActive
+                                        className={`w-full flex items-center gap-2.5 md:gap-3 px-3 py-2.5 md:px-4 md:py-3.5 rounded-xl font-bold text-xs md:text-sm transition-all text-left ${isActive
                                             ? 'bg-[#F9A11B] text-brand-blue shadow-md shadow-orange-500/10'
                                             : 'text-brand-blue/70 hover:bg-white/60 hover:text-brand-blue'
                                             }`}
                                     >
                                         <IconComponent
-                                            className={`w-5 h-5 ${isActive ? 'text-brand-blue' : 'text-brand-blue/60'}`}
+                                            className={`w-4 h-4 md:w-5 md:h-5 shrink-0 ${isActive ? 'text-brand-blue' : 'text-brand-blue/60'
+                                                }`}
                                         />
-                                        <span>{item.label}</span>
+                                        <span className="truncate">{t(`profile.tabs.${item.id}`, item.label)}</span>
                                     </motion.button>
                                 );
                             })}
                         </div>
 
-                        <div className="pt-4 border-t border-gray-200/80 space-y-2 mt-auto">
+                        <div className="pt-3 lg:pt-4 border-t border-gray-200/80 grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2 mt-3 lg:mt-auto">
                             <button
-                                onClick={() => alert('Hệ thống hỗ trợ trực tuyến đang kết nối...')}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm text-brand-blue/70 hover:bg-white/60 hover:text-brand-blue transition-all text-left"
+                                onClick={() => alert(t('profile.supportMessage', 'Hệ thống hỗ trợ trực tuyến đang kết nối...'))}
+                                className="w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl font-medium text-xs md:text-sm text-brand-blue/70 hover:bg-white/60 hover:text-brand-blue transition-all text-left bg-white/40 lg:bg-transparent"
                             >
-                                <HelpCircle className="w-5 h-5 text-brand-blue/60" />
-                                <span>Trợ giúp & Hỗ trợ</span>
+                                <HelpCircle className="w-4 h-4 md:w-5 md:h-5 text-brand-blue/60 shrink-0" />
+                                <span className="truncate">{t('profile.support', 'Trợ giúp & Hỗ trợ')}</span>
                             </button>
 
                             <button
                                 onClick={() => {
-                                    if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                                        localStorage.removeItem('isAuthenticated');
+                                    if (confirm(t('profile.logoutConfirm', 'Bạn có chắc chắn muốn đăng xuất?'))) {
+                                        localStorage.removeItem('token');
+                                        localStorage.removeItem('userAvatar');
+                                        dispatch(logout());
                                         window.location.href = '/login';
                                     }
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm text-red-600 hover:bg-red-50 transition-all text-left group"
+                                className="w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl font-bold text-xs md:text-sm text-red-600 hover:bg-red-50 transition-all text-left group bg-red-50/30 lg:bg-transparent"
                             >
-                                <LogOut className="w-5 h-5 text-red-600 group-hover:translate-x-1 transition-transform" />
-                                <span>Đăng xuất</span>
+                                <LogOut className="w-4 h-4 md:w-5 md:h-5 text-red-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                                <span className="truncate">{t('profile.logout', 'Đăng xuất')}</span>
                             </button>
                         </div>
                     </motion.div>
                 </div>
 
-                {/* Main Content */}
+                {/* MAIN CONTENT */}
                 <div className="lg:col-span-9 flex flex-col gap-6">
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -266,7 +486,9 @@ export default function UserProfile() {
                         transition={{ duration: 0.4 }}
                         className="pt-1"
                     >
-                        <h1 className="text-2xl font-display font-bold text-brand-blue">Hồ sơ người dùng</h1>
+                        <h1 className="text-2xl font-display font-bold text-brand-blue">
+                            {t('profile.userProfile', 'Hồ sơ người dùng')}
+                        </h1>
                     </motion.div>
 
                     {renderTabContent()}

@@ -10,12 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.12.0",
+    "axios": "^1.16.1",
+    "firebase": "^12.13.0",
+    "i18next": "^26.3.0",
+    "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^1.16.0",
     "motion": "^12.38.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-i18next": "^17.0.8",
     "react-phone-input-2": "^2.15.1",
-    "react-router-dom": "^7.14.1"
+    "react-redux": "^9.3.0",
+    "react-router-dom": "^7.14.1",
+    "socket.io-client": "^4.8.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -32,6 +41,6 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.9"
+    "vite": "^8.0.13"
   }
 }
