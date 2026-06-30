@@ -39,12 +39,12 @@ interface Assignment {
   bookingType: string;
 }
 
-const ASSIGNMENT_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  ASSIGNED: { label: 'Mới phân công', color: '#D97706', bg: '#FEF3C7', icon: Clock },
-  IN_PROGRESS: { label: 'Đang thực hiện', color: '#3B82F6', bg: '#EFF6FF', icon: CheckSquare },
-  PAUSED: { label: 'Tạm dừng', color: '#EF4444', bg: '#FEF2F2', icon: XCircle },
-  PENDING_QC: { label: 'Chờ QC', color: '#8B5CF6', bg: '#F5F3FF', icon: Eye },
-  COMPLETED: { label: 'Hoàn thành', color: '#10B981', bg: '#ECFDF5', icon: CheckCircle2 },
+const ASSIGNMENT_STATUS_CONFIG: Record<string, { label: string; className: string; icon: React.ElementType }> = {
+  ASSIGNED: { label: 'Đã phân công', className: 'bg-amber-50 text-amber-600 border border-amber-200', icon: Clock },
+  IN_PROGRESS: { label: 'Đang thực hiện', className: 'bg-blue-50 text-blue-700 border border-blue-200', icon: CheckSquare },
+  PAUSED: { label: 'Tạm dừng', className: 'bg-rose-50 text-rose-600 border border-rose-200', icon: XCircle },
+  PENDING_QC: { label: 'Chờ QC', className: 'bg-violet-50 text-violet-700 border border-violet-200', icon: Eye },
+  COMPLETED: { label: 'Hoàn thành', className: 'bg-emerald-50 text-emerald-600 border border-emerald-200', icon: CheckCircle2 },
 };
 
 // Mock assignments removed to use API data
@@ -181,8 +181,8 @@ export default function TechnicianAssignments() {
     <div className="flex-1 p-4 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
       {/* HEADER */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-[#0E4D40] tracking-tight leading-none mb-2 flex items-center gap-2">
-          <CheckSquare className="text-amber-500" size={28} />
+        <h1 className="text-2xl md:text-3xl font-bold text-[#00285E] tracking-tight leading-none mb-2 flex items-center gap-2">
+          <CheckSquare className="text-[#F9A11B]" size={28} />
           Quản lý phân công
         </h1>
         <p className="text-slate-500 text-sm">
@@ -193,7 +193,7 @@ export default function TechnicianAssignments() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng phân công', value: kpiCounts.total, icon: <CheckSquare size={22} />, color: '#0E4D40', bg: '#E8F5F0' },
+          { label: 'Tổng phân công', value: kpiCounts.total, icon: <CheckSquare size={22} />, color: '#00285E', bg: '#EDF3FF' },
           { label: 'Mới phân công', value: kpiCounts.assigned, icon: <Clock size={22} />, color: '#D97706', bg: '#FEF3C7' },
           { label: 'Đang thực hiện', value: kpiCounts.inProgress, icon: <CheckSquare size={22} />, color: '#3B82F6', bg: '#EFF6FF' },
           { label: 'Hoàn thành', value: kpiCounts.completed, icon: <CheckCircle2 size={22} />, color: '#10B981', bg: '#ECFDF5' },
@@ -222,7 +222,7 @@ export default function TechnicianAssignments() {
               placeholder="Tìm theo tên khách, biển số xe, mã phân công..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40] transition-all font-semibold"
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -230,7 +230,7 @@ export default function TechnicianAssignments() {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40] transition-all"
+              className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="ASSIGNED">Mới phân công</option>
@@ -247,7 +247,7 @@ export default function TechnicianAssignments() {
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <Loader2 size={48} className="mb-4 text-[#0E4D40] animate-spin" />
+            <Loader2 size={48} className="mb-4 text-[#00285E] animate-spin" />
             <p className="text-lg font-semibold mb-1 text-slate-700">Đang tải phân công...</p>
           </div>
         ) : paginatedData.length === 0 ? (
@@ -258,18 +258,17 @@ export default function TechnicianAssignments() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
+            <table className="w-full min-w-[1100px] text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
-                  <th className="py-3 px-4">Mã phân công</th>
-                  <th className="py-3 px-4">Mã đơn DV</th>
-                  <th className="py-3 px-4">Khách hàng</th>
-                  <th className="py-3 px-4">Xe</th>
-                  <th className="py-3 px-4">Dịch vụ</th>
-                  <th className="py-3 px-4">Lịch hẹn</th>
-                  <th className="py-3 px-4">Ngày phân công</th>
-                  <th className="py-3 px-4">Trạng thái</th>
-                  <th className="py-3 px-4 text-center">Thao tác</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Mã</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Khách hàng</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Xe</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Dịch vụ</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Lịch hẹn</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Ngày phân công</th>
+                  <th className="py-3 px-4 align-middle whitespace-nowrap">Trạng thái</th>
+                  <th className="py-3 px-4 align-middle text-center whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,65 +277,67 @@ export default function TechnicianAssignments() {
                   const StatusIcon = statusCfg.icon;
                   return (
                     <tr key={asg.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 px-4">
-                        <span className="font-bold text-[#0E4D40] text-xs">{asg.id}</span>
+                      <td className="py-4 px-4 align-middle whitespace-nowrap">
+                        <span className="font-bold text-[#00285E] text-xs">{asg.id}</span>
                       </td>
-                      <td className="py-4 px-4">
-                        <span className="font-semibold text-slate-600 text-xs">{asg.serviceOrderId}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-[#E8F5F0] flex items-center justify-center">
-                            <Users size={14} className="text-[#0E4D40]" />
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex items-center gap-2 min-w-[160px]">
+                          <div className="w-8 h-8 shrink-0 rounded-full bg-[#EDF3FF] flex items-center justify-center">
+                            <Users size={14} className="text-[#00285E]" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-700 text-xs">{asg.customerName}</p>
-                            <p className="text-[10px] text-slate-400">{asg.customerPhone}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-700 text-xs truncate">{asg.customerName}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{asg.customerPhone}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <Car size={13} className="text-slate-400" />
-                          <div>
-                            <p className="font-semibold text-slate-700 text-xs">{asg.vehiclePlate}</p>
-                            <p className="text-[10px] text-slate-400">{asg.vehicleModel}</p>
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex items-center gap-1.5 min-w-[140px]">
+                          <Car size={13} className="text-slate-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-700 text-xs truncate">{asg.vehiclePlate}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{asg.vehicleModel}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-0.5 max-w-[140px]">
-                          {asg.services.slice(0, 2).map((svc, i) => (
-                            <p key={i} className="text-[10px] text-slate-600 font-medium truncate">{svc}</p>
-                          ))}
-                          {asg.services.length > 2 && (
-                            <p className="text-[10px] text-slate-400">+{asg.services.length - 2} khác</p>
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex flex-wrap gap-1 min-w-[160px] max-w-[220px]">
+                          {asg.services.length > 0 ? (
+                            asg.services.map((svc, i) => (
+                              <span
+                                key={i}
+                                className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-600 font-medium"
+                              >
+                                {svc}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-slate-400">—</span>
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={11} className="text-slate-400" />
+                      <td className="py-4 px-4 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar size={11} className="text-slate-400 shrink-0" />
                           <div>
                             <p className="text-xs text-slate-700 font-semibold">{formatDate(asg.appointmentDate)}</p>
                             <p className="text-[10px] text-slate-400">{asg.appointmentTime}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 align-middle whitespace-nowrap">
                         <span className="text-xs text-slate-600 font-medium">{formatDateTime(asg.assignedAt)}</span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 align-middle whitespace-nowrap">
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
-                          style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.className}`}
                         >
-                          <StatusIcon size={12} />
+                          <StatusIcon size={12} className="shrink-0" />
                           {statusCfg.label}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                           {asg.status === 'ASSIGNED' ? (
                             (asg.bookingType === 'RECEPTIONIST_REPAIR' || asg.bookingType === 'CUSTOMER_REPAIR') ? (
                               <button
@@ -352,7 +353,7 @@ export default function TechnicianAssignments() {
                             ) : (
                               <button
                                 onClick={() => handleStartTask(asg.taskAssignmentId)}
-                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0E4D40] bg-[#E8F5F0] hover:bg-[#C4E8E0] transition-colors"
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#00285E] bg-[#EDF3FF] hover:bg-[#DCE8FF] transition-colors"
                               >
                                 <PlayCircle size={13} />
                                 Bắt đầu làm
@@ -361,7 +362,7 @@ export default function TechnicianAssignments() {
                           ) : asg.status === 'IN_PROGRESS' ? (
                             <button
                               onClick={() => handleCompleteTask(asg.taskAssignmentId)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0E4D40] bg-[#E8F5F0] hover:bg-[#C4E8E0] transition-colors"
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#00285E] bg-[#EDF3FF] hover:bg-[#DCE8FF] transition-colors"
                             >
                               <CheckCircle2 size={13} />
                               Hoàn thành
@@ -375,14 +376,6 @@ export default function TechnicianAssignments() {
                               Chi tiết
                             </button>
                           )}
-
-                          <button
-                            onClick={() => navigate(`/technician/assignments/${asg.serviceOrderId}`)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#0E4D40] hover:bg-slate-100 transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <Eye size={16} />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -412,7 +405,7 @@ export default function TechnicianAssignments() {
                   key={page}
                   onClick={() => setCurrentPage(page)}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page === currentPage
-                    ? 'bg-[#0E4D40] text-white shadow-md'
+                    ? 'bg-[#00285E] text-white shadow-md'
                     : 'text-slate-500 hover:bg-slate-100'
                     }`}
                 >

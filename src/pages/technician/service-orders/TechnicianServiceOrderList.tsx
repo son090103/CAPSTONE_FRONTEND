@@ -230,7 +230,7 @@ export default function TechnicianServiceOrderList() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0E4D40] tracking-tight leading-none mb-2 flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#00285E] tracking-tight leading-none mb-2 flex items-center gap-2">
             <ClipboardList className="text-amber-500" size={28} />
             Đơn dịch vụ được phân công
           </h1>
@@ -240,7 +240,7 @@ export default function TechnicianServiceOrderList() {
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-5 py-3 bg-[#0E4D40] hover:bg-[#0a3a30] text-white rounded-xl text-sm font-bold shadow-md transition-all self-start md:self-auto"
+          className="flex items-center gap-2 px-5 py-3 bg-[#00285E] hover:bg-[#0a3a30] text-white rounded-xl text-sm font-bold shadow-md transition-all self-start md:self-auto"
         >
           <RefreshCw size={16} />
           Làm mới
@@ -250,7 +250,7 @@ export default function TechnicianServiceOrderList() {
       {/* KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng đơn dịch vụ', value: kpiCounts.total, icon: <ClipboardList size={22} />, color: '#0E4D40', bg: '#E8F5F0' },
+          { label: 'Tổng đơn dịch vụ', value: kpiCounts.total, icon: <ClipboardList size={22} />, color: '#00285E', bg: '#EDF3FF' },
           { label: 'Chờ chấp nhận', value: kpiCounts.pending, icon: <Clock size={22} />, color: '#D97706', bg: '#FEF3C7' },
           { label: 'Đang thực hiện', value: kpiCounts.inProgress, icon: <Activity size={22} />, color: '#3B82F6', bg: '#EFF6FF' },
           { label: 'Đã hoàn thành', value: kpiCounts.completed, icon: <CheckCircle2 size={22} />, color: '#059669', bg: '#D1FAE5' },
@@ -279,7 +279,7 @@ export default function TechnicianServiceOrderList() {
               placeholder="Tìm theo tên khách, SĐT, biển số xe, mã đơn..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40] transition-all font-semibold"
+              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all font-semibold"
             />
           </div>
 
@@ -288,7 +288,7 @@ export default function TechnicianServiceOrderList() {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40] transition-all"
+              className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00285E]/10 focus:border-[#00285E] transition-all"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="pending_acceptance">Chờ chấp nhận</option>
@@ -330,12 +330,12 @@ export default function TechnicianServiceOrderList() {
                   return (
                     <tr key={so.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
                       <td className="py-4 px-4">
-                        <span className="font-bold text-[#0E4D40] text-xs">{so.id}</span>
+                        <span className="font-bold text-[#00285E] text-xs">{so.id}</span>
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#E8F5F0] flex items-center justify-center">
-                            <Users size={16} className="text-[#0E4D40]" />
+                          <div className="w-9 h-9 rounded-full bg-[#EDF3FF] flex items-center justify-center">
+                            <Users size={16} className="text-[#00285E]" />
                           </div>
                           <div>
                             <p className="font-semibold text-slate-800 text-sm">{so.customerName}</p>
@@ -384,7 +384,7 @@ export default function TechnicianServiceOrderList() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => navigate(`/technician/service-orders/${so.id}`)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0E4D40] bg-[#E8F5F0] hover:bg-[#C4E8E0] transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#00285E] bg-[#EDF3FF] hover:bg-[#DCE8FF] transition-colors"
                           >
                             <Eye size={13} />
                             Xem chi tiết
@@ -392,7 +392,7 @@ export default function TechnicianServiceOrderList() {
                           {(so.status === 'in_progress' || so.status === 'accepted') && (
                             <button
                               onClick={() => navigate(`/technician/progress/${so.id}`)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#0E4D40] hover:bg-[#0a3a30] transition-colors"
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#00285E] hover:bg-[#0a3a30] transition-colors"
                             >
                               <Activity size={13} />
                               Cập nhật
@@ -427,7 +427,7 @@ export default function TechnicianServiceOrderList() {
                   key={page}
                   onClick={() => setCurrentPage(page)}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${page === currentPage
-                      ? 'bg-[#0E4D40] text-white shadow-md'
+                      ? 'bg-[#00285E] text-white shadow-md'
                       : 'text-slate-500 hover:bg-slate-100'
                     }`}
                 >

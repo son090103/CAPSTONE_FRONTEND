@@ -119,14 +119,14 @@ export default function TechnicianServiceOrderDetail() {
       <div className="flex flex-col gap-4">
         <button
           onClick={() => navigate('/technician/service-orders')}
-          className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#0E4D40] transition-colors self-start"
+          className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00285E] transition-colors self-start"
         >
           <ArrowLeft size={16} />
           Quay lại danh sách đơn dịch vụ
         </button>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#0E4D40] tracking-tight leading-none mb-2 flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-[#00285E] tracking-tight leading-none mb-2 flex items-center gap-3">
               <ClipboardList className="text-amber-500" size={28} />
               Chi tiết đơn dịch vụ
               <span className="text-lg font-bold text-slate-400">#{order.id}</span>
@@ -147,11 +147,11 @@ export default function TechnicianServiceOrderDetail() {
       </div>
 
       {/* ASSIGNMENT INFO BANNER */}
-      <div className="bg-gradient-to-r from-[#E8F5F0] to-[#D5F0E8] p-5 rounded-2xl border border-[#C4E8E0]">
+      <div className="bg-gradient-to-r from-[#EDF3FF] to-[#DCE8FF] p-5 rounded-2xl border border-[#DCE8FF]">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mã phân công</p>
-            <p className="font-bold text-[#0E4D40]">{order.assignmentId}</p>
+            <p className="font-bold text-[#00285E]">{order.assignmentId}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Kỹ thuật viên</p>
@@ -172,14 +172,14 @@ export default function TechnicianServiceOrderDetail() {
         {/* CUSTOMER INFO CARD */}
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#E8F5F0] flex items-center justify-center">
-              <Users size={16} className="text-[#0E4D40]" />
+            <div className="w-8 h-8 rounded-lg bg-[#EDF3FF] flex items-center justify-center">
+              <Users size={16} className="text-[#00285E]" />
             </div>
             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Thông tin khách hàng</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0E4D40] to-[#1a7a66] flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00285E] to-[#1a7a66] flex items-center justify-center text-white font-bold text-lg">
                 {order.customerName.charAt(0)}
               </div>
               <div>
@@ -201,15 +201,15 @@ export default function TechnicianServiceOrderDetail() {
         {/* VEHICLE INFO CARD */}
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#E8F5F0] flex items-center justify-center">
-              <Car size={16} className="text-[#0E4D40]" />
+            <div className="w-8 h-8 rounded-lg bg-[#EDF3FF] flex items-center justify-center">
+              <Car size={16} className="text-[#00285E]" />
             </div>
             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Thông tin xe</h3>
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Biển số</p>
-              <p className="font-bold text-[#0E4D40] text-base">{order.vehiclePlate}</p>
+              <p className="font-bold text-[#00285E] text-base">{order.vehiclePlate}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Dòng xe</p>
@@ -240,8 +240,8 @@ export default function TechnicianServiceOrderDetail() {
       {/* SERVICE LIST */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#E8F5F0] flex items-center justify-center">
-            <Wrench size={16} className="text-[#0E4D40]" />
+          <div className="w-8 h-8 rounded-lg bg-[#EDF3FF] flex items-center justify-center">
+            <Wrench size={16} className="text-[#00285E]" />
           </div>
           <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Dịch vụ yêu cầu</h3>
         </div>
@@ -258,7 +258,7 @@ export default function TechnicianServiceOrderDetail() {
           <tbody>
             {order.services.map((svc) => (
               <tr key={svc.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                <td className="py-3.5 px-6 font-bold text-[#0E4D40] text-xs">{svc.id}</td>
+                <td className="py-3.5 px-6 font-bold text-[#00285E] text-xs">{svc.id}</td>
                 <td className="py-3.5 px-6 font-semibold text-slate-700">{svc.name}</td>
                 <td className="py-3.5 px-6">
                   <span className="px-2 py-0.5 bg-slate-100 rounded-md text-xs font-medium text-slate-600">{svc.category}</span>
@@ -269,9 +269,9 @@ export default function TechnicianServiceOrderDetail() {
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-[#E8F5F0]">
-              <td colSpan={4} className="py-3.5 px-6 font-bold text-[#0E4D40] text-sm">Tổng chi phí dịch vụ</td>
-              <td className="py-3.5 px-6 text-right font-bold text-[#0E4D40] text-base">{formatPrice(totalCost)}</td>
+            <tr className="bg-[#EDF3FF]">
+              <td colSpan={4} className="py-3.5 px-6 font-bold text-[#00285E] text-sm">Tổng chi phí dịch vụ</td>
+              <td className="py-3.5 px-6 text-right font-bold text-[#00285E] text-base">{formatPrice(totalCost)}</td>
             </tr>
           </tfoot>
         </table>
@@ -307,7 +307,7 @@ export default function TechnicianServiceOrderDetail() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setShowAcceptConfirm(true)}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0E4D40] hover:bg-[#0a3a30] text-white rounded-xl text-sm font-bold shadow-md transition-all"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-[#00285E] hover:bg-[#0a3a30] text-white rounded-xl text-sm font-bold shadow-md transition-all"
             >
               <CheckCircle2 size={18} />
               Chấp nhận phân công
@@ -405,7 +405,7 @@ export default function TechnicianServiceOrderDetail() {
                 <button
                   onClick={handleAcceptAssignment}
                   disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#0E4D40] text-white rounded-xl text-sm font-bold hover:bg-[#0a3a30] transition-colors disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#00285E] text-white rounded-xl text-sm font-bold hover:bg-[#0a3a30] transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -469,7 +469,7 @@ export default function TechnicianServiceOrderDetail() {
                   rows={4}
                   className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all resize-none ${rejectError
                       ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400'
-                      : 'border-slate-200/80 focus:ring-[#0E4D40]/10 focus:border-[#0E4D40]'
+                      : 'border-slate-200/80 focus:ring-[#00285E]/10 focus:border-[#00285E]'
                     }`}
                 />
                 {rejectError && (
